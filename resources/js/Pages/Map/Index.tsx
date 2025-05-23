@@ -94,6 +94,15 @@ export default function MapIndex({ auth }: PageProps) {
 
   useEffect(() => {
     fetchKeluarga();
+
+    // Set CSRF token untuk semua request axios
+    const token = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+    if (token) {
+      axios.defaults.headers.common['X-CSRF-TOKEN'] = token;
+      console.log('CSRF token set:', token.substring(0, 10) + '...'); // Debug log
+    } else {
+      console.error('CSRF token not found');
+    }
   }, []);
 
   const fetchKeluarga = () => {
@@ -193,7 +202,21 @@ export default function MapIndex({ auth }: PageProps) {
     setIsSaving(true);
 
     try {
-      const response = await axios.post('/api/keluarga', newMarkerData);
+      console.log('Data yang akan dikirim:', newMarkerData);
+
+      // Pastikan CSRF token ada sebelum mengirim request
+      const token = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+      if (!token) {
+        throw new Error('CSRF token not found');
+      }
+
+      const response = await axios.post('/api/keluarga', newMarkerData, {
+        headers: {
+          'X-CSRF-TOKEN': token,
+          'Content-Type': 'application/json',
+          'Accept': 'application/json'
+        }
+      });
 
       if (response.status === 201) {
         // Tambahkan data baru ke state
@@ -204,9 +227,50 @@ export default function MapIndex({ auth }: PageProps) {
 
         alert('Data keluarga berhasil ditambahkan!');
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error saving data:', error);
-      alert('Gagal menyimpan data. Silakan coba lagi.');
+
+      if (error.response) {
+        // Server responded with error status
+        const status = error.response.status;
+        const data = error.response.data;
+
+        console.error('Response status:', status);
+        console.error('Response data:', data);
+
+        switch (status) {
+          case 422:
+            // Validation error
+            const errors = data.errors || {};
+            const errorMessages = Object.values(errors).flat().join('\n');
+            alert('Validasi gagal:\n' + errorMessages);
+            break;
+          case 419:
+            // CSRF Token Mismatch
+            alert('Session expired. Silakan refresh halaman dan coba lagi.');
+            window.location.reload();
+            break;
+          case 401:
+            // Unauthorized
+            alert('Anda perlu login untuk menambah data.');
+            window.location.href = '/login';
+            break;
+          case 500:
+            // Server error
+            alert(data.message || 'Terjadi kesalahan server. Silakan coba lagi.');
+            break;
+          default:
+            alert(`Error ${status}: ${data.message || 'Terjadi kesalahan. Silakan coba lagi.'}`);
+        }
+      } else if (error.request) {
+        // Request was made but no response received
+        console.error('No response received:', error.request);
+        alert('Tidak ada respon dari server. Periksa koneksi internet Anda.');
+      } else {
+        // Something else happened
+        console.error('Error:', error.message);
+        alert('Terjadi kesalahan: ' + error.message);
+      }
     } finally {
       setIsSaving(false);
     }
@@ -473,4 +537,3 @@ export default function MapIndex({ auth }: PageProps) {
     </AuthenticatedLayout>
   );
 }
- 

@@ -85,8 +85,63 @@ class KeluargaController extends Controller
 
         $keluarga = Keluarga::create($validated);
 
-        return redirect()->route('map.index', ['keluarga' => $keluarga->id])
-            ->with('message', 'Data keluarga berhasil disimpan. Silakan tentukan lokasi di peta.');
+        return redirect()->route('keluarga.index')
+            ->with('message', 'Data keluarga berhasil disimpan.');
+    }
+
+    // Method baru untuk menyimpan data dari peta
+    public function storeFromMap(Request $request)
+    {
+        try {
+            $validated = $request->validate([
+                'no_kk' => 'required|string|max:16|unique:keluarga',
+                'nama_kepala_keluarga' => 'required|string|max:255',
+                'alamat' => 'required|string',
+                'status_ekonomi' => 'required|in:sangat_miskin,miskin,rentan_miskin',
+                'latitude' => 'required|numeric',
+                'longitude' => 'required|numeric',
+                // Field opsional untuk map
+                'rt' => 'nullable|string',
+                'rw' => 'nullable|string',
+                'kelurahan' => 'nullable|string',
+                'kecamatan' => 'nullable|string',
+                'kota' => 'nullable|string',
+                'provinsi' => 'nullable|string',
+                'kode_pos' => 'nullable|string',
+                'penghasilan_bulanan' => 'nullable|integer',
+                'keterangan' => 'nullable|string',
+            ]);
+
+            // Buat objek Point untuk lokasi
+            $validated['lokasi'] = new Point($validated['latitude'], $validated['longitude']);
+
+            // Hapus latitude dan longitude dari array validated
+            unset($validated['latitude'], $validated['longitude']);
+
+            $keluarga = Keluarga::create($validated);
+
+            // Transform data untuk response
+            if ($keluarga->lokasi) {
+                $keluarga->latitude = $keluarga->lokasi->latitude;
+                $keluarga->longitude = $keluarga->lokasi->longitude;
+            }
+
+            return response()->json($keluarga, 201);
+
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            return response()->json([
+                'message' => 'Validation failed',
+                'errors' => $e->errors()
+            ], 422);
+
+        } catch (\Exception $e) {
+            \Log::error('Error saving keluarga from map: ' . $e->getMessage());
+
+            return response()->json([
+                'message' => 'Gagal menyimpan data. Silakan coba lagi.',
+                'error' => $e->getMessage()
+            ], 500);
+        }
     }
 
     public function show(Request $request, Keluarga $keluarga)

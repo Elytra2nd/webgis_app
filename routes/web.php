@@ -16,13 +16,13 @@ Route::get('/', function () {
     ]);
 });
 
+// Route untuk guest (read-only)
 Route::get('/map', function() {
     return Inertia::render('Map/Index');
-})->name('map');
+})->name('map.public');
 
-// Route untuk melihat data keluarga (read-only)
 Route::get('/keluarga/public', [KeluargaController::class, 'index'])->name('keluarga.public');
-Route::get('/keluarga/{keluarga}', [KeluargaController::class, 'show'])->name('keluarga.public.show');
+Route::get('/keluarga/{keluarga}/public', [KeluargaController::class, 'show'])->name('keluarga.public.show');
 
 // API route untuk mendapatkan data keluarga untuk peta (read-only)
 Route::get('/api/keluarga', [KeluargaController::class, 'getKeluargaForMap']);
@@ -41,18 +41,14 @@ Route::middleware('auth')->group(function () {
     // Keluarga routes
     Route::resource('keluarga', KeluargaController::class);
 
-    // Map data routes
-    Route::post('/api/map-data', [MapController::class, 'saveMapData']);
-    Route::get('/api/map-data/{keluargaId}', [MapController::class, 'getMapData']);
-
-    // Map routes
-    Route::get('/map', function () {
+    // Map routes (authenticated)
+    Route::get('/map/admin', function () {
         return Inertia::render('Map/Index');
     })->name('map');
-    Route::get('/map/{keluarga}', [MapController::class, 'index'])->name('map.index');
 
-    // API route untuk mendapatkan data keluarga untuk peta
-    Route::get('/api/keluarga', [KeluargaController::class, 'getKeluargaForMap']);
+    // API routes untuk authenticated users
+    Route::post('/api/keluarga', [KeluargaController::class, 'storeFromMap']); // Route POST untuk map
+    Route::post('/api/map-data', [MapController::class, 'saveMapData']);
 
     // Reports route
     Route::get('/reports', function () {

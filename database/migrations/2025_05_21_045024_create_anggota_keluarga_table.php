@@ -6,26 +6,33 @@ use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
-    public function up(): void
+    public function up()
     {
-        Schema::create('anggota_keluarga', function (Blueprint $table) {
-            $table->id();
-            $table->foreignId('keluarga_id')->constrained('keluarga')->onDelete('cascade');
-            $table->string('nik', 16)->unique();
-            $table->string('nama');
-            $table->enum('jenis_kelamin', ['L', 'P']);
-            $table->string('tempat_lahir');
-            $table->date('tanggal_lahir');
-            $table->enum('status_dalam_keluarga', ['kepala_keluarga', 'istri', 'anak', 'lainnya']);
-            $table->enum('status_perkawinan', ['belum_kawin', 'kawin', 'cerai_hidup', 'cerai_mati']);
-            $table->string('pendidikan_terakhir')->nullable();
-            $table->string('pekerjaan')->nullable();
-            $table->timestamps();
+        Schema::table('keluarga', function (Blueprint $table) {
+            $table->string('rt')->nullable()->change();
+            $table->string('rw')->nullable()->change();
+            $table->string('kelurahan')->nullable()->change();
+            $table->string('kecamatan')->nullable()->change();
+            $table->string('kota')->nullable()->change();
+            $table->string('provinsi')->nullable()->change();
+            $table->string('kode_pos')->nullable()->change();
+            $table->integer('penghasilan_bulanan')->nullable()->change();
+            $table->text('keterangan')->nullable()->change();
         });
     }
 
-    public function down(): void
+    public function down()
     {
-        Schema::dropIfExists('anggota_keluarga');
+        Schema::table('keluarga', function (Blueprint $table) {
+            $table->string('rt')->nullable(false)->change();
+            $table->string('rw')->nullable(false)->change();
+            $table->string('kelurahan')->nullable(false)->change();
+            $table->string('kecamatan')->nullable(false)->change();
+            $table->string('kota')->nullable(false)->change();
+            $table->string('provinsi')->nullable(false)->change();
+            $table->string('kode_pos')->nullable(false)->change();
+            $table->integer('penghasilan_bulanan')->nullable(false)->change();
+            $table->text('keterangan')->nullable(false)->change();
+        });
     }
 };

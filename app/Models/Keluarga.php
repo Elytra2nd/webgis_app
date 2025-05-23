@@ -35,6 +35,23 @@ class Keluarga extends Model
         'lokasi' => Point::class,
     ];
 
+    // Method boot untuk menangani field kosong
+    public static function boot()
+    {
+        parent::boot();
+
+        static::saving(function($model) {
+            // Field yang boleh kosong diset ke null jika empty
+            $nullableFields = ['rt', 'rw', 'kelurahan', 'kecamatan', 'kota', 'provinsi', 'kode_pos', 'penghasilan_bulanan', 'keterangan'];
+
+            foreach ($nullableFields as $field) {
+                if (empty($model->{$field})) {
+                    $model->{$field} = null;
+                }
+            }
+        });
+    }
+
     public function anggotaKeluarga(): HasMany
     {
         return $this->hasMany(AnggotaKeluarga::class);
