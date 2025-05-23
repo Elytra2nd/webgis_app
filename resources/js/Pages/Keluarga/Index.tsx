@@ -114,7 +114,7 @@ export default function Index({ auth, keluarga }: IndexProps) {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-gray-600">Total Keluarga</p>
-                <p className="text-3xl font-light text-gray-900">{stats.total}</p>
+                <p className="text-3xl font-semibold text-gray-900">{stats.total}</p>
               </div>
               <div className="w-12 h-12 bg-gradient-to-r from-cyan-100 to-teal-100 rounded-xl flex items-center justify-center">
                 <svg className="w-6 h-6 text-cyan-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -128,7 +128,7 @@ export default function Index({ auth, keluarga }: IndexProps) {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-red-600">Sangat Miskin</p>
-                <p className="text-3xl font-light text-red-700">{stats.sangat_miskin}</p>
+                <p className="text-3xl font-semibold text-red-700">{stats.sangat_miskin}</p>
               </div>
               <div className="w-12 h-12 bg-red-50 rounded-xl flex items-center justify-center">
                 <svg className="w-6 h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -142,7 +142,7 @@ export default function Index({ auth, keluarga }: IndexProps) {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-amber-600">Miskin</p>
-                <p className="text-3xl font-light text-amber-700">{stats.miskin}</p>
+                <p className="text-3xl font-semibold text-amber-700">{stats.miskin}</p>
               </div>
               <div className="w-12 h-12 bg-amber-50 rounded-xl flex items-center justify-center">
                 <svg className="w-6 h-6 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -156,7 +156,7 @@ export default function Index({ auth, keluarga }: IndexProps) {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-cyan-600">Rentan Miskin</p>
-                <p className="text-3xl font-light text-cyan-700">{stats.rentan_miskin}</p>
+                <p className="text-3xl font-semibold text-cyan-700">{stats.rentan_miskin}</p>
               </div>
               <div className="w-12 h-12 bg-cyan-50 rounded-xl flex items-center justify-center">
                 <svg className="w-6 h-6 text-cyan-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
