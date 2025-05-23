@@ -6,6 +6,7 @@ use App\Models\Keluarga;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use MatanYadaev\EloquentSpatial\Objects\Point;
+use Illuminate\Support\Facades\Log;
 
 class KeluargaController extends Controller
 {
