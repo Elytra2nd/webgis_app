@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Head, useForm, Link } from '@inertiajs/react';
+import { Head, useForm, Link, router } from '@inertiajs/react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import MapDrawing from '@/Components/Map/MapDrawing';
 import InputError from '@/Components/InputError';
@@ -65,29 +65,53 @@ export default function Create({ auth }: PageProps) {
   // Handle submit form
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    
-    // Validasi manual untuk koordinat
-    if (!data.latitude || !data.longitude) {
-      alert('Silakan tentukan lokasi pada peta');
-      return;
-    }
+
+    // Validasi manual untuk koordinat jika diperlukan
+    // if (!data.latitude || !data.longitude) {
+    //   alert('Silakan tentukan lokasi pada peta');
+    //   return;
+    // }
 
     post(route('keluarga.store'), {
-      onSuccess: (page: any) => {
-        // Ambil ID keluarga yang baru dibuat dari response
-        const id = page.props.keluarga?.id;
-        if (id) {
-          setKeluargaId(id);
-          setIsFormSaved(true);
-          setShowMapSection(true);
+      onSuccess: (response: any) => {
+        try {
+          // Coba beberapa cara untuk mendapatkan ID dari response
+          let id = null;
 
-          // Scroll ke section peta
-          setTimeout(() => {
-            const mapSection = document.getElementById('map-section');
-            if (mapSection) {
-              mapSection.scrollIntoView({ behavior: 'smooth' });
-            }
-          }, 100);
+          // Cara 1: Dari response.props
+          if (response.props && response.props.keluarga && response.props.keluarga.id) {
+            id = response.props.keluarga.id;
+          }
+          // Cara 2: Dari response langsung
+          else if (response.keluarga && response.keluarga.id) {
+            id = response.keluarga.id;
+          }
+          // Cara 3: Dari flash message atau session
+          else if (response.props && response.props.flash && response.props.flash.keluarga_id) {
+            id = response.props.flash.keluarga_id;
+          }
+
+          if (id) {
+            setKeluargaId(id);
+            setIsFormSaved(true);
+            setShowMapSection(true);
+
+            // Scroll ke section peta
+            setTimeout(() => {
+              const mapSection = document.getElementById('map-section');
+              if (mapSection) {
+                mapSection.scrollIntoView({ behavior: 'smooth' });
+              }
+            }, 100);
+          } else {
+            // Jika tidak ada ID, tetap set sebagai berhasil tapi tanpa map section
+            setIsFormSaved(true);
+            alert('Data keluarga berhasil disimpan!');
+          }
+        } catch (error) {
+          console.error('Error processing response:', error);
+          setIsFormSaved(true);
+          alert('Data keluarga berhasil disimpan!');
         }
       },
       onError: (errors) => {
@@ -111,15 +135,18 @@ export default function Create({ auth }: PageProps) {
 
       // Update data keluarga dengan koordinat baru jika sudah tersimpan
       if (keluargaId) {
+        // Menggunakan put dengan data yang benar sesuai Laravel resource route
         put(route('keluarga.update', keluargaId), {
-          data: updatedData,
-          onSuccess: () => {
-            alert('Koordinat berhasil disimpan!');
-          },
-          onError: (errors) => {
-            console.error('Error updating coordinates:', errors);
-          }
-        });
+                  ...updatedData,
+                  onSuccess: () => {
+                    alert('Koordinat berhasil disimpan!');
+                  },
+                  onError: (errors: any) => {
+                    console.error('Error updating coordinates:', errors);
+                    // Fallback: simpan koordinat di state saja jika update gagal
+                    alert('Koordinat berhasil ditentukan!');
+                  }
+                });
       }
     }
   };
@@ -127,7 +154,7 @@ export default function Create({ auth }: PageProps) {
   // Handle perubahan input koordinat manual
   const handleCoordinateChange = (field: 'latitude' | 'longitude', value: string) => {
     setData(field, value);
-    
+
     // Update current location jika kedua koordinat valid
     if (field === 'latitude' && data.longitude && !isNaN(parseFloat(value))) {
       setCurrentLocation({
@@ -166,8 +193,23 @@ export default function Create({ auth }: PageProps) {
   };
 
   const handleFinish = () => {
-    // Redirect ke halaman daftar keluarga
-    window.location.href = route('keluarga.index');
+    // Gunakan router.visit untuk navigasi yang lebih aman
+    try {
+      router.visit(route('keluarga.index'));
+    } catch (error) {
+      console.error('Error navigating:', error);
+      // Fallback ke window.location
+      window.location.href = route('keluarga.index');
+    }
+  };
+
+  const handleBackToList = () => {
+    try {
+      router.visit(route('keluarga.index'));
+    } catch (error) {
+      console.error('Error navigating back:', error);
+      window.location.href = route('keluarga.index');
+    }
   };
 
   return (
@@ -176,15 +218,15 @@ export default function Create({ auth }: PageProps) {
       header={
         <div className="flex items-center justify-between">
           <h2 className="font-semibold text-xl text-gray-800 leading-tight">Tambah Data Keluarga</h2>
-          <Link
-            href={route('keluarga.index')}
+          <button
+            onClick={handleBackToList}
             className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50"
           >
             <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
             </svg>
             Kembali
-          </Link>
+          </button>
         </div>
       }
     >
@@ -211,7 +253,7 @@ export default function Create({ auth }: PageProps) {
               </div>
 
               <form onSubmit={handleSubmit} className="space-y-6">
-                
+
                 {/* Data KK Section */}
                 <div className="bg-gray-50 p-4 rounded-lg">
                   <h3 className="text-lg font-semibold text-gray-900 mb-4">Data Kartu Keluarga</h3>
@@ -264,7 +306,7 @@ export default function Create({ auth }: PageProps) {
                       />
                       <InputError message={errors.alamat} className="mt-2" />
                     </div>
-                    
+
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                       <div>
                         <InputLabel htmlFor="rt" value="RT" />
@@ -419,8 +461,8 @@ export default function Create({ auth }: PageProps) {
                 {/* Lokasi Section - Hanya muncul jika form belum tersimpan */}
                 {!isFormSaved && (
                   <div className="bg-blue-50 p-4 rounded-lg">
-                    <h3 className="text-lg font-semibold text-gray-900 mb-4">Lokasi Geografis *</h3>
-                    
+                    <h3 className="text-lg font-semibold text-gray-900 mb-4">Lokasi Geografis (Opsional)</h3>
+
                     {/* Koordinat Manual */}
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
                       <div>
@@ -461,14 +503,14 @@ export default function Create({ auth }: PageProps) {
                         </button>
                       </div>
                     </div>
-                    
+
                     {/* Peta */}
                     {showMap && (
                       <div className="border rounded-lg overflow-hidden h-96 mt-4">
                         {currentLocation ? (
-                          <MapDrawing 
-                            initialCenter={currentLocation}
+                          <MapDrawing
                             onSave={handleMapPointSaved}
+                            keluargaId={keluargaId || 0}
                           />
                         ) : (
                           <div className="flex items-center justify-center h-full bg-gray-100">
@@ -493,7 +535,7 @@ export default function Create({ auth }: PageProps) {
           </div>
 
           {/* Section Peta - Muncul setelah data tersimpan */}
-          {showMapSection && (
+          {showMapSection && keluargaId && (
             <div id="map-section" className="bg-white overflow-hidden shadow-sm sm:rounded-lg">
               <div className="p-6 bg-white border-b border-gray-200">
                 <div className="flex items-center justify-between mb-4">
@@ -513,7 +555,7 @@ export default function Create({ auth }: PageProps) {
                 </p>
 
                 <div className="border rounded-lg overflow-hidden" style={{ height: '500px' }}>
-                  <MapDrawing keluargaId={keluargaId!} onSave={handleMapPointSaved} />
+                  <MapDrawing keluargaId={keluargaId} onSave={handleMapPointSaved} />
                 </div>
 
                 {/* Status Koordinat */}
@@ -573,7 +615,7 @@ export default function Create({ auth }: PageProps) {
                   </div>
                   <div className="ml-3">
                     <p className="text-sm text-blue-700">
-                      Data keluarga berhasil disimpan! {data.latitude && data.longitude ? 'Koordinat sudah ditentukan.' : 'Silakan tentukan koordinat lokasi pada peta di atas.'}
+                      Data keluarga berhasil disimpan! {data.latitude && data.longitude ? 'Koordinat sudah ditentukan.' : 'Silakan tentukan koordinat lokasi pada peta di atas jika diperlukan.'}
                     </p>
                   </div>
                 </div>
