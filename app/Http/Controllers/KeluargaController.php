@@ -85,8 +85,8 @@ class KeluargaController extends Controller
 
         $keluarga = Keluarga::create($validated);
 
-        return redirect()->route('keluarga.index')
-            ->with('message', 'Data keluarga berhasil disimpan.');
+        return redirect()->route('map.index', ['keluarga' => $keluarga->id])
+            ->with('message', 'Data keluarga berhasil disimpan. Silakan tentukan lokasi di peta.');
     }
 
     public function show(Request $request, Keluarga $keluarga)
