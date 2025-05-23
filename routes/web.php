@@ -16,6 +16,18 @@ Route::get('/', function () {
     ]);
 });
 
+Route::get('/map', function() {
+    return Inertia::render('Map/Index');
+})->name('map');
+
+// Route untuk melihat data keluarga (read-only)
+Route::get('/keluarga/public', [KeluargaController::class, 'index'])->name('keluarga.public');
+Route::get('/keluarga/{keluarga}', [KeluargaController::class, 'show'])->name('keluarga.public.show');
+
+// API route untuk mendapatkan data keluarga untuk peta (read-only)
+Route::get('/api/keluarga', [KeluargaController::class, 'getKeluargaForMap']);
+Route::get('/api/map-data/{keluargaId}', [MapController::class, 'getMapData']);
+
 Route::get('/dashboard', function () {
     return Inertia::render('Dashboard');
 })->middleware(['auth', 'verified'])->name('dashboard');

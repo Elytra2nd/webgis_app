@@ -9,8 +9,9 @@ use MatanYadaev\EloquentSpatial\Objects\Point;
 
 class KeluargaController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
+        // Load relasi
         $keluarga = Keluarga::all();
 
         // Transformasi data untuk frontend
@@ -21,6 +22,12 @@ class KeluargaController extends Controller
             }
             return $item;
         });
+
+        if (!$request->user()) {
+            return Inertia::render('Keluarga/PublicIndex', [
+                'keluarga' => $keluarga
+            ]);
+        }
 
         return Inertia::render('Keluarga/Index', [
             'keluarga' => $keluarga
@@ -82,7 +89,7 @@ class KeluargaController extends Controller
             ->with('message', 'Data keluarga berhasil disimpan.');
     }
 
-    public function show(Keluarga $keluarga)
+    public function show(Request $request, Keluarga $keluarga)
     {
         // Load relasi
         $keluarga->load('anggotaKeluarga', 'wilayah', 'jarak');
@@ -91,6 +98,12 @@ class KeluargaController extends Controller
         if ($keluarga->lokasi) {
             $keluarga->latitude = $keluarga->lokasi->latitude;
             $keluarga->longitude = $keluarga->lokasi->longitude;
+        }
+
+        if (!$request->user()) {
+            return Inertia::render('Keluarga/PublicShow', [
+                'keluarga' => $keluarga
+            ]);
         }
 
         return Inertia::render('Keluarga/Show', [
