@@ -1,4 +1,5 @@
-import React from 'react';
+// resources/js/Pages/Keluarga/Index.tsx
+import React, { useState } from 'react';
 import { Head, Link } from '@inertiajs/react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { PageProps } from '@/types';
@@ -29,12 +30,19 @@ interface IndexProps extends PageProps {
 }
 
 export default function Index({ auth, keluarga }: IndexProps) {
+  const [searchTerm, setSearchTerm] = useState('');
+  const [statusFilter, setStatusFilter] = useState('all');
+
+  const breadcrumbs = [
+    { label: 'Dashboard', href: route('dashboard') },
+    { label: 'Data Keluarga', active: true }
+  ];
+
   const formatStatusEkonomi = (status: string) => {
     const statusMap: { [key: string]: string } = {
       'sangat_miskin': 'Sangat Miskin',
       'miskin': 'Miskin',
-      'menengah': 'Menengah',
-      'kaya': 'Kaya'
+      'rentan_miskin': 'Rentan Miskin'
     };
     return statusMap[status] || status;
   };
@@ -42,15 +50,13 @@ export default function Index({ auth, keluarga }: IndexProps) {
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'sangat_miskin':
-        return 'bg-red-100 text-red-800';
+        return 'bg-red-50 text-red-700 border border-red-200';
       case 'miskin':
-        return 'bg-orange-100 text-orange-800';
-      case 'menengah':
-        return 'bg-yellow-100 text-yellow-800';
-      case 'kaya':
-        return 'bg-green-100 text-green-800';
+        return 'bg-amber-50 text-amber-700 border border-amber-200';
+      case 'rentan_miskin':
+        return 'bg-cyan-50 text-cyan-700 border border-cyan-200';
       default:
-        return 'bg-gray-100 text-gray-800';
+        return 'bg-gray-50 text-gray-700 border border-gray-200';
     }
   };
 
@@ -67,155 +73,305 @@ export default function Index({ auth, keluarga }: IndexProps) {
     }
   };
 
+  // Filter data berdasarkan search dan status
+  const filteredKeluarga = keluarga.filter(item => {
+    const matchesSearch = item.nama_kepala_keluarga.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         item.no_kk.includes(searchTerm) ||
+                         item.alamat.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesStatus = statusFilter === 'all' || item.status_ekonomi === statusFilter;
+    return matchesSearch && matchesStatus;
+  });
+
+  const getStatusStats = () => {
+    const stats = {
+      total: keluarga.length,
+      sangat_miskin: keluarga.filter(k => k.status_ekonomi === 'sangat_miskin').length,
+      miskin: keluarga.filter(k => k.status_ekonomi === 'miskin').length,
+      rentan_miskin: keluarga.filter(k => k.status_ekonomi === 'rentan_miskin').length,
+    };
+    return stats;
+  };
+
+  const stats = getStatusStats();
+
   return (
     <AuthenticatedLayout
       user={auth.user}
-      header={<h2 className="font-semibold text-xl text-gray-800 leading-tight">Data Keluarga</h2>}
+      breadcrumbs={breadcrumbs}
+      header={
+        <div className="flex items-center space-x-3">
+          <div className="w-2 h-8 bg-gradient-to-b from-cyan-400 to-teal-500 rounded-full animate-pulse"></div>
+          <h2 className="font-light text-2xl text-gray-900">Data Keluarga</h2>
+        </div>
+      }
     >
       <Head title="Data Keluarga" />
 
-      <div className="py-12">
-        <div className="max-w-7xl mx-auto sm:px-6 lg:px-8">
-          <div className="bg-white overflow-hidden shadow-sm sm:rounded-lg">
-            <div className="p-6 bg-white border-b border-gray-200">
-              <div className="flex justify-between items-center mb-6">
-                <div>
-                  <h3 className="text-lg font-semibold text-gray-900">Daftar Keluarga</h3>
-                  <p className="text-sm text-gray-600 mt-1">
-                    Total: {keluarga.length} keluarga terdaftar
-                  </p>
-                </div>
-                <Link
-                  href={route('keluarga.create')}
-                  className="inline-flex items-center px-4 py-2 bg-blue-600 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-blue-700 active:bg-blue-900 focus:outline-none focus:border-blue-900 focus:ring ring-blue-300 disabled:opacity-25 transition ease-in-out duration-150"
-                >
-                  <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4" />
-                  </svg>
-                  Tambah Keluarga
-                </Link>
+      <div className="space-y-8">
+        {/* Statistics Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+          <div className="bg-white rounded-2xl border border-gray-100/50 p-6 hover:shadow-lg transition-all duration-300 transform hover:-translate-y-1">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-gray-600">Total Keluarga</p>
+                <p className="text-3xl font-light text-gray-900">{stats.total}</p>
               </div>
+              <div className="w-12 h-12 bg-gradient-to-r from-cyan-100 to-teal-100 rounded-xl flex items-center justify-center">
+                <svg className="w-6 h-6 text-cyan-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+                </svg>
+              </div>
+            </div>
+          </div>
 
-              <div className="overflow-x-auto shadow ring-1 ring-black ring-opacity-5 md:rounded-lg">
-                <table className="min-w-full divide-y divide-gray-300">
-                  <thead className="bg-gray-50">
-                    <tr>
-                      <th scope="col" className="py-3.5 pl-4 pr-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wide sm:pl-6">
-                        No. KK
-                      </th>
-                      <th scope="col" className="px-3 py-3.5 text-left text-xs font-medium text-gray-500 uppercase tracking-wide">
-                        Kepala Keluarga
-                      </th>
-                      <th scope="col" className="px-3 py-3.5 text-left text-xs font-medium text-gray-500 uppercase tracking-wide">
-                        Alamat
-                      </th>
-                      <th scope="col" className="px-3 py-3.5 text-left text-xs font-medium text-gray-500 uppercase tracking-wide">
-                        Status Ekonomi
-                      </th>
-                      <th scope="col" className="px-3 py-3.5 text-left text-xs font-medium text-gray-500 uppercase tracking-wide">
-                        Koordinat
-                      </th>
-                      <th scope="col" className="relative py-3.5 pl-3 pr-4 sm:pr-6">
-                        <span className="sr-only">Aksi</span>
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-gray-200 bg-white">
-                    {keluarga.map((item) => (
-                      <tr key={item.id} className="hover:bg-gray-50">
-                        <td className="whitespace-nowrap py-4 pl-4 pr-3 text-sm font-medium text-gray-900 sm:pl-6">
-                          {item.no_kk}
-                        </td>
-                        <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-900">
-                          <div>
-                            <div className="font-medium">{item.nama_kepala_keluarga}</div>
-                            {item.rt && item.rw && (
-                              <div className="text-gray-500 text-xs">RT {item.rt} / RW {item.rw}</div>
-                            )}
-                          </div>
-                        </td>
-                        <td className="px-3 py-4 text-sm text-gray-900">
-                          <div className="max-w-xs">
-                            <div className="truncate">{item.alamat}</div>
-                            {item.kelurahan && (
-                              <div className="text-xs text-gray-500 truncate">
-                                {item.kelurahan}, {item.kecamatan}
-                              </div>
-                            )}
-                          </div>
-                        </td>
-                        <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-900">
-                          <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getStatusColor(item.status_ekonomi)}`}>
-                            {formatStatusEkonomi(item.status_ekonomi)}
-                          </span>
-                        </td>
-                        <td className="px-3 py-4 text-sm text-gray-900">
-                          <div className="flex items-center space-x-2">
-                            <span className="text-xs font-mono">
-                              {formatCoordinates(item.latitude, item.longitude)}
-                            </span>
-                            {item.latitude && item.longitude && (
-                              <button
-                                onClick={() => openGoogleMaps(item.latitude, item.longitude)}
-                                className="text-blue-600 hover:text-blue-800"
-                                title="Lihat di Google Maps"
-                              >
-                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-                                </svg>
-                              </button>
-                            )}
-                          </div>
-                        </td>
-                        <td className="relative whitespace-nowrap py-4 pl-3 pr-4 text-right text-sm font-medium sm:pr-6">
-                          <div className="flex justify-end space-x-2">
-                            <Link
-                              href={route('keluarga.show', item.id)}
-                              className="inline-flex items-center px-2.5 py-1.5 border border-transparent text-xs font-medium rounded text-blue-700 bg-blue-100 hover:bg-blue-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-                            >
-                              Detail
-                            </Link>
-                            <Link
-                              href={route('keluarga.edit', item.id)}
-                              className="inline-flex items-center px-2.5 py-1.5 border border-transparent text-xs font-medium rounded text-yellow-700 bg-yellow-100 hover:bg-yellow-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-yellow-500"
-                            >
-                              Edit
-                            </Link>
-                            <Link
-                              href={route('keluarga.destroy', item.id)}
-                              method="delete"
-                              as="button"
-                              className="inline-flex items-center px-2.5 py-1.5 border border-transparent text-xs font-medium rounded text-red-700 bg-red-100 hover:bg-red-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
-                              onBefore={() => confirm('Apakah Anda yakin ingin menghapus data keluarga ini?')}
-                            >
-                              Hapus
-                            </Link>
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
+          <div className="bg-white rounded-2xl border border-gray-100/50 p-6 hover:shadow-lg transition-all duration-300 transform hover:-translate-y-1">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-red-600">Sangat Miskin</p>
+                <p className="text-3xl font-light text-red-700">{stats.sangat_miskin}</p>
+              </div>
+              <div className="w-12 h-12 bg-red-50 rounded-xl flex items-center justify-center">
+                <svg className="w-6 h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
+                </svg>
+              </div>
+            </div>
+          </div>
 
-                    {keluarga.length === 0 && (
-                      <tr>
-                        <td colSpan={6} className="px-6 py-14 text-center">
-                          <div className="flex flex-col items-center">
-                            <svg className="w-12 h-12 text-gray-400 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
-                            </svg>
-                            <p className="text-gray-500 text-lg font-medium">Belum ada data keluarga</p>
-                            <p className="text-gray-400 text-sm">Klik tombol "Tambah Keluarga" untuk menambahkan data baru</p>
-                          </div>
-                        </td>
-                      </tr>
-                    )}
-                  </tbody>
-                </table>
+          <div className="bg-white rounded-2xl border border-gray-100/50 p-6 hover:shadow-lg transition-all duration-300 transform hover:-translate-y-1">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-amber-600">Miskin</p>
+                <p className="text-3xl font-light text-amber-700">{stats.miskin}</p>
+              </div>
+              <div className="w-12 h-12 bg-amber-50 rounded-xl flex items-center justify-center">
+                <svg className="w-6 h-6 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1" />
+                </svg>
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-white rounded-2xl border border-gray-100/50 p-6 hover:shadow-lg transition-all duration-300 transform hover:-translate-y-1">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-cyan-600">Rentan Miskin</p>
+                <p className="text-3xl font-light text-cyan-700">{stats.rentan_miskin}</p>
+              </div>
+              <div className="w-12 h-12 bg-cyan-50 rounded-xl flex items-center justify-center">
+                <svg className="w-6 h-6 text-cyan-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
               </div>
             </div>
           </div>
         </div>
+
+        {/* Main Content */}
+        <div className="bg-white rounded-2xl border border-gray-100/50 overflow-hidden shadow-sm">
+          {/* Header */}
+          <div className="p-8 border-b border-gray-100/50">
+            <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
+              <div>
+                <h3 className="text-xl font-medium text-gray-900 mb-2">Daftar Keluarga</h3>
+                <p className="text-sm text-gray-600">
+                  Menampilkan {filteredKeluarga.length} dari {keluarga.length} keluarga terdaftar
+                </p>
+              </div>
+
+              <div className="flex flex-col sm:flex-row gap-4">
+                {/* Search */}
+                <div className="relative">
+                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                    <svg className="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                    </svg>
+                  </div>
+                  <input
+                    type="text"
+                    placeholder="Cari keluarga..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="pl-10 pr-4 py-2.5 border border-gray-200 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500 transition-colors duration-200"
+                  />
+                </div>
+
+                {/* Filter */}
+                <select
+                  value={statusFilter}
+                  onChange={(e) => setStatusFilter(e.target.value)}
+                  className="px-4 py-2.5 border border-gray-200 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500 transition-colors duration-200"
+                >
+                  <option value="all">Semua Status</option>
+                  <option value="sangat_miskin">Sangat Miskin</option>
+                  <option value="miskin">Miskin</option>
+                  <option value="rentan_miskin">Rentan Miskin</option>
+                </select>
+
+                {/* Add Button */}
+                <Link
+                  href={route('keluarga.create')}
+                  className="inline-flex items-center px-6 py-2.5 bg-gradient-to-r from-cyan-500 to-teal-500 text-white font-medium rounded-lg hover:from-cyan-600 hover:to-teal-600 focus:outline-none focus:ring-4 focus:ring-cyan-200 transition-all duration-200 transform hover:-translate-y-0.5 shadow-lg hover:shadow-xl"
+                >
+                  <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 4v16m8-8H4" />
+                  </svg>
+                  Tambah Keluarga
+                </Link>
+              </div>
+            </div>
+          </div>
+
+          {/* Table */}
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead className="bg-gray-50/50">
+                <tr>
+                  <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    No. KK
+                  </th>
+                  <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Kepala Keluarga
+                  </th>
+                  <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Alamat
+                  </th>
+                  <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Status Ekonomi
+                  </th>
+                  <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Koordinat
+                  </th>
+                  <th className="px-6 py-4 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Aksi
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-100">
+                {filteredKeluarga.map((item, index) => (
+                  <tr
+                    key={item.id}
+                    className="hover:bg-gray-50/50 transition-colors duration-200 animate-fadeIn"
+                    style={{ animationDelay: `${index * 50}ms` }}
+                  >
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <span className="text-sm font-mono text-gray-900">{item.no_kk}</span>
+                    </td>
+                    <td className="px-6 py-4">
+                      <div>
+                        <div className="text-sm font-medium text-gray-900">{item.nama_kepala_keluarga}</div>
+                        {item.rt && item.rw && (
+                          <div className="text-xs text-gray-500">RT {item.rt} / RW {item.rw}</div>
+                        )}
+                      </div>
+                    </td>
+                    <td className="px-6 py-4">
+                      <div className="max-w-xs">
+                        <div className="text-sm text-gray-900 truncate">{item.alamat}</div>
+                        {item.kelurahan && (
+                          <div className="text-xs text-gray-500 truncate">
+                            {item.kelurahan}, {item.kecamatan}
+                          </div>
+                        )}
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <span className={`inline-flex px-3 py-1 text-xs font-medium rounded-full ${getStatusColor(item.status_ekonomi)}`}>
+                        {formatStatusEkonomi(item.status_ekonomi)}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4">
+                      <div className="flex items-center space-x-2">
+                        <span className="text-xs font-mono text-gray-600">
+                          {formatCoordinates(item.latitude, item.longitude)}
+                        </span>
+                        {item.latitude && item.longitude && (
+                          <button
+                            onClick={() => openGoogleMaps(item.latitude, item.longitude)}
+                            className="text-cyan-600 hover:text-cyan-800 transition-colors duration-200 hover:scale-110 transform"
+                            title="Lihat di Google Maps"
+                          >
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                            </svg>
+                          </button>
+                        )}
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-right">
+                      <div className="flex justify-end space-x-2">
+                        <Link
+                          href={route('keluarga.show', item.id)}
+                          className="inline-flex items-center px-3 py-1.5 text-xs font-medium text-cyan-700 bg-cyan-50 border border-cyan-200 rounded-lg hover:bg-cyan-100 transition-all duration-200 transform hover:scale-105"
+                        >
+                          Detail
+                        </Link>
+                        <Link
+                          href={route('keluarga.edit', item.id)}
+                          className="inline-flex items-center px-3 py-1.5 text-xs font-medium text-amber-700 bg-amber-50 border border-amber-200 rounded-lg hover:bg-amber-100 transition-all duration-200 transform hover:scale-105"
+                        >
+                          Edit
+                        </Link>
+                        <Link
+                          href={route('keluarga.destroy', item.id)}
+                          method="delete"
+                          as="button"
+                          className="inline-flex items-center px-3 py-1.5 text-xs font-medium text-red-700 bg-red-50 border border-red-200 rounded-lg hover:bg-red-100 transition-all duration-200 transform hover:scale-105"
+                          onBefore={() => confirm('Apakah Anda yakin ingin menghapus data keluarga ini?')}
+                        >
+                          Hapus
+                        </Link>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+
+                {filteredKeluarga.length === 0 && (
+                  <tr>
+                    <td colSpan={6} className="px-6 py-16 text-center">
+                      <div className="flex flex-col items-center animate-fadeIn">
+                        <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mb-4 animate-pulse">
+                          <svg className="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+                          </svg>
+                        </div>
+                        <p className="text-gray-500 text-lg font-medium mb-2">
+                          {searchTerm || statusFilter !== 'all' ? 'Tidak ada data yang sesuai' : 'Belum ada data keluarga'}
+                        </p>
+                        <p className="text-gray-400 text-sm">
+                          {searchTerm || statusFilter !== 'all'
+                            ? 'Coba ubah filter pencarian Anda'
+                            : 'Klik tombol "Tambah Keluarga" untuk menambahkan data baru'
+                          }
+                        </p>
+                      </div>
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
       </div>
+
+      {/* Custom CSS untuk animasi */}
+      <style>{`
+        @keyframes fadeIn {
+          from {
+            opacity: 0;
+            transform: translateY(10px);
+          }
+          to {
+            opacity: 1;
+            transform: translateY(0);
+          }
+        }
+
+        .animate-fadeIn {
+          animation: fadeIn 0.5s ease-out forwards;
+        }
+      `}</style>
     </AuthenticatedLayout>
   );
 }
