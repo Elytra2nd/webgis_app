@@ -6,12 +6,19 @@ use App\Models\Keluarga;
 use App\Models\Wilayah;
 use App\Models\Jarak;
 use Illuminate\Http\Request;
+use Inertia\Inertia;
 use MatanYadaev\EloquentSpatial\Objects\Point;
 use MatanYadaev\EloquentSpatial\Objects\LineString;
 use MatanYadaev\EloquentSpatial\Objects\Polygon;
 
 class MapController extends Controller
 {
+
+    public function index()
+    {
+        return Inertia::render('Map/Index');
+    }
+
     public function saveMapData(Request $request)
     {
         $validated = $request->validate([
@@ -42,8 +49,10 @@ class MapController extends Controller
                 }
 
                 // Pastikan polygon tertutup dengan menambahkan titik pertama di akhir jika perlu
-                if ($points[0]->latitude !== end($points)->latitude ||
-                    $points[0]->longitude !== end($points)->longitude) {
+                if (
+                    $points[0]->latitude !== end($points)->latitude ||
+                    $points[0]->longitude !== end($points)->longitude
+                ) {
                     $points[] = $points[0];
                 }
 
@@ -68,7 +77,7 @@ class MapController extends Controller
 
                     // Hitung jarak
                     if ($i > 0) {
-                        $p1 = new Point($data[$i-1]['lat'], $data[$i-1]['lng']);
+                        $p1 = new Point($data[$i - 1]['lat'], $data[$i - 1]['lng']);
                         $p2 = new Point($data[$i]['lat'], $data[$i]['lng']);
 
                         // Haversine formula untuk menghitung jarak

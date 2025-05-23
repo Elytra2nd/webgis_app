@@ -34,22 +34,23 @@ Route::middleware('auth')->group(function () {
     Route::get('/api/map-data/{keluargaId}', [MapController::class, 'getMapData']);
 
     // Map routes
-    Route::get('/map', function() {
+    Route::get('/map', function () {
         return Inertia::render('Map/Index');
     })->name('map');
+    Route::get('/map/{keluarga}', [MapController::class, 'index'])->name('map.index');
 
     // API route untuk mendapatkan data keluarga untuk peta
     Route::get('/api/keluarga', [KeluargaController::class, 'getKeluargaForMap']);
 
     // Reports route
-    Route::get('/reports', function() {
+    Route::get('/reports', function () {
         return Inertia::render('Reports/Index');
     })->name('reports');
 
     // Settings route
-    Route::get('/settings', function() {
+    Route::get('/settings', function () {
         return Inertia::render('Settings/Index');
     })->name('settings');
 });
 
-require __DIR__.'/auth.php';
+require __DIR__ . '/auth.php';
