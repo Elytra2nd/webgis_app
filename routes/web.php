@@ -1,12 +1,14 @@
 <?php
 
 use App\Http\Controllers\ProfileController;
+use App\Models\AnggotaKeluarga;
 use Illuminate\Foundation\Application;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 use App\Http\Controllers\KeluargaController;
 use App\Http\Controllers\MapController;
 use App\Http\Controllers\ReportController;
+use App\Http\Controllers\AnggotaKeluargaController;
 
 Route::get('/', function () {
     return Inertia::render('Welcome', [
@@ -41,6 +43,9 @@ Route::middleware('auth')->group(function () {
 
     // Keluarga routes
     Route::resource('keluarga', KeluargaController::class);
+    
+    // Anggota Keluarga routes
+    Route::resource('anggota-keluarga', AnggotaKeluargaController::class);
 
     // Map routes (authenticated)
     Route::get('/map/admin', function () {
@@ -56,6 +61,7 @@ Route::middleware('auth')->group(function () {
         return Inertia::render('Settings/Index');
     })->name('settings');
 
+    // Reports routes
     Route::prefix('reports')->name('reports.')->group(function () {
         Route::get('/', [ReportController::class, 'index'])->name('index');
         Route::get('/{category}', [ReportController::class, 'show'])->name('show');

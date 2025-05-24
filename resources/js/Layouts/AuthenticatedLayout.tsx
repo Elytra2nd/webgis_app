@@ -166,6 +166,15 @@ export default function Authenticated({ user, header, children, breadcrumbs }: A
                             </SidebarLink>
 
                             <SidebarLink
+                                href={route('anggota-keluarga.index')}
+                                active={route().current('anggota-keluarga.*')}
+                                icon="users"
+                                collapsed={sidebarCollapsed}
+                            >
+                                Tambah Anggota Keluarga
+                            </SidebarLink>
+
+                            <SidebarLink
                                 href={route('map')}
                                 active={route().current('map')}
                                 icon="map"
