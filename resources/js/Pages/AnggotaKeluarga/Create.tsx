@@ -48,7 +48,7 @@ export default function Create({ auth, keluarga, selectedKeluargaId }: CreatePro
 
     return (
         <>
-            <style jsx>{`
+            <style>{`
                 .aquatic-gradient {
                     background: linear-gradient(135deg, #0891b2 0%, #0e7490 25%, #155e75 50%, #164e63 75%, #1e3a8a 100%);
                 }
