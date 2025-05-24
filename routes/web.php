@@ -6,6 +6,7 @@ use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 use App\Http\Controllers\KeluargaController;
 use App\Http\Controllers\MapController;
+use App\Http\Controllers\ReportController;
 
 Route::get('/', function () {
     return Inertia::render('Welcome', [
@@ -50,15 +51,16 @@ Route::middleware('auth')->group(function () {
     Route::post('/api/keluarga', [KeluargaController::class, 'storeFromMap']); // Route POST untuk map
     Route::post('/api/map-data', [MapController::class, 'saveMapData']);
 
-    // Reports route
-    Route::get('/reports', function () {
-        return Inertia::render('Reports/Index');
-    })->name('reports');
-
     // Settings route
     Route::get('/settings', function () {
         return Inertia::render('Settings/Index');
     })->name('settings');
+
+    Route::prefix('reports')->name('reports.')->group(function () {
+        Route::get('/', [ReportController::class, 'index'])->name('index');
+        Route::get('/{category}', [ReportController::class, 'show'])->name('show');
+        Route::get('/{category}/export', [ReportController::class, 'export'])->name('export');
+    });
 });
 
 require __DIR__ . '/auth.php';
