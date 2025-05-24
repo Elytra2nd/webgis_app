@@ -162,6 +162,15 @@ export default function Authenticated({ user, header, children, breadcrumbs }: A
                                 icon="users"
                                 collapsed={sidebarCollapsed}
                             >
+                                Data Anggota Keluarga
+                            </SidebarLink>
+
+                            <SidebarLink
+                                href={route('keluarga.index')}
+                                active={route().current('keluarga.*')}
+                                icon="users"
+                                collapsed={sidebarCollapsed}
+                            >
                                 Data Keluarga
                             </SidebarLink>
 
@@ -288,11 +297,10 @@ function SidebarLink({ href, active, children, icon, collapsed }: SidebarLinkPro
     return (
         <Link
             href={href}
-            className={`flex items-center px-3 py-3 rounded-lg text-sm font-medium transition-all duration-200 ${
-                active
+            className={`flex items-center px-3 py-3 rounded-lg text-sm font-medium transition-all duration-200 ${active
                     ? 'bg-gradient-to-r from-cyan-50 to-teal-50 text-cyan-700 border-r-2 border-cyan-500'
                     : 'text-gray-600 hover:bg-gray-50 hover:text-cyan-600'
-            } ${collapsed ? 'justify-center' : ''}`}
+                } ${collapsed ? 'justify-center' : ''}`}
         >
             <span className={`${collapsed ? '' : 'mr-3'} ${active ? 'text-cyan-600' : ''}`}>
                 {icon && iconMap[icon]}

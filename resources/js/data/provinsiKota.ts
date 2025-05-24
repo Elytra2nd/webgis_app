@@ -2,15 +2,22 @@
 export interface Provinsi {
     id: number;
     nama: string;
-  }
+}
 
-  export interface Kota {
+export interface Kota {
     id: number;
     nama: string;
     provinsi_id: number;
-  }
+}
 
-  export const provinsiData: Provinsi[] = [
+export interface Kecamatan {
+    id: number;
+    nama: string;
+    provinsi_id: number;
+    kota_id: number;
+}
+
+export const provinsiData: Provinsi[] = [
     { id: 1, nama: 'Aceh' },
     { id: 2, nama: 'Sumatera Utara' },
     { id: 3, nama: 'Sumatera Barat' },
@@ -45,36 +52,36 @@ export interface Provinsi {
     { id: 32, nama: 'Maluku Utara' },
     { id: 33, nama: 'Papua' },
     { id: 34, nama: 'Papua Barat' },
-    { id: 35, nama: 'Papua Selatan' },
-    { id: 36, nama: 'Papua Tengah' },
-    { id: 37, nama: 'Papua Pegunungan' },
-    { id: 38, nama: 'Papua Barat Daya' },
-  ];
+    { id: 35, nama: 'Papua Barat Daya' },
+    { id: 36, nama: 'Papua Selatan' },
+    { id: 37, nama: 'Papua Tengah' },
+    { id: 38, nama: 'Papua Pegunungan' }
+];
 
-  export const kotaData: Kota[] = [
+export const kotaData: Kota[] = [
     // Aceh (18 kabupaten, 5 kota)
-    { id: 1, nama: 'Kabupaten Simeulue', provinsi_id: 1 },
-    { id: 2, nama: 'Kabupaten Aceh Singkil', provinsi_id: 1 },
-    { id: 3, nama: 'Kabupaten Aceh Selatan', provinsi_id: 1 },
-    { id: 4, nama: 'Kabupaten Aceh Tenggara', provinsi_id: 1 },
-    { id: 5, nama: 'Kabupaten Aceh Timur', provinsi_id: 1 },
-    { id: 6, nama: 'Kabupaten Aceh Tengah', provinsi_id: 1 },
-    { id: 7, nama: 'Kabupaten Aceh Barat', provinsi_id: 1 },
-    { id: 8, nama: 'Kabupaten Aceh Besar', provinsi_id: 1 },
-    { id: 9, nama: 'Kabupaten Pidie', provinsi_id: 1 },
-    { id: 10, nama: 'Kabupaten Bireuen', provinsi_id: 1 },
+    { id: 1, nama: 'Kabupaten Aceh Barat', provinsi_id: 1 },
+    { id: 2, nama: 'Kabupaten Aceh Barat Daya', provinsi_id: 1 },
+    { id: 3, nama: 'Kabupaten Aceh Besar', provinsi_id: 1 },
+    { id: 4, nama: 'Kabupaten Aceh Jaya', provinsi_id: 1 },
+    { id: 5, nama: 'Kabupaten Aceh Selatan', provinsi_id: 1 },
+    { id: 6, nama: 'Kabupaten Aceh Singkil', provinsi_id: 1 },
+    { id: 7, nama: 'Kabupaten Aceh Tamiang', provinsi_id: 1 },
+    { id: 8, nama: 'Kabupaten Aceh Tengah', provinsi_id: 1 },
+    { id: 9, nama: 'Kabupaten Aceh Tenggara', provinsi_id: 1 },
+    { id: 10, nama: 'Kabupaten Aceh Timur', provinsi_id: 1 },
     { id: 11, nama: 'Kabupaten Aceh Utara', provinsi_id: 1 },
-    { id: 12, nama: 'Kabupaten Aceh Barat Daya', provinsi_id: 1 },
-    { id: 13, nama: 'Kabupaten Gayo Lues', provinsi_id: 1 },
-    { id: 14, nama: 'Kabupaten Aceh Tamiang', provinsi_id: 1 },
+    { id: 12, nama: 'Kabupaten Bener Meriah', provinsi_id: 1 },
+    { id: 13, nama: 'Kabupaten Bireuen', provinsi_id: 1 },
+    { id: 14, nama: 'Kabupaten Gayo Lues', provinsi_id: 1 },
     { id: 15, nama: 'Kabupaten Nagan Raya', provinsi_id: 1 },
-    { id: 16, nama: 'Kabupaten Aceh Jaya', provinsi_id: 1 },
-    { id: 17, nama: 'Kabupaten Bener Meriah', provinsi_id: 1 },
-    { id: 18, nama: 'Kabupaten Pidie Jaya', provinsi_id: 1 },
+    { id: 16, nama: 'Kabupaten Pidie', provinsi_id: 1 },
+    { id: 17, nama: 'Kabupaten Pidie Jaya', provinsi_id: 1 },
+    { id: 18, nama: 'Kabupaten Simeulue', provinsi_id: 1 },
     { id: 19, nama: 'Kota Banda Aceh', provinsi_id: 1 },
-    { id: 20, nama: 'Kota Sabang', provinsi_id: 1 },
-    { id: 21, nama: 'Kota Langsa', provinsi_id: 1 },
-    { id: 22, nama: 'Kota Lhokseumawe', provinsi_id: 1 },
+    { id: 20, nama: 'Kota Langsa', provinsi_id: 1 },
+    { id: 21, nama: 'Kota Lhokseumawe', provinsi_id: 1 },
+    { id: 22, nama: 'Kota Sabang', provinsi_id: 1 },
     { id: 23, nama: 'Kota Subulussalam', provinsi_id: 1 },
 
     // Sumatera Utara (25 kabupaten, 8 kota)
@@ -586,6 +593,64 @@ export interface Provinsi {
     { id: 469, nama: 'Kabupaten Pulau Morotai', provinsi_id: 32 },
     { id: 470, nama: 'Kabupaten Pulau Taliabu', provinsi_id: 32 },
     { id: 471, nama: 'Kota Ternate', provinsi_id: 32 },
-    { id: 472, nama: 'Kota Tidore Kepulauan', provinsi_id: 32 }
+    { id: 472, nama: 'Kota Tidore Kepulauan', provinsi_id: 32 },
 
+    // Papua (8 kabupaten, 1 kota)
+    { id: 473, nama: 'Kabupaten Biak Numfor', provinsi_id: 33 },
+    { id: 474, nama: 'Kabupaten Jayapura', provinsi_id: 33 },
+    { id: 475, nama: 'Kabupaten Keerom', provinsi_id: 33 },
+    { id: 476, nama: 'Kabupaten Kepuluauan Yapen', provinsi_id: 33 },
+    { id: 477, nama: 'Kabupaten Mamberamo Raya', provinsi_id: 33 },
+    { id: 478, nama: 'Kabupaten Sarmi', provinsi_id: 33 },
+    { id: 479, nama: 'Kabupaten Supiori', provinsi_id: 33 },
+    { id: 480, nama: 'Kabupaten Waropen', provinsi_id: 33 },
+    { id: 481, nama: 'Kota Jayapura', provinsi_id: 33 },
+
+    // Papua Barat (7 kabupaten)
+    { id: 482, nama: 'Kabupaten Fakfak', provinsi_id: 34 },
+    { id: 483, nama: 'Kabupaten Kaimana', provinsi_id: 34 },
+    { id: 484, nama: 'Kabupaten Manokwari', provinsi_id: 34 },
+    { id: 485, nama: 'Kabupaten Manokwari Selatan', provinsi_id: 34 },
+    { id: 486, nama: 'Kabupaten Pegunungan Arfak', provinsi_id: 34 },
+    { id: 487, nama: 'Kabupaten Teluk Bintuni', provinsi_id: 34 },
+    { id: 488, nama: 'Kabupaten Teluk Wondama', provinsi_id: 34 },
+
+    // Papua Barat Daya (5 kabupaten, 1 kota)
+    { id: 489, nama: 'Kabupaten Maybrat', provinsi_id: 35 },
+    { id: 490, nama: 'Kabupaten Raja Ampat', provinsi_id: 35 },
+    { id: 491, nama: 'Kabupaten Sorong', provinsi_id: 35 },
+    { id: 492, nama: 'Kabupaten Sorong Selatan', provinsi_id: 35 },
+    { id: 493, nama: 'Kabupaten Tambrauw', provinsi_id: 35 },
+    { id: 494, nama: 'Kota Sorong', provinsi_id: 35 },
+
+    // Papua Selatan (4 kabupaten)
+    { id: 495, nama: 'Kabupaten Asmat', provinsi_id: 36 },
+    { id: 496, nama: 'Kabupaten Boven Digoel', provinsi_id: 36 },
+    { id: 497, nama: 'Kabupaten Mappi', provinsi_id: 36 },
+    { id: 498, nama: 'Kabupaten Merauke', provinsi_id: 36 },
+
+    // Papua Tengah (8 kabupaten)
+    { id: 499, nama: 'Kabupaten Deiyai', provinsi_id: 37 },
+    { id: 500, nama: 'Kabupaten Dogiyai', provinsi_id: 37 },
+    { id: 501, nama: 'Kabupaten Intan Jaya', provinsi_id: 37 },
+    { id: 502, nama: 'Kabupaten Mimika', provinsi_id: 37 },
+    { id: 503, nama: 'Kabupaten Nabire', provinsi_id: 37 },
+    { id: 504, nama: 'Kabupaten Paniai', provinsi_id: 37 },
+    { id: 505, nama: 'Kabupaten Puncak', provinsi_id: 37 },
+    { id: 506, nama: 'Kabupaten Puncak Jaya', provinsi_id: 37 },
+
+    // Papua Pegunungan (8 kabupaten)
+    { id: 507, nama: 'Kabupaten Jayawijaya', provinsi_id: 38 },
+    { id: 508, nama: 'Kabupaten Lanny Jaya', provinsi_id: 38 },
+    { id: 509, nama: 'Kabupaten Mamberamo Tengah', provinsi_id: 38 },
+    { id: 510, nama: 'Kabupaten Nduga', provinsi_id: 38 },
+    { id: 511, nama: 'Kabupaten Pegunungan Bintang', provinsi_id: 38 },
+    { id: 512, nama: 'Kabupaten Tolikara', provinsi_id: 38 },
+    { id: 513, nama: 'Kabupaten Yahukimo', provinsi_id: 38 },
+    { id: 514, nama: 'Kabupaten Yalimo', provinsi_id: 38 },
+];
+
+export const kecamatanData: Kecamatan[] = [
+    { id: 1, nama: 'Kota Ambon', provinsi_id: 1, kota_id: 1 },
+    { id: 2, nama: 'Kota Tual', provinsi_id: 1, kota_id: 1 },
 ];
