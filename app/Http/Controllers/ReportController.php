@@ -6,6 +6,7 @@ use App\Models\Keluarga;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Illuminate\Support\Facades\DB;
+use function Spatie\LaravelPdf\Support\pdf;
 
 class ReportController extends Controller
 {
@@ -196,12 +197,10 @@ class ReportController extends Controller
         $query = Keluarga::query();
 
         if ($status === 'complete') {
-            // Cek lokasi yang tidak null, tidak kosong, dan mengandung koordinat valid (format: lat,lng)
             $query->whereNotNull('lokasi')
                 ->where('lokasi', '!=', '')
                 ->where('lokasi', 'REGEXP', '^-?[0-9]+\.?[0-9]*,-?[0-9]+\.?[0-9]*$');
         } elseif ($status === 'incomplete') {
-            // Cek lokasi yang null, kosong, atau tidak mengandung koordinat valid
             $query->where(function ($q) {
                 $q->whereNull('lokasi')
                     ->orWhere('lokasi', '')
@@ -244,15 +243,145 @@ class ReportController extends Controller
     }
 
     /**
-     * Export report data
+     * Export report data to PDF using Spatie Laravel PDF
      */
     public function export(Request $request, $category)
     {
-        // Export logic will be implemented here
-        return response()->json([
-            'message' => 'Export functionality for ' . $category,
-            'category' => $category
-        ]);
+        try {
+            switch ($category) {
+                case 'status-ekonomi':
+                    return $this->exportStatusEkonomiPdf($request);
+                case 'wilayah':
+                    return $this->exportWilayahPdf($request);
+                case 'koordinat':
+                    return $this->exportKoordinatPdf($request);
+                default:
+                    abort(404);
+            }
+        } catch (\Exception $e) {
+            return response()->json([
+                'error' => 'Terjadi kesalahan saat export PDF: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    private function exportStatusEkonomiPdf($request)
+    {
+        $query = Keluarga::query();
+
+        if ($request->has('status') && $request->status !== 'all') {
+            $query->where('status_ekonomi', $request->status);
+        }
+
+        $keluarga = $query->orderBy('created_at', 'desc')->get();
+
+        $statistics = [
+            'sangat_miskin' => Keluarga::where('status_ekonomi', 'sangat_miskin')->count(),
+            'miskin' => Keluarga::where('status_ekonomi', 'miskin')->count(),
+            'rentan_miskin' => Keluarga::where('status_ekonomi', 'rentan_miskin')->count(),
+        ];
+
+        $data = [
+            'keluarga' => $keluarga,
+            'statistics' => $statistics,
+            'title' => 'Laporan Status Ekonomi Keluarga',
+            'generated_at' => now()->format('d/m/Y H:i:s'),
+            'filter' => $request->status !== 'all' ? $this->formatStatusEkonomi($request->status) : 'Semua Status'
+        ];
+
+        return pdf()
+            ->view('reports.pdf.status-ekonomi', $data)
+            ->format('a4')
+            ->orientation('landscape')
+            ->name('laporan-status-ekonomi-' . now()->format('Y-m-d') . '.pdf')
+            ->download();
+    }
+
+    private function exportWilayahPdf($request)
+    {
+        $query = Keluarga::query();
+
+        if ($request->has('provinsi') && $request->provinsi !== 'all') {
+            $query->where('provinsi', $request->provinsi);
+        }
+
+        if ($request->has('kota') && $request->kota !== 'all') {
+            $query->where('kota', $request->kota);
+        }
+
+        $keluarga = $query->orderBy('provinsi')->orderBy('kota')->get();
+
+        $statistics = Keluarga::select('provinsi', DB::raw('count(*) as total'))
+            ->whereNotNull('provinsi')
+            ->where('provinsi', '!=', '')
+            ->groupBy('provinsi')
+            ->orderBy('total', 'desc')
+            ->get();
+
+        $data = [
+            'keluarga' => $keluarga,
+            'statistics' => $statistics,
+            'title' => 'Laporan Data Keluarga Per Wilayah',
+            'generated_at' => now()->format('d/m/Y H:i:s'),
+            'filter_provinsi' => $request->provinsi !== 'all' ? $request->provinsi : 'Semua Provinsi',
+            'filter_kota' => $request->kota !== 'all' ? $request->kota : 'Semua Kota/Kabupaten'
+        ];
+
+        return pdf()
+            ->view('reports.pdf.wilayah', $data)
+            ->format('a4')
+            ->orientation('landscape')
+            ->name('laporan-wilayah-' . now()->format('Y-m-d') . '.pdf')
+            ->download();
+    }
+
+    private function exportKoordinatPdf($request)
+    {
+        $query = Keluarga::query();
+
+        if ($request->has('status') && $request->status !== 'all') {
+            if ($request->status === 'complete') {
+                $query->whereNotNull('lokasi')
+                    ->where('lokasi', '!=', '')
+                    ->where('lokasi', 'REGEXP', '^-?[0-9]+\.?[0-9]*,-?[0-9]+\.?[0-9]*$');
+            } elseif ($request->status === 'incomplete') {
+                $query->where(function ($q) {
+                    $q->whereNull('lokasi')
+                        ->orWhere('lokasi', '')
+                        ->orWhere('lokasi', 'NOT REGEXP', '^-?[0-9]+\.?[0-9]*,-?[0-9]+\.?[0-9]*$');
+                });
+            }
+        }
+
+        $keluarga = $query->orderBy('created_at', 'desc')->get();
+
+        $statistics = [
+            'complete' => Keluarga::whereNotNull('lokasi')
+                ->where('lokasi', '!=', '')
+                ->where('lokasi', 'REGEXP', '^-?[0-9]+\.?[0-9]*,-?[0-9]+\.?[0-9]*$')
+                ->count(),
+            'incomplete' => Keluarga::where(function ($query) {
+                $query->whereNull('lokasi')
+                    ->orWhere('lokasi', '')
+                    ->orWhere('lokasi', 'NOT REGEXP', '^-?[0-9]+\.?[0-9]*,-?[0-9]+\.?[0-9]*$');
+            })->count(),
+        ];
+
+        $data = [
+            'keluarga' => $keluarga,
+            'statistics' => $statistics,
+            'title' => 'Laporan Kelengkapan Data Koordinat',
+            'generated_at' => now()->format('d/m/Y H:i:s'),
+            'filter' => $request->status === 'complete' ? 'Sudah Ada Koordinat' :
+                       ($request->status === 'incomplete' ? 'Belum Ada Koordinat' : 'Semua Status')
+        ];
+
+        return pdf()
+            ->view('reports.pdf.koordinat', $data)
+            ->format('a4')
+            ->orientation('landscape')
+            ->name('laporan-koordinat-' . now()->format('Y-m-d') . '.pdf')
+            ->download();
     }
 
     /**
