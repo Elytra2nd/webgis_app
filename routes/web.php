@@ -7,6 +7,7 @@ use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 use App\Http\Controllers\KeluargaController;
 use App\Http\Controllers\MapController;
+use App\Http\Controllers\ReportController;
 use App\Http\Controllers\AnggotaKeluargaController;
 
 Route::get('/', function () {
@@ -42,6 +43,8 @@ Route::middleware('auth')->group(function () {
 
     // Keluarga routes
     Route::resource('keluarga', KeluargaController::class);
+    
+    // Anggota Keluarga routes
     Route::resource('anggota-keluarga', AnggotaKeluargaController::class);
 
     // Map routes (authenticated)
@@ -53,19 +56,17 @@ Route::middleware('auth')->group(function () {
     Route::post('/api/keluarga', [KeluargaController::class, 'storeFromMap']); // Route POST untuk map
     Route::post('/api/map-data', [MapController::class, 'saveMapData']);
 
-    // Reports route
-    Route::get('/reports', function () {
-        return Inertia::render('Reports/Index');
-    })->name('reports');
-
     // Settings route
     Route::get('/settings', function () {
         return Inertia::render('Settings/Index');
     })->name('settings');
+
+    // Reports routes
+    Route::prefix('reports')->name('reports.')->group(function () {
+        Route::get('/', [ReportController::class, 'index'])->name('index');
+        Route::get('/{category}', [ReportController::class, 'show'])->name('show');
+        Route::get('/{category}/export', [ReportController::class, 'export'])->name('export');
+    });
 });
-
-
-
-
 
 require __DIR__ . '/auth.php';

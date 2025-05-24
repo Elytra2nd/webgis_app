@@ -62,8 +62,8 @@ export default function Sidebar({ collapsed, setCollapsed }) {
                     </SidebarLink>
 
                     <SidebarLink
-                        href={route('reports')}
-                        active={route().current('reports')}
+                        href={route('reports.index')}
+                        active={route().current('reports.*')}
                         icon="reports"
                         collapsed={collapsed}
                     >

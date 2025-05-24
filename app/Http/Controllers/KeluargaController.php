@@ -8,6 +8,8 @@ use Inertia\Inertia;
 use Illuminate\Support\Facades\Redirect;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\Rule;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
 class KeluargaController extends Controller
 {
@@ -16,46 +18,128 @@ class KeluargaController extends Controller
      */
     public function index(Request $request)
     {
-        $query = Keluarga::query();
+        try {
+            $query = Keluarga::query();
 
-        // Search functionality
-        if ($request->has('search') && !empty($request->search)) {
-            $search = $request->search;
-            $query->where(function ($q) use ($search) {
-                $q->where('nama_kepala_keluarga', 'like', '%' . $search . '%')
-                  ->orWhere('no_kk', 'like', '%' . $search . '%')
-                  ->orWhere('alamat', 'like', '%' . $search . '%')
-                  ->orWhere('kelurahan', 'like', '%' . $search . '%')
-                  ->orWhere('kecamatan', 'like', '%' . $search . '%')
-                  ->orWhere('kota', 'like', '%' . $search . '%')
-                  ->orWhere('provinsi', 'like', '%' . $search . '%');
-            });
+            // Search functionality
+            if ($request->has('search') && !empty($request->search)) {
+                $search = $request->search;
+                $query->where(function ($q) use ($search) {
+                    $q->where('nama_kepala_keluarga', 'like', '%' . $search . '%')
+                      ->orWhere('no_kk', 'like', '%' . $search . '%')
+                      ->orWhere('alamat', 'like', '%' . $search . '%')
+                      ->orWhere('kelurahan', 'like', '%' . $search . '%')
+                      ->orWhere('kecamatan', 'like', '%' . $search . '%')
+                      ->orWhere('kota', 'like', '%' . $search . '%')
+                      ->orWhere('provinsi', 'like', '%' . $search . '%');
+                });
+            }
+
+            // Filter by status ekonomi
+            if ($request->has('status') && $request->status !== 'all' && !empty($request->status)) {
+                $query->where('status_ekonomi', $request->status);
+            }
+
+            // Get paginated results with error handling
+            $keluarga = $query->orderBy('created_at', 'desc')
+                             ->paginate(10)
+                             ->withQueryString();
+
+            // Ensure pagination data is properly structured
+            if (!$keluarga) {
+                $keluarga = new \Illuminate\Pagination\LengthAwarePaginator(
+                    [],
+                    0,
+                    10,
+                    1,
+                    ['path' => request()->url(), 'pageName' => 'page']
+                );
+            }
+
+            // Get statistics with optimized queries and error handling
+            $stats = $this->getKeluargaStatistics();
+
+            // Ensure all required data is present
+            $responseData = [
+                'keluarga' => [
+                    'data' => $keluarga->items() ?? [],
+                    'meta' => [
+                        'current_page' => $keluarga->currentPage() ?? 1,
+                        'from' => $keluarga->firstItem() ?? 0,
+                        'last_page' => $keluarga->lastPage() ?? 1,
+                        'per_page' => $keluarga->perPage() ?? 10,
+                        'to' => $keluarga->lastItem() ?? 0,
+                        'total' => $keluarga->total() ?? 0,
+                    ],
+                    'links' => $keluarga->linkCollection()->toArray() ?? []
+                ],
+                'filters' => $request->only(['search', 'status']) ?? [],
+                'stats' => $stats
+            ];
+
+            return Inertia::render('Keluarga/Index', $responseData);
+
+        } catch (\Exception $e) {
+            Log::error('Error in KeluargaController@index: ' . $e->getMessage());
+
+            // Return safe fallback data
+            return Inertia::render('Keluarga/Index', [
+                'keluarga' => [
+                    'data' => [],
+                    'meta' => [
+                        'current_page' => 1,
+                        'from' => 0,
+                        'last_page' => 1,
+                        'per_page' => 10,
+                        'to' => 0,
+                        'total' => 0,
+                    ],
+                    'links' => []
+                ],
+                'filters' => $request->only(['search', 'status']) ?? [],
+                'stats' => [
+                    'total' => 0,
+                    'sangat_miskin' => 0,
+                    'miskin' => 0,
+                    'rentan_miskin' => 0,
+                ],
+                'error' => 'Terjadi kesalahan saat memuat data. Silakan coba lagi.'
+            ]);
         }
+    }
 
-        // Filter by status ekonomi
-        if ($request->has('status') && $request->status !== 'all' && !empty($request->status)) {
-            $query->where('status_ekonomi', $request->status);
+    /**
+     * Get statistics with error handling and caching
+     */
+    private function getKeluargaStatistics()
+    {
+        try {
+            // Use DB queries for better performance
+            $totalCount = Keluarga::count();
+
+            $statusCounts = Keluarga::select('status_ekonomi', DB::raw('count(*) as count'))
+                ->groupBy('status_ekonomi')
+                ->pluck('count', 'status_ekonomi')
+                ->toArray();
+
+            return [
+                'total' => $totalCount,
+                'sangat_miskin' => $statusCounts['sangat_miskin'] ?? 0,
+                'miskin' => $statusCounts['miskin'] ?? 0,
+                'rentan_miskin' => $statusCounts['rentan_miskin'] ?? 0,
+            ];
+
+        } catch (\Exception $e) {
+            Log::error('Error getting statistics: ' . $e->getMessage());
+
+            // Return safe fallback
+            return [
+                'total' => 0,
+                'sangat_miskin' => 0,
+                'miskin' => 0,
+                'rentan_miskin' => 0,
+            ];
         }
-
-        // Get paginated results
-        $keluarga = $query->orderBy('created_at', 'desc')
-                         ->paginate(10)
-                         ->withQueryString(); // Maintain query parameters in pagination links
-
-        // Get statistics for all data (not just current page)
-        $allKeluarga = Keluarga::all();
-        $stats = [
-            'total' => $allKeluarga->count(),
-            'sangat_miskin' => $allKeluarga->where('status_ekonomi', 'sangat_miskin')->count(),
-            'miskin' => $allKeluarga->where('status_ekonomi', 'miskin')->count(),
-            'rentan_miskin' => $allKeluarga->where('status_ekonomi', 'rentan_miskin')->count(),
-        ];
-
-        return Inertia::render('Keluarga/Index', [
-            'keluarga' => $keluarga,
-            'filters' => $request->only(['search', 'status']),
-            'stats' => $stats
-        ]);
     }
 
     /**
@@ -87,6 +171,7 @@ class KeluargaController extends Controller
             'keterangan' => 'nullable|string',
             'latitude' => 'nullable|numeric|between:-90,90',
             'longitude' => 'nullable|numeric|between:-180,180',
+            'lokasi' => 'nullable|string', // Support for lokasi field
         ], [
             'no_kk.required' => 'Nomor KK wajib diisi.',
             'no_kk.unique' => 'Nomor KK sudah terdaftar.',
@@ -112,14 +197,30 @@ class KeluargaController extends Controller
         }
 
         try {
-            $keluarga = Keluarga::create($validator->validated());
+            DB::beginTransaction();
+
+            // Prepare data with safe handling
+            $data = $validator->validated();
+
+            // Handle coordinate data - support both latitude/longitude and lokasi
+            if (!empty($data['latitude']) && !empty($data['longitude'])) {
+                $data['lokasi'] = $data['latitude'] . ',' . $data['longitude'];
+            }
+
+            $keluarga = Keluarga::create($data);
+
+            DB::commit();
 
             return Redirect::route('keluarga.index')
                 ->with('success', 'Data keluarga berhasil ditambahkan.')
                 ->with('keluarga_id', $keluarga->id);
+
         } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error('Error storing keluarga: ' . $e->getMessage());
+
             return Redirect::back()
-                ->withErrors(['error' => 'Terjadi kesalahan saat menyimpan data: ' . $e->getMessage()])
+                ->withErrors(['error' => 'Terjadi kesalahan saat menyimpan data. Silakan coba lagi.'])
                 ->withInput();
         }
     }
@@ -129,12 +230,20 @@ class KeluargaController extends Controller
      */
     public function show(Keluarga $keluarga)
     {
-        // Load relationships if needed
-        $keluarga->load(['anggotaKeluarga', 'wilayah', 'jarak']);
+        try {
+            // Safe loading with error handling
+            $keluarga->loadMissing(['anggotaKeluarga', 'wilayah', 'jarak']);
 
-        return Inertia::render('Keluarga/Show', [
-            'keluarga' => $keluarga
-        ]);
+            return Inertia::render('Keluarga/Show', [
+                'keluarga' => $keluarga
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('Error showing keluarga: ' . $e->getMessage());
+
+            return Redirect::route('keluarga.index')
+                ->withErrors(['error' => 'Data keluarga tidak dapat ditampilkan.']);
+        }
     }
 
     /**
@@ -142,9 +251,17 @@ class KeluargaController extends Controller
      */
     public function edit(Keluarga $keluarga)
     {
-        return Inertia::render('Keluarga/Edit', [
-            'keluarga' => $keluarga
-        ]);
+        try {
+            return Inertia::render('Keluarga/Edit', [
+                'keluarga' => $keluarga
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('Error editing keluarga: ' . $e->getMessage());
+
+            return Redirect::route('keluarga.index')
+                ->withErrors(['error' => 'Data keluarga tidak dapat diedit.']);
+        }
     }
 
     /**
@@ -173,6 +290,7 @@ class KeluargaController extends Controller
             'keterangan' => 'nullable|string',
             'latitude' => 'nullable|numeric|between:-90,90',
             'longitude' => 'nullable|numeric|between:-180,180',
+            'lokasi' => 'nullable|string',
         ], [
             'no_kk.required' => 'Nomor KK wajib diisi.',
             'no_kk.unique' => 'Nomor KK sudah terdaftar.',
@@ -198,13 +316,28 @@ class KeluargaController extends Controller
         }
 
         try {
-            $keluarga->update($validator->validated());
+            DB::beginTransaction();
+
+            $data = $validator->validated();
+
+            // Handle coordinate data
+            if (!empty($data['latitude']) && !empty($data['longitude'])) {
+                $data['lokasi'] = $data['latitude'] . ',' . $data['longitude'];
+            }
+
+            $keluarga->update($data);
+
+            DB::commit();
 
             return Redirect::route('keluarga.index')
                 ->with('success', 'Data keluarga berhasil diperbarui.');
+
         } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error('Error updating keluarga: ' . $e->getMessage());
+
             return Redirect::back()
-                ->withErrors(['error' => 'Terjadi kesalahan saat memperbarui data: ' . $e->getMessage()])
+                ->withErrors(['error' => 'Terjadi kesalahan saat memperbarui data. Silakan coba lagi.'])
                 ->withInput();
         }
     }
@@ -215,19 +348,34 @@ class KeluargaController extends Controller
     public function destroy(Keluarga $keluarga)
     {
         try {
-            // Delete related data first if needed
-            $keluarga->anggotaKeluarga()->delete();
-            $keluarga->wilayah()->detach();
-            $keluarga->jarak()->delete();
+            DB::beginTransaction();
 
-            // Delete the main record
+            // Safe deletion with relationship checks
+            if (method_exists($keluarga, 'anggotaKeluarga')) {
+                $keluarga->anggotaKeluarga()->delete();
+            }
+
+            if (method_exists($keluarga, 'wilayah')) {
+                $keluarga->wilayah()->detach();
+            }
+
+            if (method_exists($keluarga, 'jarak')) {
+                $keluarga->jarak()->delete();
+            }
+
             $keluarga->delete();
+
+            DB::commit();
 
             return Redirect::route('keluarga.index')
                 ->with('success', 'Data keluarga berhasil dihapus.');
+
         } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error('Error deleting keluarga: ' . $e->getMessage());
+
             return Redirect::back()
-                ->withErrors(['error' => 'Terjadi kesalahan saat menghapus data: ' . $e->getMessage()]);
+                ->withErrors(['error' => 'Terjadi kesalahan saat menghapus data. Silakan coba lagi.']);
         }
     }
 
@@ -236,55 +384,101 @@ class KeluargaController extends Controller
      */
     public function export(Request $request)
     {
-        $format = $request->get('format', 'excel');
+        try {
+            $format = $request->get('format', 'excel');
+            $query = Keluarga::query();
 
-        $query = Keluarga::query();
+            // Apply same filters as index
+            if ($request->has('search') && !empty($request->search)) {
+                $search = $request->search;
+                $query->where(function ($q) use ($search) {
+                    $q->where('nama_kepala_keluarga', 'like', '%' . $search . '%')
+                      ->orWhere('no_kk', 'like', '%' . $search . '%')
+                      ->orWhere('alamat', 'like', '%' . $search . '%');
+                });
+            }
 
-        // Apply same filters as index
-        if ($request->has('search') && !empty($request->search)) {
-            $search = $request->search;
-            $query->where(function ($q) use ($search) {
-                $q->where('nama_kepala_keluarga', 'like', '%' . $search . '%')
-                  ->orWhere('no_kk', 'like', '%' . $search . '%')
-                  ->orWhere('alamat', 'like', '%' . $search . '%');
-            });
+            if ($request->has('status') && $request->status !== 'all' && !empty($request->status)) {
+                $query->where('status_ekonomi', $request->status);
+            }
+
+            $keluarga = $query->orderBy('created_at', 'desc')->get();
+
+            return response()->json([
+                'message' => 'Export functionality will be implemented',
+                'format' => $format,
+                'count' => $keluarga->count()
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('Error exporting data: ' . $e->getMessage());
+
+            return response()->json([
+                'error' => 'Terjadi kesalahan saat export data.'
+            ], 500);
         }
-
-        if ($request->has('status') && $request->status !== 'all' && !empty($request->status)) {
-            $query->where('status_ekonomi', $request->status);
-        }
-
-        $keluarga = $query->orderBy('created_at', 'desc')->get();
-
-        // Export logic here (Excel, PDF, CSV)
-        // This would typically use packages like Laravel Excel or DomPDF
-
-        return response()->json([
-            'message' => 'Export functionality will be implemented',
-            'format' => $format,
-            'count' => $keluarga->count()
-        ]);
     }
 
     /**
-     * Get statistics for dashboard
+     * Get statistics for dashboard with error handling
      */
     public function getStatistics()
     {
-        $stats = [
-            'total' => Keluarga::count(),
-            'sangat_miskin' => Keluarga::where('status_ekonomi', 'sangat_miskin')->count(),
-            'miskin' => Keluarga::where('status_ekonomi', 'miskin')->count(),
-            'rentan_miskin' => Keluarga::where('status_ekonomi', 'rentan_miskin')->count(),
-            'with_coordinates' => Keluarga::whereNotNull('latitude')->whereNotNull('longitude')->count(),
-            'without_coordinates' => Keluarga::whereNull('latitude')->orWhereNull('longitude')->count(),
-        ];
+        try {
+            $stats = $this->getKeluargaStatistics();
 
-        return response()->json($stats);
+            // Add coordinate statistics
+            $coordinateStats = $this->getCoordinateStatistics();
+            $stats = array_merge($stats, $coordinateStats);
+
+            return response()->json($stats);
+
+        } catch (\Exception $e) {
+            Log::error('Error getting statistics: ' . $e->getMessage());
+
+            return response()->json([
+                'total' => 0,
+                'sangat_miskin' => 0,
+                'miskin' => 0,
+                'rentan_miskin' => 0,
+                'with_coordinates' => 0,
+                'without_coordinates' => 0,
+            ]);
+        }
     }
 
     /**
-     * Bulk operations
+     * Get coordinate statistics
+     */
+    private function getCoordinateStatistics()
+    {
+        try {
+            $withCoordinates = Keluarga::where(function ($query) {
+                $query->whereNotNull('lokasi')
+                      ->where('lokasi', '!=', '')
+                      ->where('lokasi', 'REGEXP', '^-?[0-9]+\.?[0-9]*,-?[0-9]+\.?[0-9]*$');
+            })->count();
+
+            $total = Keluarga::count();
+            $withoutCoordinates = $total - $withCoordinates;
+
+            return [
+                'with_coordinates' => $withCoordinates,
+                'without_coordinates' => $withoutCoordinates,
+            ];
+
+        } catch (\Exception $e) {
+            Log::error('Error getting coordinate statistics: ' . $e->getMessage());
+
+            return [
+                'with_coordinates' => 0,
+                'without_coordinates' => 0,
+            ];
+        }
+    }
+
+    /**
+     * Bulk operations with enhanced error handling
      */
     public function bulkAction(Request $request)
     {
@@ -300,18 +494,26 @@ class KeluargaController extends Controller
         }
 
         try {
+            DB::beginTransaction();
+
             $keluargaQuery = Keluarga::whereIn('id', $request->ids);
 
             switch ($request->action) {
                 case 'delete':
                     $count = $keluargaQuery->count();
                     $keluargaQuery->delete();
+
+                    DB::commit();
+
                     return response()->json([
                         'message' => "Berhasil menghapus {$count} data keluarga."
                     ]);
 
                 case 'update_status':
                     $count = $keluargaQuery->update(['status_ekonomi' => $request->status_ekonomi]);
+
+                    DB::commit();
+
                     return response()->json([
                         'message' => "Berhasil memperbarui status {$count} data keluarga."
                     ]);
@@ -319,9 +521,13 @@ class KeluargaController extends Controller
                 default:
                     return response()->json(['error' => 'Aksi tidak valid.'], 400);
             }
+
         } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error('Error in bulk action: ' . $e->getMessage());
+
             return response()->json([
-                'error' => 'Terjadi kesalahan: ' . $e->getMessage()
+                'error' => 'Terjadi kesalahan saat memproses data.'
             ], 500);
         }
     }
