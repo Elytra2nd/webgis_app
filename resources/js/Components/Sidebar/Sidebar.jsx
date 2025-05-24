@@ -44,6 +44,15 @@ export default function Sidebar({ collapsed, setCollapsed }) {
                     </SidebarLink>
 
                     <SidebarLink
+                        href={route('anggota-keluarga.index')}
+                        active={route().current('anggota-keluarga.*')}
+                        icon="users"
+                        collapsed={collapsed}
+                    >
+                        Tambah Anggota Keluarga
+                    </SidebarLink>
+
+                    <SidebarLink
                         href={route('map')}
                         active={route().current('map')}
                         icon="map"
