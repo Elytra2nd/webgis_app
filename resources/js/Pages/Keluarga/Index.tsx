@@ -1,5 +1,5 @@
 // resources/js/Pages/Keluarga/Index.tsx
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Head, Link, router } from '@inertiajs/react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import Pagination from '@/Components/Pagination';
@@ -20,8 +20,8 @@ interface Keluarga {
   status_ekonomi: string;
   penghasilan_bulanan?: string;
   keterangan?: string;
-  latitude?: number | null;
-  longitude?: number | null;
+  latitude?: number | string | null;
+  longitude?: number | string | null;
   lokasi?: string | null;
   created_at?: string;
   updated_at?: string;
@@ -67,13 +67,23 @@ export default function Index({ auth, keluarga, filters = {}, stats }: IndexProp
     { label: 'Data Keluarga', active: true }
   ];
 
-  // Utility functions untuk validasi data yang aman
+  // PERBAIKAN: Utility functions untuk validasi data yang lebih fleksibel
   const isValidCoordinate = (value: any): value is number => {
-    return typeof value === 'number' && !isNaN(value) && isFinite(value);
+    if (typeof value === 'number') {
+      return !isNaN(value) && isFinite(value);
+    }
+    if (typeof value === 'string') {
+      const num = parseFloat(value);
+      return !isNaN(num) && isFinite(num);
+    }
+    return false;
   };
 
   const isValidLokasiString = (value: any): value is string => {
-    return typeof value === 'string' && value.trim().length > 0 && value.includes(',');
+    return typeof value === 'string' &&
+           value.trim().length > 0 &&
+           value.includes(',') &&
+           value.split(',').length === 2;
   };
 
   const parseLokasiString = (lokasi: string): { lat: number; lng: number } | null => {
@@ -92,6 +102,24 @@ export default function Index({ auth, keluarga, filters = {}, stats }: IndexProp
       return null;
     }
   };
+
+  // Debug logging untuk troubleshooting
+  useEffect(() => {
+    console.log('Keluarga data received:', keluarga);
+    if (keluarga?.data) {
+      keluarga.data.forEach((item, index) => {
+        if (index < 3) { // Log 3 item pertama saja
+          console.log(`Item ${index}:`, {
+            no_kk: item.no_kk,
+            latitude: item.latitude,
+            longitude: item.longitude,
+            lokasi: item.lokasi,
+            hasCoordinates: hasValidCoordinates(item)
+          });
+        }
+      });
+    }
+  }, [keluarga]);
 
   // Early return jika data tidak tersedia
   if (!keluarga || !keluarga.data || !keluarga.meta) {
@@ -156,26 +184,36 @@ export default function Index({ auth, keluarga, filters = {}, stats }: IndexProp
     }
   };
 
-  // Perbaikan formatCoordinates dengan type safety yang ketat
-  const formatCoordinates = (lat?: number | null, lng?: number | null, lokasi?: string | null) => {
+  // PERBAIKAN: formatCoordinates dengan debugging dan type safety yang ketat
+  const formatCoordinates = (lat?: number | string | null, lng?: number | string | null, lokasi?: string | null) => {
+    console.log('formatCoordinates called with:', { lat, lng, lokasi }); // Debug log
+
     // Prioritas 1: Gunakan latitude dan longitude jika valid
     if (isValidCoordinate(lat) && isValidCoordinate(lng)) {
-      return `${lat.toFixed(6)}, ${lng.toFixed(6)}`;
+      const latNum = typeof lat === 'string' ? parseFloat(lat) : lat;
+      const lngNum = typeof lng === 'string' ? parseFloat(lng) : lng;
+      return `${latNum.toFixed(6)}, ${lngNum.toFixed(6)}`;
     }
 
     // Prioritas 2: Gunakan lokasi string jika valid
     if (isValidLokasiString(lokasi)) {
-      return lokasi;
+      const parsed = parseLokasiString(lokasi);
+      if (parsed) {
+        return `${parsed.lat.toFixed(6)}, ${parsed.lng.toFixed(6)}`;
+      }
+      return lokasi; // Return as-is jika tidak bisa di-parse
     }
 
     return 'Belum diatur';
   };
 
-  // Perbaikan openGoogleMaps dengan type safety yang ketat
-  const openGoogleMaps = (lat?: number | null, lng?: number | null, lokasi?: string | null) => {
+  // PERBAIKAN: openGoogleMaps dengan type safety yang ketat
+  const openGoogleMaps = (lat?: number | string | null, lng?: number | string | null, lokasi?: string | null) => {
     // Prioritas 1: Gunakan koordinat langsung
     if (isValidCoordinate(lat) && isValidCoordinate(lng)) {
-      window.open(`https://www.google.com/maps?q=${lat},${lng}`, '_blank');
+      const latNum = typeof lat === 'string' ? parseFloat(lat) : lat;
+      const lngNum = typeof lng === 'string' ? parseFloat(lng) : lng;
+      window.open(`https://www.google.com/maps?q=${latNum},${lngNum}`, '_blank');
       return;
     }
 
@@ -188,15 +226,24 @@ export default function Index({ auth, keluarga, filters = {}, stats }: IndexProp
     }
   };
 
-  // Function untuk check apakah ada koordinat valid
+  // PERBAIKAN: Function untuk check apakah ada koordinat valid dengan debugging
   const hasValidCoordinates = (item: Keluarga): boolean => {
-    return (
-      (isValidCoordinate(item.latitude) && isValidCoordinate(item.longitude)) ||
-      isValidLokasiString(item.lokasi)
-    );
+    const hasLatLng = isValidCoordinate(item.latitude) && isValidCoordinate(item.longitude);
+    const hasLokasi = isValidLokasiString(item.lokasi);
+
+    console.log(`hasValidCoordinates for ${item.no_kk}:`, {
+      latitude: item.latitude,
+      longitude: item.longitude,
+      lokasi: item.lokasi,
+      hasLatLng,
+      hasLokasi,
+      result: hasLatLng || hasLokasi
+    }); // Debug log
+
+    return hasLatLng || hasLokasi;
   };
 
-  // Handle search and filter - DIHILANGKAN TOMBOL CARI DUPLIKASI
+  // Handle search and filter
   const handleFilterChange = (newStatus: string) => {
     setStatusFilter(newStatus);
     router.get(route('keluarga.index'), {
@@ -316,7 +363,7 @@ export default function Index({ auth, keluarga, filters = {}, stats }: IndexProp
 
         {/* Main Content */}
         <div className="bg-white rounded-2xl border border-gray-100/50 overflow-hidden shadow-sm">
-          {/* Header - TOMBOL CARI DIHILANGKAN */}
+          {/* Header */}
           <div className="p-8 border-b border-gray-100/50">
             <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
               <div>
@@ -327,7 +374,7 @@ export default function Index({ auth, keluarga, filters = {}, stats }: IndexProp
               </div>
 
               <div className="flex flex-col sm:flex-row gap-4">
-                {/* Search - dengan auto search saat typing */}
+                {/* Search */}
                 <div className="relative">
                   <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                     <svg className="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -479,7 +526,7 @@ export default function Index({ auth, keluarga, filters = {}, stats }: IndexProp
                       <div className="flex flex-col items-center animate-fadeIn">
                         <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mb-4 animate-pulse">
                           <svg className="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 715.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 919.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
                           </svg>
                         </div>
                         <p className="text-gray-500 text-lg font-medium mb-2">

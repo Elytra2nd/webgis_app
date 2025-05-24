@@ -714,30 +714,45 @@ export default function Create({ auth }: PageProps) {
 
     // Handle koordinat dari peta
     const handleMapPointSaved = (point: LocationData) => {
+        console.log('Received point from map:', point); // Debug log
+
         if (point && point.lat && point.lng) {
-            const updatedData = {
-                ...data,
-                latitude: point.lat.toString(),
-                longitude: point.lng.toString()
+          // Update form data dengan koordinat baru
+          setData(prev => ({
+            ...prev,
+            latitude: point.lat.toString(),
+            longitude: point.lng.toString()
+          }));
+
+          setCurrentLocation(point);
+
+          // Jika keluarga sudah tersimpan, update koordinat di database
+          if (keluargaId) {
+            const updateData = {
+              ...data,
+              latitude: point.lat.toString(),
+              longitude: point.lng.toString()
             };
 
-            setData(updatedData);
-            setCurrentLocation(point);
-
-            if (keluargaId) {
-                put(route('keluarga.update', keluargaId), {
-                    ...updatedData,
-                    onSuccess: () => {
-                        alert('Koordinat berhasil disimpan!');
-                    },
-                    onError: (errors: any) => {
-                        console.error('Error updating coordinates:', errors);
-                        alert('Koordinat berhasil ditentukan!');
-                    }
-                });
-            }
+            put(route('keluarga.update', keluargaId), {
+                          ...updateData,
+                          onSuccess: () => {
+                            alert('Koordinat berhasil disimpan!');
+                          },
+                          onError: (errors: any) => {
+                            console.error('Error updating coordinates:', errors);
+                            alert('Terjadi kesalahan saat menyimpan koordinat');
+                          }
+                        });
+          } else {
+            // Jika belum ada keluargaId, tampilkan pesan
+            alert('Koordinat berhasil ditentukan! Data akan disimpan saat form disubmit.');
+          }
+        } else {
+          console.error('Invalid point data:', point);
+          alert('Data koordinat tidak valid');
         }
-    };
+      };
 
     // Handle perubahan input koordinat manual
     const handleCoordinateChange = (field: 'latitude' | 'longitude', value: string) => {

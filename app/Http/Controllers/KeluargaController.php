@@ -21,9 +21,9 @@ class KeluargaController extends Controller
         try {
             $query = Keluarga::query();
 
-            // Search functionality
+            // Search functionality dengan UTF-8 safe
             if ($request->has('search') && !empty($request->search)) {
-                $search = $request->search;
+                $search = $this->sanitizeUtf8String($request->search);
                 $query->where(function ($q) use ($search) {
                     $q->where('nama_kepala_keluarga', 'like', '%' . $search . '%')
                       ->orWhere('no_kk', 'like', '%' . $search . '%')
@@ -40,26 +40,19 @@ class KeluargaController extends Controller
                 $query->where('status_ekonomi', $request->status);
             }
 
-            // Get paginated results with error handling
+            // Get paginated results dengan UTF-8 handling
             $keluarga = $query->orderBy('created_at', 'desc')
                              ->paginate(10)
                              ->withQueryString();
 
-            // Ensure pagination data is properly structured
-            if (!$keluarga) {
-                $keluarga = new \Illuminate\Pagination\LengthAwarePaginator(
-                    [],
-                    0,
-                    10,
-                    1,
-                    ['path' => request()->url(), 'pageName' => 'page']
-                );
-            }
+            // Sanitize data untuk UTF-8
+            $keluarga->getCollection()->transform(function ($item) {
+                return $this->sanitizeKeluargaForResponse($item);
+            });
 
-            // Get statistics with optimized queries and error handling
+            // Get statistics
             $stats = $this->getKeluargaStatistics();
 
-            // Ensure all required data is present
             $responseData = [
                 'keluarga' => [
                     'data' => $keluarga->items() ?? [],
@@ -82,7 +75,6 @@ class KeluargaController extends Controller
         } catch (\Exception $e) {
             Log::error('Error in KeluargaController@index: ' . $e->getMessage());
 
-            // Return safe fallback data
             return Inertia::render('Keluarga/Index', [
                 'keluarga' => [
                     'data' => [],
@@ -109,12 +101,11 @@ class KeluargaController extends Controller
     }
 
     /**
-     * Get statistics with error handling and caching
+     * Get statistics with error handling
      */
     private function getKeluargaStatistics()
     {
         try {
-            // Use DB queries for better performance
             $totalCount = Keluarga::count();
 
             $statusCounts = Keluarga::select('status_ekonomi', DB::raw('count(*) as count'))
@@ -132,7 +123,6 @@ class KeluargaController extends Controller
         } catch (\Exception $e) {
             Log::error('Error getting statistics: ' . $e->getMessage());
 
-            // Return safe fallback
             return [
                 'total' => 0,
                 'sangat_miskin' => 0,
@@ -155,7 +145,17 @@ class KeluargaController extends Controller
      */
     public function store(Request $request)
     {
-        $validator = Validator::make($request->all(), [
+        // Log untuk debugging dengan UTF-8 safe
+        Log::info('Store request received:', [
+            'method' => $request->method(),
+            'content_type' => $request->header('Content-Type'),
+            'all_data' => $this->sanitizeDataForLogging($request->except(['_token']))
+        ]);
+
+        // Sanitize input data untuk UTF-8
+        $inputData = $this->sanitizeUtf8Data($request->all());
+
+        $validator = Validator::make($inputData, [
             'no_kk' => 'required|string|max:16|unique:keluarga,no_kk',
             'nama_kepala_keluarga' => 'required|string|max:255',
             'alamat' => 'required|string',
@@ -171,7 +171,6 @@ class KeluargaController extends Controller
             'keterangan' => 'nullable|string',
             'latitude' => 'nullable|numeric|between:-90,90',
             'longitude' => 'nullable|numeric|between:-180,180',
-            'lokasi' => 'nullable|string', // Support for lokasi field
         ], [
             'no_kk.required' => 'Nomor KK wajib diisi.',
             'no_kk.unique' => 'Nomor KK sudah terdaftar.',
@@ -191,6 +190,8 @@ class KeluargaController extends Controller
         ]);
 
         if ($validator->fails()) {
+            Log::warning('Store validation failed:', $validator->errors()->toArray());
+
             return Redirect::back()
                 ->withErrors($validator)
                 ->withInput();
@@ -199,17 +200,28 @@ class KeluargaController extends Controller
         try {
             DB::beginTransaction();
 
-            // Prepare data with safe handling
             $data = $validator->validated();
 
-            // Handle coordinate data - support both latitude/longitude and lokasi
+            // Handle coordinate data
             if (!empty($data['latitude']) && !empty($data['longitude'])) {
-                $data['lokasi'] = $data['latitude'] . ',' . $data['longitude'];
+                // Update kolom lokasi POINT menggunakan raw SQL
+                $lat = (float) $data['latitude'];
+                $lng = (float) $data['longitude'];
+
+                $keluarga = Keluarga::create($data);
+
+                // Update POINT setelah create
+                DB::statement(
+                    "UPDATE keluarga SET lokasi = POINT(?, ?) WHERE id = ?",
+                    [$lng, $lat, $keluarga->id]
+                );
+            } else {
+                $keluarga = Keluarga::create($data);
             }
 
-            $keluarga = Keluarga::create($data);
-
             DB::commit();
+
+            Log::info('Keluarga created successfully:', ['id' => $keluarga->id]);
 
             return Redirect::route('keluarga.index')
                 ->with('success', 'Data keluarga berhasil ditambahkan.')
@@ -217,10 +229,12 @@ class KeluargaController extends Controller
 
         } catch (\Exception $e) {
             DB::rollBack();
-            Log::error('Error storing keluarga: ' . $e->getMessage());
+            Log::error('Error storing keluarga: ' . $e->getMessage(), [
+                'trace' => $e->getTraceAsString()
+            ]);
 
             return Redirect::back()
-                ->withErrors(['error' => 'Terjadi kesalahan saat menyimpan data. Silakan coba lagi.'])
+                ->withErrors(['error' => 'Terjadi kesalahan saat menyimpan data: ' . $e->getMessage()])
                 ->withInput();
         }
     }
@@ -231,11 +245,11 @@ class KeluargaController extends Controller
     public function show(Keluarga $keluarga)
     {
         try {
-            // Safe loading with error handling
-            $keluarga->loadMissing(['anggotaKeluarga', 'wilayah', 'jarak']);
+            // Sanitize data sebelum dikirim ke frontend
+            $sanitizedKeluarga = $this->sanitizeKeluargaForResponse($keluarga);
 
             return Inertia::render('Keluarga/Show', [
-                'keluarga' => $keluarga
+                'keluarga' => $sanitizedKeluarga
             ]);
 
         } catch (\Exception $e) {
@@ -252,8 +266,24 @@ class KeluargaController extends Controller
     public function edit(Keluarga $keluarga)
     {
         try {
+            // Extract koordinat dari POINT jika ada
+            if ($keluarga->lokasi) {
+                $coordinates = DB::select(
+                    "SELECT ST_X(lokasi) as longitude, ST_Y(lokasi) as latitude FROM keluarga WHERE id = ?",
+                    [$keluarga->id]
+                );
+
+                if (!empty($coordinates)) {
+                    $keluarga->latitude = $coordinates[0]->latitude;
+                    $keluarga->longitude = $coordinates[0]->longitude;
+                }
+            }
+
+            // Sanitize data sebelum dikirim ke frontend
+            $sanitizedKeluarga = $this->sanitizeKeluargaForResponse($keluarga);
+
             return Inertia::render('Keluarga/Edit', [
-                'keluarga' => $keluarga
+                'keluarga' => $sanitizedKeluarga
             ]);
 
         } catch (\Exception $e) {
@@ -265,79 +295,124 @@ class KeluargaController extends Controller
     }
 
     /**
-     * Update the specified resource in storage.
+     * Update the specified resource in storage - PERBAIKAN untuk UTF-8
      */
     public function update(Request $request, Keluarga $keluarga)
     {
-        $validator = Validator::make($request->all(), [
-            'no_kk' => [
-                'required',
-                'string',
-                'max:16',
-                Rule::unique('keluarga', 'no_kk')->ignore($keluarga->id)
-            ],
-            'nama_kepala_keluarga' => 'required|string|max:255',
-            'alamat' => 'required|string',
-            'rt' => 'nullable|string|max:3',
-            'rw' => 'nullable|string|max:3',
-            'kelurahan' => 'required|string|max:255',
-            'kecamatan' => 'required|string|max:255',
-            'kota' => 'required|string|max:255',
-            'provinsi' => 'required|string|max:255',
-            'kode_pos' => 'nullable|string|max:5',
-            'status_ekonomi' => 'required|in:sangat_miskin,miskin,rentan_miskin',
-            'penghasilan_bulanan' => 'nullable|numeric|min:0',
-            'keterangan' => 'nullable|string',
-            'latitude' => 'nullable|numeric|between:-90,90',
-            'longitude' => 'nullable|numeric|between:-180,180',
-            'lokasi' => 'nullable|string',
-        ], [
-            'no_kk.required' => 'Nomor KK wajib diisi.',
-            'no_kk.unique' => 'Nomor KK sudah terdaftar.',
-            'no_kk.max' => 'Nomor KK maksimal 16 karakter.',
-            'nama_kepala_keluarga.required' => 'Nama kepala keluarga wajib diisi.',
-            'alamat.required' => 'Alamat wajib diisi.',
-            'kelurahan.required' => 'Kelurahan wajib diisi.',
-            'kecamatan.required' => 'Kecamatan wajib diisi.',
-            'kota.required' => 'Kota/Kabupaten wajib diisi.',
-            'provinsi.required' => 'Provinsi wajib diisi.',
-            'status_ekonomi.required' => 'Status ekonomi wajib dipilih.',
-            'status_ekonomi.in' => 'Status ekonomi tidak valid.',
-            'penghasilan_bulanan.numeric' => 'Penghasilan bulanan harus berupa angka.',
-            'penghasilan_bulanan.min' => 'Penghasilan bulanan tidak boleh negatif.',
-            'latitude.between' => 'Latitude harus antara -90 dan 90.',
-            'longitude.between' => 'Longitude harus antara -180 dan 180.',
-        ]);
-
-        if ($validator->fails()) {
-            return Redirect::back()
-                ->withErrors($validator)
-                ->withInput();
-        }
-
         try {
+            // Log untuk debugging
+            Log::info('Update request received:', [
+                'method' => $request->method(),
+                'has_method_field' => $request->has('_method'),
+                'method_field' => $request->get('_method'),
+                'content_type' => $request->header('Content-Type'),
+                'keluarga_id' => $keluarga->id,
+                'all_data' => $this->sanitizeDataForLogging($request->except(['_method', '_token']))
+            ]);
+
+            // Exclude _method dan _token dari validasi
+            $dataToValidate = $request->except(['_method', '_token']);
+
+            // PERBAIKAN: Sanitize input data untuk UTF-8
+            $dataToValidate = $this->sanitizeUtf8Data($dataToValidate);
+
+            $validator = Validator::make($dataToValidate, [
+                'no_kk' => [
+                    'required',
+                    'string',
+                    'max:16',
+                    Rule::unique('keluarga', 'no_kk')->ignore($keluarga->id)
+                ],
+                'nama_kepala_keluarga' => 'required|string|max:255',
+                'alamat' => 'required|string',
+                'rt' => 'nullable|string|max:3',
+                'rw' => 'nullable|string|max:3',
+                'kelurahan' => 'required|string|max:255',
+                'kecamatan' => 'required|string|max:255',
+                'kota' => 'required|string|max:255',
+                'provinsi' => 'required|string|max:255',
+                'kode_pos' => 'nullable|string|max:5',
+                'status_ekonomi' => 'required|in:sangat_miskin,miskin,rentan_miskin',
+                'penghasilan_bulanan' => 'nullable|numeric|min:0',
+                'keterangan' => 'nullable|string',
+                'latitude' => 'nullable|numeric|between:-90,90',
+                'longitude' => 'nullable|numeric|between:-180,180',
+            ]);
+
+            if ($validator->fails()) {
+                Log::warning('Update validation failed:', $validator->errors()->toArray());
+
+                return Redirect::back()
+                    ->withErrors($validator)
+                    ->withInput();
+            }
+
             DB::beginTransaction();
 
             $data = $validator->validated();
 
             // Handle coordinate data
             if (!empty($data['latitude']) && !empty($data['longitude'])) {
-                $data['lokasi'] = $data['latitude'] . ',' . $data['longitude'];
+                $lat = (float) $data['latitude'];
+                $lng = (float) $data['longitude'];
+
+                $data['latitude'] = $lat;
+                $data['longitude'] = $lng;
+
+                // Update kolom lokasi POINT menggunakan raw SQL
+                DB::statement(
+                    "UPDATE keluarga SET lokasi = POINT(?, ?) WHERE id = ?",
+                    [$lng, $lat, $keluarga->id]
+                );
+
+                // Remove lokasi dari data array karena sudah diupdate manual
+                unset($data['lokasi']);
+            } elseif (empty($data['latitude']) && empty($data['longitude'])) {
+                $data['latitude'] = null;
+                $data['longitude'] = null;
+
+                DB::statement(
+                    "UPDATE keluarga SET lokasi = NULL WHERE id = ?",
+                    [$keluarga->id]
+                );
             }
 
+            // Update data lainnya
             $keluarga->update($data);
 
             DB::commit();
 
-            return Redirect::route('keluarga.index')
+            Log::info('Keluarga updated successfully:', ['id' => $keluarga->id]);
+
+            // PERBAIKAN: Sanitize response data
+            $responseKeluarga = $this->sanitizeKeluargaForResponse($keluarga->fresh());
+
+            // Return response berdasarkan request type
+            if ($request->wantsJson() || $request->expectsJson()) {
+                return response()->json([
+                    'message' => 'Data keluarga berhasil diperbarui.',
+                    'keluarga' => $responseKeluarga
+                ], 200, [], JSON_UNESCAPED_UNICODE);
+            }
+
+            return Redirect::back()
                 ->with('success', 'Data keluarga berhasil diperbarui.');
 
         } catch (\Exception $e) {
             DB::rollBack();
-            Log::error('Error updating keluarga: ' . $e->getMessage());
+            Log::error('Error updating keluarga: ' . $e->getMessage(), [
+                'keluarga_id' => $keluarga->id,
+                'trace' => $e->getTraceAsString()
+            ]);
+
+            if ($request->wantsJson() || $request->expectsJson()) {
+                return response()->json([
+                    'error' => 'Terjadi kesalahan saat memperbarui data: ' . $e->getMessage()
+                ], 500, [], JSON_UNESCAPED_UNICODE);
+            }
 
             return Redirect::back()
-                ->withErrors(['error' => 'Terjadi kesalahan saat memperbarui data. Silakan coba lagi.'])
+                ->withErrors(['error' => 'Terjadi kesalahan saat memperbarui data: ' . $e->getMessage()])
                 ->withInput();
         }
     }
@@ -350,22 +425,11 @@ class KeluargaController extends Controller
         try {
             DB::beginTransaction();
 
-            // Safe deletion with relationship checks
-            if (method_exists($keluarga, 'anggotaKeluarga')) {
-                $keluarga->anggotaKeluarga()->delete();
-            }
-
-            if (method_exists($keluarga, 'wilayah')) {
-                $keluarga->wilayah()->detach();
-            }
-
-            if (method_exists($keluarga, 'jarak')) {
-                $keluarga->jarak()->delete();
-            }
-
             $keluarga->delete();
 
             DB::commit();
+
+            Log::info('Keluarga deleted successfully:', ['id' => $keluarga->id]);
 
             return Redirect::route('keluarga.index')
                 ->with('success', 'Data keluarga berhasil dihapus.');
@@ -380,43 +444,144 @@ class KeluargaController extends Controller
     }
 
     /**
-     * Export data to various formats
+     * Get keluarga data for map display
      */
-    public function export(Request $request)
+    public function getKeluargaForMap(Request $request)
     {
         try {
-            $format = $request->get('format', 'excel');
-            $query = Keluarga::query();
+            $query = Keluarga::query()
+                ->whereNotNull('lokasi');
 
-            // Apply same filters as index
-            if ($request->has('search') && !empty($request->search)) {
-                $search = $request->search;
-                $query->where(function ($q) use ($search) {
-                    $q->where('nama_kepala_keluarga', 'like', '%' . $search . '%')
-                      ->orWhere('no_kk', 'like', '%' . $search . '%')
-                      ->orWhere('alamat', 'like', '%' . $search . '%');
-                });
-            }
-
-            if ($request->has('status') && $request->status !== 'all' && !empty($request->status)) {
+            // Apply filters if provided
+            if ($request->has('status') && $request->status !== 'all') {
                 $query->where('status_ekonomi', $request->status);
             }
 
-            $keluarga = $query->orderBy('created_at', 'desc')->get();
+            // Get data dengan extract koordinat dari POINT
+            $keluarga = $query->select([
+                'id', 'no_kk', 'nama_kepala_keluarga', 'alamat',
+                'kelurahan', 'kecamatan', 'kota', 'provinsi',
+                'status_ekonomi',
+                DB::raw('ST_X(lokasi) as longitude'),
+                DB::raw('ST_Y(lokasi) as latitude')
+            ])->get();
 
-            return response()->json([
-                'message' => 'Export functionality will be implemented',
-                'format' => $format,
-                'count' => $keluarga->count()
-            ]);
+            // PERBAIKAN: Sanitize data untuk response
+            $sanitizedData = $keluarga->map(function ($item) {
+                return $this->sanitizeKeluargaForResponse($item);
+            });
+
+            return response()->json($sanitizedData, 200, [], JSON_UNESCAPED_UNICODE);
 
         } catch (\Exception $e) {
-            Log::error('Error exporting data: ' . $e->getMessage());
+            Log::error('Error getting keluarga for map: ' . $e->getMessage());
 
             return response()->json([
-                'error' => 'Terjadi kesalahan saat export data.'
-            ], 500);
+                'error' => 'Terjadi kesalahan saat memuat data peta'
+            ], 500, [], JSON_UNESCAPED_UNICODE);
         }
+    }
+
+    /**
+     * PERBAIKAN: Sanitize data untuk UTF-8 encoding
+     */
+    private function sanitizeUtf8Data($data)
+    {
+        if (is_array($data)) {
+            foreach ($data as $key => $value) {
+                if (is_string($value)) {
+                    // Ensure proper UTF-8 encoding dan remove invalid characters
+                    $data[$key] = $this->sanitizeUtf8String($value);
+                } elseif (is_array($value)) {
+                    $data[$key] = $this->sanitizeUtf8Data($value);
+                }
+            }
+        } elseif (is_string($data)) {
+            $data = $this->sanitizeUtf8String($data);
+        }
+
+        return $data;
+    }
+
+    /**
+     * PERBAIKAN: Sanitize single UTF-8 string
+     */
+    private function sanitizeUtf8String($string)
+    {
+        if (!is_string($string)) {
+            return $string;
+        }
+
+        // Convert to UTF-8 if not already
+        if (!mb_check_encoding($string, 'UTF-8')) {
+            $string = mb_convert_encoding($string, 'UTF-8', mb_detect_encoding($string));
+        }
+
+        // Remove control characters and null bytes
+        $string = preg_replace('/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/', '', $string);
+
+        // Ensure proper UTF-8 encoding
+        $string = mb_convert_encoding($string, 'UTF-8', 'UTF-8');
+
+        // Trim whitespace
+        $string = trim($string);
+
+        return $string;
+    }
+
+    /**
+     * PERBAIKAN: Sanitize data untuk logging (remove binary data)
+     */
+    private function sanitizeDataForLogging($data)
+    {
+        if (is_array($data)) {
+            foreach ($data as $key => $value) {
+                if (is_string($value)) {
+                    // Check if string contains binary data atau invalid UTF-8
+                    if (!mb_check_encoding($value, 'UTF-8')) {
+                        $data[$key] = '[BINARY_DATA_REMOVED]';
+                    } else {
+                        // Remove control characters untuk logging
+                        $data[$key] = preg_replace('/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/', '', $value);
+                    }
+                } elseif (is_array($value)) {
+                    $data[$key] = $this->sanitizeDataForLogging($value);
+                }
+            }
+        }
+
+        return $data;
+    }
+
+    /**
+     * PERBAIKAN: Sanitize keluarga data untuk response
+     */
+    private function sanitizeKeluargaForResponse($keluarga)
+    {
+        $data = is_array($keluarga) ? $keluarga : $keluarga->toArray();
+
+        // Sanitize string fields
+        $stringFields = [
+            'no_kk', 'nama_kepala_keluarga', 'alamat', 'rt', 'rw',
+            'kelurahan', 'kecamatan', 'kota', 'provinsi', 'kode_pos',
+            'status_ekonomi', 'keterangan'
+        ];
+
+        foreach ($stringFields as $field) {
+            if (isset($data[$field]) && is_string($data[$field])) {
+                $data[$field] = $this->sanitizeUtf8String($data[$field]);
+            }
+        }
+
+        // Handle numeric fields
+        $numericFields = ['latitude', 'longitude', 'penghasilan_bulanan'];
+        foreach ($numericFields as $field) {
+            if (isset($data[$field]) && is_string($data[$field])) {
+                $data[$field] = is_numeric($data[$field]) ? $data[$field] : null;
+            }
+        }
+
+        return $data;
     }
 
     /**
@@ -431,7 +596,7 @@ class KeluargaController extends Controller
             $coordinateStats = $this->getCoordinateStatistics();
             $stats = array_merge($stats, $coordinateStats);
 
-            return response()->json($stats);
+            return response()->json($stats, 200, [], JSON_UNESCAPED_UNICODE);
 
         } catch (\Exception $e) {
             Log::error('Error getting statistics: ' . $e->getMessage());
@@ -443,7 +608,7 @@ class KeluargaController extends Controller
                 'rentan_miskin' => 0,
                 'with_coordinates' => 0,
                 'without_coordinates' => 0,
-            ]);
+            ], 200, [], JSON_UNESCAPED_UNICODE);
         }
     }
 
@@ -453,12 +618,7 @@ class KeluargaController extends Controller
     private function getCoordinateStatistics()
     {
         try {
-            $withCoordinates = Keluarga::where(function ($query) {
-                $query->whereNotNull('lokasi')
-                      ->where('lokasi', '!=', '')
-                      ->where('lokasi', 'REGEXP', '^-?[0-9]+\.?[0-9]*,-?[0-9]+\.?[0-9]*$');
-            })->count();
-
+            $withCoordinates = Keluarga::whereNotNull('lokasi')->count();
             $total = Keluarga::count();
             $withoutCoordinates = $total - $withCoordinates;
 
@@ -490,7 +650,7 @@ class KeluargaController extends Controller
         ]);
 
         if ($validator->fails()) {
-            return response()->json(['errors' => $validator->errors()], 422);
+            return response()->json(['errors' => $validator->errors()], 422, [], JSON_UNESCAPED_UNICODE);
         }
 
         try {
@@ -505,21 +665,25 @@ class KeluargaController extends Controller
 
                     DB::commit();
 
+                    Log::info('Bulk delete completed:', ['count' => $count]);
+
                     return response()->json([
                         'message' => "Berhasil menghapus {$count} data keluarga."
-                    ]);
+                    ], 200, [], JSON_UNESCAPED_UNICODE);
 
                 case 'update_status':
                     $count = $keluargaQuery->update(['status_ekonomi' => $request->status_ekonomi]);
 
                     DB::commit();
 
+                    Log::info('Bulk status update completed:', ['count' => $count]);
+
                     return response()->json([
                         'message' => "Berhasil memperbarui status {$count} data keluarga."
-                    ]);
+                    ], 200, [], JSON_UNESCAPED_UNICODE);
 
                 default:
-                    return response()->json(['error' => 'Aksi tidak valid.'], 400);
+                    return response()->json(['error' => 'Aksi tidak valid.'], 400, [], JSON_UNESCAPED_UNICODE);
             }
 
         } catch (\Exception $e) {
@@ -528,7 +692,7 @@ class KeluargaController extends Controller
 
             return response()->json([
                 'error' => 'Terjadi kesalahan saat memproses data.'
-            ], 500);
+            ], 500, [], JSON_UNESCAPED_UNICODE);
         }
     }
 }

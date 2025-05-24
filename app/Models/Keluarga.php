@@ -1,16 +1,14 @@
 <?php
+// app/Models/Keluarga.php
 
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Relations\HasMany;
-use MatanYadaev\EloquentSpatial\Objects\Point;
-use MatanYadaev\EloquentSpatial\Traits\HasSpatial;
 
 class Keluarga extends Model
 {
-    use HasFactory, HasSpatial;
+    use HasFactory;
 
     protected $table = 'keluarga';
 
@@ -25,45 +23,57 @@ class Keluarga extends Model
         'kota',
         'provinsi',
         'kode_pos',
-        'lokasi',
         'status_ekonomi',
         'penghasilan_bulanan',
-        'keterangan'
+        'keterangan',
+        'latitude',
+        'longitude',
+        'lokasi'
     ];
 
     protected $casts = [
-        'lokasi' => Point::class,
+        'penghasilan_bulanan' => 'decimal:2',
+        'latitude' => 'decimal:8',
+        'longitude' => 'decimal:8',
     ];
 
-    // Method boot untuk menangani field kosong
-    public static function boot()
+    /**
+     * PERBAIKAN: Override toArray untuk ensure UTF-8 encoding
+     */
+    public function toArray()
     {
-        parent::boot();
+        $array = parent::toArray();
 
-        static::saving(function($model) {
-            // Field yang boleh kosong diset ke null jika empty
-            $nullableFields = ['rt', 'rw', 'kelurahan', 'kecamatan', 'kota', 'provinsi', 'kode_pos', 'penghasilan_bulanan', 'keterangan'];
+        // Sanitize string fields untuk UTF-8
+        foreach ($array as $key => $value) {
+            if (is_string($value)) {
+                // Ensure proper UTF-8 encoding
+                $array[$key] = mb_convert_encoding($value, 'UTF-8', 'UTF-8');
 
-            foreach ($nullableFields as $field) {
-                if (empty($model->{$field})) {
-                    $model->{$field} = null;
-                }
+                // Remove control characters
+                $array[$key] = preg_replace('/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/', '', $array[$key]);
             }
-        });
+        }
+
+        return $array;
     }
 
-    public function anggotaKeluarga(): HasMany
+    /**
+     * PERBAIKAN: Override getAttribute untuk handle UTF-8
+     */
+    public function getAttribute($key)
     {
-        return $this->hasMany(AnggotaKeluarga::class);
-    }
+        $value = parent::getAttribute($key);
 
-    public function wilayah(): HasMany
-    {
-        return $this->hasMany(Wilayah::class);
-    }
+        // Sanitize string attributes
+        if (is_string($value) && in_array($key, [
+            'nama_kepala_keluarga', 'alamat', 'kelurahan',
+            'kecamatan', 'kota', 'provinsi', 'keterangan'
+        ])) {
+            $value = mb_convert_encoding($value, 'UTF-8', 'UTF-8');
+            $value = preg_replace('/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/', '', $value);
+        }
 
-    public function jarak(): HasMany
-    {
-        return $this->hasMany(Jarak::class);
+        return $value;
     }
 }

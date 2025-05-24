@@ -164,7 +164,7 @@ export default function Index({ auth, reportData, totalKeluarga }: IndexProps) {
                 {/* Total indicator */}
                 <div className="mt-4 pt-4 border-t border-white/20">
                   <p className="text-white/80 text-sm">Total Data</p>
-                  <p className="text-2xl font-light text-white">{category.totalData.toLocaleString()}</p>
+                  <p className="text-2xl font-semibold text-white">{category.totalData.toLocaleString()}</p>
                 </div>
               </div>
 
