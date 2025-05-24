@@ -43,7 +43,10 @@ Route::middleware('auth')->group(function () {
 
     // Keluarga routes
     Route::resource('keluarga', KeluargaController::class);
-    
+
+    Route::post('keluarga/{keluarga}/coordinates', [KeluargaController::class, 'updateCoordinates'])
+        ->name('keluarga.update-coordinates');
+
     // Anggota Keluarga routes
     Route::resource('anggota-keluarga', AnggotaKeluargaController::class);
 

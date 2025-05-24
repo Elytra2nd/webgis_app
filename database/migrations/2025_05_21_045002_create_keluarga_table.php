@@ -24,6 +24,9 @@ return new class extends Migration
             $table->enum('status_ekonomi', ['sangat_miskin', 'miskin', 'rentan_miskin']);
             $table->integer('penghasilan_bulanan')->nullable();
             $table->text('keterangan')->nullable();
+            $table->decimal('latitude', 10, 8)->nullable()->after('kode_pos');
+            $table->decimal('longitude', 11, 8)->nullable()->after('latitude');
+            $table->index(['latitude', 'longitude'], 'idx_coordinates');
             $table->timestamps();
         });
     }
