@@ -102,7 +102,7 @@ class AnggotaKeluargaController extends Controller
     public function edit(AnggotaKeluarga $anggotaKeluarga)
     {
         $keluarga = Keluarga::select('id', 'no_kk', 'nama_kepala_keluarga')->get();
-        
+
         return Inertia::render('AnggotaKeluarga/Edit', [
             'anggota' => $anggotaKeluarga,
             'keluarga' => $keluarga
