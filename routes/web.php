@@ -1,11 +1,13 @@
 <?php
 
 use App\Http\Controllers\ProfileController;
+use App\Models\AnggotaKeluarga;
 use Illuminate\Foundation\Application;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 use App\Http\Controllers\KeluargaController;
 use App\Http\Controllers\MapController;
+use App\Http\Controllers\AnggotaKeluargaController;
 
 Route::get('/', function () {
     return Inertia::render('Welcome', [
@@ -40,6 +42,7 @@ Route::middleware('auth')->group(function () {
 
     // Keluarga routes
     Route::resource('keluarga', KeluargaController::class);
+    Route::resource('anggota-keluarga', AnggotaKeluargaController::class);
 
     // Map routes (authenticated)
     Route::get('/map/admin', function () {
@@ -60,5 +63,9 @@ Route::middleware('auth')->group(function () {
         return Inertia::render('Settings/Index');
     })->name('settings');
 });
+
+
+
+
 
 require __DIR__ . '/auth.php';
