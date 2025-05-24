@@ -5,252 +5,323 @@ namespace App\Http\Controllers;
 use App\Models\Keluarga;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
-use MatanYadaev\EloquentSpatial\Objects\Point;
-use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Redirect;
+use Illuminate\Support\Facades\Validator;
+use Illuminate\Validation\Rule;
 
 class KeluargaController extends Controller
 {
+    /**
+     * Display a listing of the resource with pagination, search, and filter
+     */
     public function index(Request $request)
     {
-        // Load relasi
-        $keluarga = Keluarga::all();
+        $query = Keluarga::query();
 
-        // Transformasi data untuk frontend
-        $keluarga->transform(function ($item) {
-            if ($item->lokasi) {
-                $item->latitude = $item->lokasi->latitude;
-                $item->longitude = $item->lokasi->longitude;
-            }
-            return $item;
-        });
-
-        if (!$request->user()) {
-            return Inertia::render('Keluarga/PublicIndex', [
-                'keluarga' => $keluarga
-            ]);
+        // Search functionality
+        if ($request->has('search') && !empty($request->search)) {
+            $search = $request->search;
+            $query->where(function ($q) use ($search) {
+                $q->where('nama_kepala_keluarga', 'like', '%' . $search . '%')
+                  ->orWhere('no_kk', 'like', '%' . $search . '%')
+                  ->orWhere('alamat', 'like', '%' . $search . '%')
+                  ->orWhere('kelurahan', 'like', '%' . $search . '%')
+                  ->orWhere('kecamatan', 'like', '%' . $search . '%')
+                  ->orWhere('kota', 'like', '%' . $search . '%')
+                  ->orWhere('provinsi', 'like', '%' . $search . '%');
+            });
         }
 
+        // Filter by status ekonomi
+        if ($request->has('status') && $request->status !== 'all' && !empty($request->status)) {
+            $query->where('status_ekonomi', $request->status);
+        }
+
+        // Get paginated results
+        $keluarga = $query->orderBy('created_at', 'desc')
+                         ->paginate(10)
+                         ->withQueryString(); // Maintain query parameters in pagination links
+
+        // Get statistics for all data (not just current page)
+        $allKeluarga = Keluarga::all();
+        $stats = [
+            'total' => $allKeluarga->count(),
+            'sangat_miskin' => $allKeluarga->where('status_ekonomi', 'sangat_miskin')->count(),
+            'miskin' => $allKeluarga->where('status_ekonomi', 'miskin')->count(),
+            'rentan_miskin' => $allKeluarga->where('status_ekonomi', 'rentan_miskin')->count(),
+        ];
+
         return Inertia::render('Keluarga/Index', [
-            'keluarga' => $keluarga
+            'keluarga' => $keluarga,
+            'filters' => $request->only(['search', 'status']),
+            'stats' => $stats
         ]);
     }
 
-    public function getKeluargaForMap()
-    {
-        $keluarga = Keluarga::all();
-
-        // Transformasi data untuk frontend
-        $keluarga->transform(function ($item) {
-            if ($item->lokasi) {
-                $item->latitude = $item->lokasi->latitude;
-                $item->longitude = $item->lokasi->longitude;
-            }
-            return $item;
-        });
-
-        return response()->json($keluarga);
-    }
-
+    /**
+     * Show the form for creating a new resource.
+     */
     public function create()
     {
         return Inertia::render('Keluarga/Create');
     }
 
+    /**
+     * Store a newly created resource in storage.
+     */
     public function store(Request $request)
     {
-        $validated = $request->validate([
-            'no_kk' => 'required|string|max:16|unique:keluarga',
+        $validator = Validator::make($request->all(), [
+            'no_kk' => 'required|string|max:16|unique:keluarga,no_kk',
             'nama_kepala_keluarga' => 'required|string|max:255',
             'alamat' => 'required|string',
-            'rt' => 'required|string',
-            'rw' => 'required|string',
-            'kelurahan' => 'required|string',
-            'kecamatan' => 'required|string',
-            'kota' => 'required|string',
-            'provinsi' => 'required|string',
-            'kode_pos' => 'nullable|string',
-            'latitude' => 'nullable|numeric',
-            'longitude' => 'nullable|numeric',
-            'status_ekonomi' => 'required|in:sangat_miskin,miskin,rentan_miskin,menengah,kaya', // TAMBAH menengah,kaya
-            'penghasilan_bulanan' => 'nullable|integer',
+            'rt' => 'nullable|string|max:3',
+            'rw' => 'nullable|string|max:3',
+            'kelurahan' => 'required|string|max:255',
+            'kecamatan' => 'required|string|max:255',
+            'kota' => 'required|string|max:255',
+            'provinsi' => 'required|string|max:255',
+            'kode_pos' => 'nullable|string|max:5',
+            'status_ekonomi' => 'required|in:sangat_miskin,miskin,rentan_miskin',
+            'penghasilan_bulanan' => 'nullable|numeric|min:0',
             'keterangan' => 'nullable|string',
+            'latitude' => 'nullable|numeric|between:-90,90',
+            'longitude' => 'nullable|numeric|between:-180,180',
+        ], [
+            'no_kk.required' => 'Nomor KK wajib diisi.',
+            'no_kk.unique' => 'Nomor KK sudah terdaftar.',
+            'no_kk.max' => 'Nomor KK maksimal 16 karakter.',
+            'nama_kepala_keluarga.required' => 'Nama kepala keluarga wajib diisi.',
+            'alamat.required' => 'Alamat wajib diisi.',
+            'kelurahan.required' => 'Kelurahan wajib diisi.',
+            'kecamatan.required' => 'Kecamatan wajib diisi.',
+            'kota.required' => 'Kota/Kabupaten wajib diisi.',
+            'provinsi.required' => 'Provinsi wajib diisi.',
+            'status_ekonomi.required' => 'Status ekonomi wajib dipilih.',
+            'status_ekonomi.in' => 'Status ekonomi tidak valid.',
+            'penghasilan_bulanan.numeric' => 'Penghasilan bulanan harus berupa angka.',
+            'penghasilan_bulanan.min' => 'Penghasilan bulanan tidak boleh negatif.',
+            'latitude.between' => 'Latitude harus antara -90 dan 90.',
+            'longitude.between' => 'Longitude harus antara -180 dan 180.',
         ]);
 
-        // Buat objek Point jika ada koordinat
-        if (isset($validated['latitude']) && isset($validated['longitude'])) {
-            $validated['lokasi'] = new Point($validated['latitude'], $validated['longitude']);
+        if ($validator->fails()) {
+            return Redirect::back()
+                ->withErrors($validator)
+                ->withInput();
         }
 
-        // Hapus latitude dan longitude dari array validated
-        unset($validated['latitude'], $validated['longitude']);
+        try {
+            $keluarga = Keluarga::create($validator->validated());
 
-        $keluarga = Keluarga::create($validated);
-
-        // MASALAH UTAMA: Redirect ke route yang tidak sesuai dengan frontend
-        // Ubah dari redirect ke map.index menjadi response yang bisa dihandle Inertia
-        return redirect()->back()->with([
-            'success' => true,
-            'message' => 'Data keluarga berhasil disimpan.',
-            'keluarga' => $keluarga->load('anggotaKeluarga', 'wilayah', 'jarak') // Load relasi jika diperlukan
-        ]);
+            return Redirect::route('keluarga.index')
+                ->with('success', 'Data keluarga berhasil ditambahkan.')
+                ->with('keluarga_id', $keluarga->id);
+        } catch (\Exception $e) {
+            return Redirect::back()
+                ->withErrors(['error' => 'Terjadi kesalahan saat menyimpan data: ' . $e->getMessage()])
+                ->withInput();
+        }
     }
 
-    public function show(Request $request, Keluarga $keluarga)
+    /**
+     * Display the specified resource.
+     */
+    public function show(Keluarga $keluarga)
     {
-        // Load relasi
-        $keluarga->load('anggotaKeluarga', 'wilayah', 'jarak');
-
-        // Transformasi data untuk frontend
-        if ($keluarga->lokasi) {
-            $keluarga->latitude = $keluarga->lokasi->latitude;
-            $keluarga->longitude = $keluarga->lokasi->longitude;
-        }
-
-        if (!$request->user()) {
-            return Inertia::render('Keluarga/PublicShow', [
-                'keluarga' => $keluarga
-            ]);
-        }
+        // Load relationships if needed
+        $keluarga->load(['anggotaKeluarga', 'wilayah', 'jarak']);
 
         return Inertia::render('Keluarga/Show', [
             'keluarga' => $keluarga
         ]);
     }
 
+    /**
+     * Show the form for editing the specified resource.
+     */
     public function edit(Keluarga $keluarga)
     {
-        // Transformasi data untuk frontend
-        if ($keluarga->lokasi) {
-            $keluarga->latitude = $keluarga->lokasi->latitude;
-            $keluarga->longitude = $keluarga->lokasi->longitude;
-        }
-
         return Inertia::render('Keluarga/Edit', [
             'keluarga' => $keluarga
         ]);
     }
 
+    /**
+     * Update the specified resource in storage.
+     */
     public function update(Request $request, Keluarga $keluarga)
     {
-        $validated = $request->validate([
-            'no_kk' => 'required|string|max:16|unique:keluarga,no_kk,' . $keluarga->id,
+        $validator = Validator::make($request->all(), [
+            'no_kk' => [
+                'required',
+                'string',
+                'max:16',
+                Rule::unique('keluarga', 'no_kk')->ignore($keluarga->id)
+            ],
             'nama_kepala_keluarga' => 'required|string|max:255',
             'alamat' => 'required|string',
-            'rt' => 'required|string',
-            'rw' => 'required|string',
-            'kelurahan' => 'required|string',
-            'kecamatan' => 'required|string',
-            'kota' => 'required|string',
-            'provinsi' => 'required|string',
-            'kode_pos' => 'nullable|string',
-            'latitude' => 'nullable|numeric',
-            'longitude' => 'nullable|numeric',
-            'status_ekonomi' => 'required|in:sangat_miskin,miskin,rentan_miskin,menengah,kaya', // TAMBAH menengah,kaya
-            'penghasilan_bulanan' => 'nullable|integer',
+            'rt' => 'nullable|string|max:3',
+            'rw' => 'nullable|string|max:3',
+            'kelurahan' => 'required|string|max:255',
+            'kecamatan' => 'required|string|max:255',
+            'kota' => 'required|string|max:255',
+            'provinsi' => 'required|string|max:255',
+            'kode_pos' => 'nullable|string|max:5',
+            'status_ekonomi' => 'required|in:sangat_miskin,miskin,rentan_miskin',
+            'penghasilan_bulanan' => 'nullable|numeric|min:0',
             'keterangan' => 'nullable|string',
+            'latitude' => 'nullable|numeric|between:-90,90',
+            'longitude' => 'nullable|numeric|between:-180,180',
+        ], [
+            'no_kk.required' => 'Nomor KK wajib diisi.',
+            'no_kk.unique' => 'Nomor KK sudah terdaftar.',
+            'no_kk.max' => 'Nomor KK maksimal 16 karakter.',
+            'nama_kepala_keluarga.required' => 'Nama kepala keluarga wajib diisi.',
+            'alamat.required' => 'Alamat wajib diisi.',
+            'kelurahan.required' => 'Kelurahan wajib diisi.',
+            'kecamatan.required' => 'Kecamatan wajib diisi.',
+            'kota.required' => 'Kota/Kabupaten wajib diisi.',
+            'provinsi.required' => 'Provinsi wajib diisi.',
+            'status_ekonomi.required' => 'Status ekonomi wajib dipilih.',
+            'status_ekonomi.in' => 'Status ekonomi tidak valid.',
+            'penghasilan_bulanan.numeric' => 'Penghasilan bulanan harus berupa angka.',
+            'penghasilan_bulanan.min' => 'Penghasilan bulanan tidak boleh negatif.',
+            'latitude.between' => 'Latitude harus antara -90 dan 90.',
+            'longitude.between' => 'Longitude harus antara -180 dan 180.',
         ]);
 
-        // Buat objek Point jika ada koordinat
-        if (isset($validated['latitude']) && isset($validated['longitude'])) {
-            $validated['lokasi'] = new Point($validated['latitude'], $validated['longitude']);
+        if ($validator->fails()) {
+            return Redirect::back()
+                ->withErrors($validator)
+                ->withInput();
         }
 
-        // Hapus latitude dan longitude dari array validated
-        unset($validated['latitude'], $validated['longitude']);
+        try {
+            $keluarga->update($validator->validated());
 
-        $keluarga->update($validated);
-
-        // PERBAIKI: Kembalikan response yang sesuai untuk AJAX/Inertia
-        if ($request->wantsJson() || $request->header('X-Inertia')) {
-            return redirect()->back()->with([
-                'success' => true,
-                'message' => 'Data keluarga berhasil diperbarui.'
-            ]);
+            return Redirect::route('keluarga.index')
+                ->with('success', 'Data keluarga berhasil diperbarui.');
+        } catch (\Exception $e) {
+            return Redirect::back()
+                ->withErrors(['error' => 'Terjadi kesalahan saat memperbarui data: ' . $e->getMessage()])
+                ->withInput();
         }
-
-        return redirect()->route('keluarga.index')
-            ->with('message', 'Data keluarga berhasil diperbarui.');
     }
 
+    /**
+     * Remove the specified resource from storage.
+     */
     public function destroy(Keluarga $keluarga)
     {
-        $keluarga->delete();
+        try {
+            // Delete related data first if needed
+            $keluarga->anggotaKeluarga()->delete();
+            $keluarga->wilayah()->detach();
+            $keluarga->jarak()->delete();
 
-        return redirect()->route('keluarga.index')
-            ->with('message', 'Data keluarga berhasil dihapus.');
+            // Delete the main record
+            $keluarga->delete();
+
+            return Redirect::route('keluarga.index')
+                ->with('success', 'Data keluarga berhasil dihapus.');
+        } catch (\Exception $e) {
+            return Redirect::back()
+                ->withErrors(['error' => 'Terjadi kesalahan saat menghapus data: ' . $e->getMessage()]);
+        }
     }
 
-    // TAMBAHAN: Method untuk update koordinat saja (untuk AJAX call)
-    public function updateCoordinates(Request $request, Keluarga $keluarga)
+    /**
+     * Export data to various formats
+     */
+    public function export(Request $request)
     {
-        $validated = $request->validate([
-            'latitude' => 'required|numeric',
-            'longitude' => 'required|numeric',
-        ]);
+        $format = $request->get('format', 'excel');
 
-        // Buat objek Point
-        $keluarga->update([
-            'lokasi' => new Point($validated['latitude'], $validated['longitude'])
-        ]);
+        $query = Keluarga::query();
+
+        // Apply same filters as index
+        if ($request->has('search') && !empty($request->search)) {
+            $search = $request->search;
+            $query->where(function ($q) use ($search) {
+                $q->where('nama_kepala_keluarga', 'like', '%' . $search . '%')
+                  ->orWhere('no_kk', 'like', '%' . $search . '%')
+                  ->orWhere('alamat', 'like', '%' . $search . '%');
+            });
+        }
+
+        if ($request->has('status') && $request->status !== 'all' && !empty($request->status)) {
+            $query->where('status_ekonomi', $request->status);
+        }
+
+        $keluarga = $query->orderBy('created_at', 'desc')->get();
+
+        // Export logic here (Excel, PDF, CSV)
+        // This would typically use packages like Laravel Excel or DomPDF
 
         return response()->json([
-            'success' => true,
-            'message' => 'Koordinat berhasil diperbarui.',
-            'data' => [
-                'latitude' => $validated['latitude'],
-                'longitude' => $validated['longitude']
-            ]
+            'message' => 'Export functionality will be implemented',
+            'format' => $format,
+            'count' => $keluarga->count()
         ]);
     }
 
-    public function storeFromMap(Request $request)
+    /**
+     * Get statistics for dashboard
+     */
+    public function getStatistics()
     {
+        $stats = [
+            'total' => Keluarga::count(),
+            'sangat_miskin' => Keluarga::where('status_ekonomi', 'sangat_miskin')->count(),
+            'miskin' => Keluarga::where('status_ekonomi', 'miskin')->count(),
+            'rentan_miskin' => Keluarga::where('status_ekonomi', 'rentan_miskin')->count(),
+            'with_coordinates' => Keluarga::whereNotNull('latitude')->whereNotNull('longitude')->count(),
+            'without_coordinates' => Keluarga::whereNull('latitude')->orWhereNull('longitude')->count(),
+        ];
+
+        return response()->json($stats);
+    }
+
+    /**
+     * Bulk operations
+     */
+    public function bulkAction(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'action' => 'required|in:delete,update_status',
+            'ids' => 'required|array|min:1',
+            'ids.*' => 'exists:keluarga,id',
+            'status_ekonomi' => 'required_if:action,update_status|in:sangat_miskin,miskin,rentan_miskin'
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json(['errors' => $validator->errors()], 422);
+        }
+
         try {
-            $validated = $request->validate([
-                'no_kk' => 'required|string|max:16|unique:keluarga',
-                'nama_kepala_keluarga' => 'required|string|max:255',
-                'alamat' => 'required|string',
-                'status_ekonomi' => 'required|in:sangat_miskin,miskin,rentan_miskin',
-                'latitude' => 'required|numeric',
-                'longitude' => 'required|numeric',
-                // Field opsional untuk map
-                'rt' => 'nullable|string',
-                'rw' => 'nullable|string',
-                'kelurahan' => 'nullable|string',
-                'kecamatan' => 'nullable|string',
-                'kota' => 'nullable|string',
-                'provinsi' => 'nullable|string',
-                'kode_pos' => 'nullable|string',
-                'penghasilan_bulanan' => 'nullable|integer',
-                'keterangan' => 'nullable|string',
-            ]);
+            $keluargaQuery = Keluarga::whereIn('id', $request->ids);
 
-            // Buat objek Point untuk lokasi
-            $validated['lokasi'] = new Point($validated['latitude'], $validated['longitude']);
+            switch ($request->action) {
+                case 'delete':
+                    $count = $keluargaQuery->count();
+                    $keluargaQuery->delete();
+                    return response()->json([
+                        'message' => "Berhasil menghapus {$count} data keluarga."
+                    ]);
 
-            // Hapus latitude dan longitude dari array validated
-            unset($validated['latitude'], $validated['longitude']);
+                case 'update_status':
+                    $count = $keluargaQuery->update(['status_ekonomi' => $request->status_ekonomi]);
+                    return response()->json([
+                        'message' => "Berhasil memperbarui status {$count} data keluarga."
+                    ]);
 
-            $keluarga = Keluarga::create($validated);
-
-            // Transform data untuk response
-            if ($keluarga->lokasi) {
-                $keluarga->latitude = $keluarga->lokasi->latitude;
-                $keluarga->longitude = $keluarga->lokasi->longitude;
+                default:
+                    return response()->json(['error' => 'Aksi tidak valid.'], 400);
             }
-
-            return response()->json($keluarga, 201);
-        } catch (\Illuminate\Validation\ValidationException $e) {
-            return response()->json([
-                'message' => 'Validation failed',
-                'errors' => $e->errors()
-            ], 422);
         } catch (\Exception $e) {
-            \Log::error('Error saving keluarga from map: ' . $e->getMessage());
-
             return response()->json([
-                'message' => 'Gagal menyimpan data. Silakan coba lagi.',
-                'error' => $e->getMessage()
+                'error' => 'Terjadi kesalahan: ' . $e->getMessage()
             ], 500);
         }
     }

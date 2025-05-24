@@ -1,7 +1,8 @@
 // resources/js/Pages/Keluarga/Index.tsx
 import React, { useState } from 'react';
-import { Head, Link } from '@inertiajs/react';
+import { Head, Link, router } from '@inertiajs/react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
+import Pagination from '@/Components/Pagination';
 import { PageProps } from '@/types';
 
 interface Keluarga {
@@ -25,13 +26,34 @@ interface Keluarga {
   updated_at?: string;
 }
 
-interface IndexProps extends PageProps {
-  keluarga: Keluarga[];
+interface PaginatedKeluarga {
+  data: Keluarga[];
+  links: Array<{
+    url: string | null;
+    label: string;
+    active: boolean;
+  }>;
+  meta: {
+    current_page: number;
+    from: number;
+    last_page: number;
+    per_page: number;
+    to: number;
+    total: number;
+  };
 }
 
-export default function Index({ auth, keluarga }: IndexProps) {
-  const [searchTerm, setSearchTerm] = useState('');
-  const [statusFilter, setStatusFilter] = useState('all');
+interface IndexProps extends PageProps {
+  keluarga: PaginatedKeluarga;
+  filters: {
+    search?: string;
+    status?: string;
+  };
+}
+
+export default function Index({ auth, keluarga, filters }: IndexProps) {
+  const [searchTerm, setSearchTerm] = useState(filters.search || '');
+  const [statusFilter, setStatusFilter] = useState(filters.status || 'all');
 
   const breadcrumbs = [
     { label: 'Dashboard', href: route('dashboard') },
@@ -73,21 +95,35 @@ export default function Index({ auth, keluarga }: IndexProps) {
     }
   };
 
-  // Filter data berdasarkan search dan status
-  const filteredKeluarga = keluarga.filter(item => {
-    const matchesSearch = item.nama_kepala_keluarga.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         item.no_kk.includes(searchTerm) ||
-                         item.alamat.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesStatus = statusFilter === 'all' || item.status_ekonomi === statusFilter;
-    return matchesSearch && matchesStatus;
-  });
+  // Handle search and filter
+  const handleSearch = () => {
+    router.get(route('keluarga.index'), {
+      search: searchTerm,
+      status: statusFilter
+    }, {
+      preserveState: true,
+      replace: true
+    });
+  };
+
+  const handleFilterChange = (newStatus: string) => {
+    setStatusFilter(newStatus);
+    router.get(route('keluarga.index'), {
+      search: searchTerm,
+      status: newStatus
+    }, {
+      preserveState: true,
+      replace: true
+    });
+  };
 
   const getStatusStats = () => {
+    // Note: Untuk stats yang akurat, sebaiknya dikirim dari backend
     const stats = {
-      total: keluarga.length,
-      sangat_miskin: keluarga.filter(k => k.status_ekonomi === 'sangat_miskin').length,
-      miskin: keluarga.filter(k => k.status_ekonomi === 'miskin').length,
-      rentan_miskin: keluarga.filter(k => k.status_ekonomi === 'rentan_miskin').length,
+      total: keluarga.meta.total,
+      sangat_miskin: keluarga.data.filter(k => k.status_ekonomi === 'sangat_miskin').length,
+      miskin: keluarga.data.filter(k => k.status_ekonomi === 'miskin').length,
+      rentan_miskin: keluarga.data.filter(k => k.status_ekonomi === 'rentan_miskin').length,
     };
     return stats;
   };
@@ -114,7 +150,7 @@ export default function Index({ auth, keluarga }: IndexProps) {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-gray-600">Total Keluarga</p>
-                <p className="text-3xl font-semibold text-gray-900">{stats.total}</p>
+                <p className="text-3xl font-light text-gray-900">{keluarga.meta.total}</p>
               </div>
               <div className="w-12 h-12 bg-gradient-to-r from-cyan-100 to-teal-100 rounded-xl flex items-center justify-center">
                 <svg className="w-6 h-6 text-cyan-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -128,7 +164,7 @@ export default function Index({ auth, keluarga }: IndexProps) {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-red-600">Sangat Miskin</p>
-                <p className="text-3xl font-semibold text-red-700">{stats.sangat_miskin}</p>
+                <p className="text-3xl font-light text-red-700">{stats.sangat_miskin}</p>
               </div>
               <div className="w-12 h-12 bg-red-50 rounded-xl flex items-center justify-center">
                 <svg className="w-6 h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -142,7 +178,7 @@ export default function Index({ auth, keluarga }: IndexProps) {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-amber-600">Miskin</p>
-                <p className="text-3xl font-semibold text-amber-700">{stats.miskin}</p>
+                <p className="text-3xl font-light text-amber-700">{stats.miskin}</p>
               </div>
               <div className="w-12 h-12 bg-amber-50 rounded-xl flex items-center justify-center">
                 <svg className="w-6 h-6 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -156,7 +192,7 @@ export default function Index({ auth, keluarga }: IndexProps) {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-cyan-600">Rentan Miskin</p>
-                <p className="text-3xl font-semibold text-cyan-700">{stats.rentan_miskin}</p>
+                <p className="text-3xl font-light text-cyan-700">{stats.rentan_miskin}</p>
               </div>
               <div className="w-12 h-12 bg-cyan-50 rounded-xl flex items-center justify-center">
                 <svg className="w-6 h-6 text-cyan-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -175,7 +211,7 @@ export default function Index({ auth, keluarga }: IndexProps) {
               <div>
                 <h3 className="text-xl font-medium text-gray-900 mb-2">Daftar Keluarga</h3>
                 <p className="text-sm text-gray-600">
-                  Menampilkan {filteredKeluarga.length} dari {keluarga.length} keluarga terdaftar
+                  Menampilkan {keluarga.meta.from} - {keluarga.meta.to} dari {keluarga.meta.total} keluarga terdaftar
                 </p>
               </div>
 
@@ -192,6 +228,7 @@ export default function Index({ auth, keluarga }: IndexProps) {
                     placeholder="Cari keluarga..."
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
+                    onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
                     className="pl-10 pr-4 py-2.5 border border-gray-200 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500 transition-colors duration-200"
                   />
                 </div>
@@ -199,7 +236,7 @@ export default function Index({ auth, keluarga }: IndexProps) {
                 {/* Filter */}
                 <select
                   value={statusFilter}
-                  onChange={(e) => setStatusFilter(e.target.value)}
+                  onChange={(e) => handleFilterChange(e.target.value)}
                   className="px-4 py-2.5 border border-gray-200 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500 transition-colors duration-200"
                 >
                   <option value="all">Semua Status</option>
@@ -208,10 +245,18 @@ export default function Index({ auth, keluarga }: IndexProps) {
                   <option value="rentan_miskin">Rentan Miskin</option>
                 </select>
 
+                {/* Search Button */}
+                <button
+                  onClick={handleSearch}
+                  className="px-4 py-2.5 bg-gradient-to-r from-cyan-500 to-teal-500 text-white font-medium rounded-lg hover:from-cyan-600 hover:to-teal-600 focus:outline-none focus:ring-4 focus:ring-cyan-200 transition-all duration-200"
+                >
+                  Cari
+                </button>
+
                 {/* Add Button */}
                 <Link
                   href={route('keluarga.create')}
-                  className="inline-flex items-center px-6 py-2.5 bg-gradient-to-r from-cyan-500 to-teal-500 text-white font-medium rounded-lg hover:from-cyan-600 hover:to-teal-600 focus:outline-none focus:ring-4 focus:ring-cyan-200 transition-all duration-200 transform hover:-translate-y-0.5 shadow-lg hover:shadow-xl"
+                  className="inline-flex items-center px-6 py-2.5 bg-gradient-to-r from-emerald-500 to-green-500 text-white font-medium rounded-lg hover:from-emerald-600 hover:to-green-600 focus:outline-none focus:ring-4 focus:ring-emerald-200 transition-all duration-200 transform hover:-translate-y-0.5 shadow-lg hover:shadow-xl"
                 >
                   <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 4v16m8-8H4" />
@@ -248,7 +293,7 @@ export default function Index({ auth, keluarga }: IndexProps) {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
-                {filteredKeluarga.map((item, index) => (
+                {keluarga.data.map((item, index) => (
                   <tr
                     key={item.id}
                     className="hover:bg-gray-50/50 transition-colors duration-200 animate-fadeIn"
@@ -327,7 +372,7 @@ export default function Index({ auth, keluarga }: IndexProps) {
                   </tr>
                 ))}
 
-                {filteredKeluarga.length === 0 && (
+                {keluarga.data.length === 0 && (
                   <tr>
                     <td colSpan={6} className="px-6 py-16 text-center">
                       <div className="flex flex-col items-center animate-fadeIn">
@@ -352,6 +397,24 @@ export default function Index({ auth, keluarga }: IndexProps) {
               </tbody>
             </table>
           </div>
+
+          {/* Pagination */}
+          {keluarga.data.length > 0 && (
+            <div className="px-8 py-6 border-t border-gray-100/50 bg-gray-50/30">
+              <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+                <div className="text-sm text-gray-600">
+                  Menampilkan <span className="font-medium">{keluarga.meta.from}</span> sampai{' '}
+                  <span className="font-medium">{keluarga.meta.to}</span> dari{' '}
+                  <span className="font-medium">{keluarga.meta.total}</span> hasil
+                </div>
+
+                <Pagination
+                  links={keluarga.links}
+                  className="animate-fadeIn"
+                />
+              </div>
+            </div>
+          )}
         </div>
       </div>
 
