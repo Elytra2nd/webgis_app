@@ -1,5 +1,6 @@
+// resources/js/Pages/AnggotaKeluarga/Edit.tsx
 import React from 'react';
-import { Head, useForm, Link } from '@inertiajs/react';
+import { Head, useForm, Link, router } from '@inertiajs/react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { PageProps } from '@/types';
 
@@ -33,7 +34,8 @@ interface EditProps extends PageProps {
     anggotaKeluarga: AnggotaKeluarga;
 }
 
-interface FormData {
+// PERBAIKAN: Ubah interface menjadi type dengan index signature
+type AnggotaKeluargaFormData = {
     keluarga_id: string;
     nik: string;
     nama: string;
@@ -44,7 +46,7 @@ interface FormData {
     status_perkawinan: string;
     pendidikan_terakhir: string;
     pekerjaan: string;
-}
+} & Record<string, any>; // Index signature untuk kompatibilitas
 
 export default function Edit({ auth, keluarga = [], anggotaKeluarga }: EditProps) {
     // Debug: Log data yang diterima
@@ -53,7 +55,7 @@ export default function Edit({ auth, keluarga = [], anggotaKeluarga }: EditProps
     // Pastikan data anggotaKeluarga ada sebelum digunakan
     if (!anggotaKeluarga || !anggotaKeluarga.id) {
         return (
-            <AuthenticatedLayout 
+            <AuthenticatedLayout
                 user={auth.user}
                 header={
                     <div className="flex items-center space-x-3">
@@ -87,7 +89,8 @@ export default function Edit({ auth, keluarga = [], anggotaKeluarga }: EditProps
         );
     }
 
-    const { data, setData, put, processing, errors } = useForm<FormData>({
+    // PERBAIKAN: Gunakan type yang sudah diperbaiki
+    const { data, setData, put, processing, errors } = useForm<AnggotaKeluargaFormData>({
         keluarga_id: anggotaKeluarga.keluarga_id?.toString() || '',
         nik: anggotaKeluarga.nik || '',
         nama: anggotaKeluarga.nama || '',
@@ -100,9 +103,18 @@ export default function Edit({ auth, keluarga = [], anggotaKeluarga }: EditProps
         pekerjaan: anggotaKeluarga.pekerjaan || ''
     });
 
+    // PERBAIKAN: Gunakan router.post dengan _method untuk mengatasi masalah PUT
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
-        put(route('anggota-keluarga.update', anggotaKeluarga.id), {
+
+        // Gunakan router.post dengan _method untuk kompatibilitas yang lebih baik
+        const formData: Record<string, any> = {
+            ...data,
+            _method: 'PUT'
+        };
+
+        // Menggunakan router.post dengan method spoofing
+        router.post(route('anggota-keluarga.update', anggotaKeluarga.id), formData, {
             preserveScroll: true,
             onSuccess: () => {
                 console.log('Data berhasil diperbarui');
@@ -422,7 +434,7 @@ export default function Edit({ auth, keluarga = [], anggotaKeluarga }: EditProps
                                             <label className="block text-sm font-semibold text-slate-700">
                                                 <span className="flex items-center">
                                                     <svg className="w-5 h-5 mr-2 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 715.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 919.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
                                                     </svg>
                                                     Status dalam Keluarga <span className="text-red-500">*</span>
                                                 </span>
