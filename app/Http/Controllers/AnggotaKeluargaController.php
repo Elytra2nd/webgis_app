@@ -75,25 +75,9 @@ class AnggotaKeluargaController extends Controller
 
         AnggotaKeluarga::create($request->all());
 
-        return redirect()->route('anggota-keluarga.success', [
+        return redirect()->route('anggota-keluarga.index', [
             'keluarga_id' => $request->keluarga_id
         ])->with('message', 'Anggota keluarga berhasil ditambahkan!');
-    }
-
-    /**
-     * Show success page with option to add more family members
-     */
-    public function success(Request $request)
-    {
-        $keluargaId = $request->get('keluarga_id');
-        $keluarga = Keluarga::findOrFail($keluargaId);
-        $anggotaKeluarga = AnggotaKeluarga::where('keluarga_id', $keluargaId)->get();
-
-        return Inertia::render('AnggotaKeluarga/Success', [
-            'keluarga' => $keluarga,
-            'anggotaKeluarga' => $anggotaKeluarga,
-            'keluargaId' => $keluargaId
-        ]);
     }
 
     /**
