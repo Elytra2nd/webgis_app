@@ -5,10 +5,12 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use MatanYadaev\EloquentSpatial\Traits\HasSpatial;
+use MatanYadaev\EloquentSpatial\Objects\Point;
 
 class Keluarga extends Model
 {
-    use HasFactory;
+    use HasFactory, HasSpatial;
 
     protected $table = 'keluarga';
 
@@ -35,10 +37,11 @@ class Keluarga extends Model
         'penghasilan_bulanan' => 'decimal:2',
         'latitude' => 'decimal:8',
         'longitude' => 'decimal:8',
+        'lokasi' => Point::class, // Spatial cast
     ];
 
     /**
-     * PERBAIKAN: Override toArray untuk ensure UTF-8 encoding
+     * Override toArray untuk memastikan UTF-8 encoding pada string.
      */
     public function toArray()
     {
@@ -49,7 +52,6 @@ class Keluarga extends Model
             if (is_string($value)) {
                 // Ensure proper UTF-8 encoding
                 $array[$key] = mb_convert_encoding($value, 'UTF-8', 'UTF-8');
-
                 // Remove control characters
                 $array[$key] = preg_replace('/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/', '', $array[$key]);
             }
@@ -59,7 +61,7 @@ class Keluarga extends Model
     }
 
     /**
-     * PERBAIKAN: Override getAttribute untuk handle UTF-8
+     * Override getAttribute untuk handle UTF-8.
      */
     public function getAttribute($key)
     {
