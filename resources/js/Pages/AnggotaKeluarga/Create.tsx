@@ -143,7 +143,7 @@ export default function Create({ auth, keluarga, selectedKeluargaId }: CreatePro
 
                 <div className="min-h-screen aquatic-gradient wave-pattern py-12">
                     <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
-                        <div className="glass-effect rounded-3xl shadow-2xl overflow-hidden floating-animation">
+                        <div className="glass-effect rounded-3xl shadow-2xl overflow-hidden">
                             <div className="p-8">
                                 {/* Header Section */}
                                 <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-8 space-y-4 sm:space-y-0">

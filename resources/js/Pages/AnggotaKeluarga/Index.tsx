@@ -160,7 +160,7 @@ const Index: React.FC<IndexProps> = ({ auth, anggotaKeluarga }) => {
 
                 <div className="min-h-screen aquatic-gradient wave-pattern py-12">
                     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                        <div className="glass-effect rounded-3xl shadow-2xl overflow-hidden floating-animation">
+                        <div className="glass-effect rounded-3xl shadow-2xl overflow-hidden">
                             <div className="p-8">
                                 {/* Header Section */}
                                 <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-8 gap-4">
@@ -245,8 +245,8 @@ const Index: React.FC<IndexProps> = ({ auth, anggotaKeluarga }) => {
                                                             </td>
                                                             <td className="px-6 py-4">
                                                                 <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
-                                                                    anggota.jenis_kelamin === 'L' 
-                                                                        ? 'bg-blue-100 text-blue-800 border border-blue-200' 
+                                                                    anggota.jenis_kelamin === 'L'
+                                                                        ? 'bg-blue-100 text-blue-800 border border-blue-200'
                                                                         : 'bg-pink-100 text-pink-800 border border-pink-200'
                                                                 }`}>
                                                                     {anggota.jenis_kelamin === 'L' ? 'Laki-laki' : 'Perempuan'}
