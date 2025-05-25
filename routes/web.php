@@ -47,8 +47,16 @@ Route::middleware('auth')->group(function () {
     Route::post('keluarga/{keluarga}/coordinates', [KeluargaController::class, 'updateCoordinates'])
         ->name('keluarga.update-coordinates');
 
-    // Anggota Keluarga routes
-    Route::resource('anggota-keluarga', AnggotaKeluargaController::class);
+    // Anggota Keluarga routes (Resource routes untuk CRUD lengkap)
+    Route::resource('anggota-keluarga', AnggotaKeluargaController::class)->names([
+        'index' => 'anggota-keluarga.index',
+        'create' => 'anggota-keluarga.create',
+        'store' => 'anggota-keluarga.store',
+        'show' => 'anggota-keluarga.show',
+        'edit' => 'anggota-keluarga.edit',
+        'update' => 'anggota-keluarga.update',
+        'destroy' => 'anggota-keluarga.destroy'
+    ]);
 
     // Map routes (authenticated)
     Route::get('/map/admin', function () {
