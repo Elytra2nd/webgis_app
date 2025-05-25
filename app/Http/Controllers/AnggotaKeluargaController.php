@@ -22,8 +22,18 @@ class AnggotaKeluargaController extends Controller
                 'nik' => $item->nik,
                 'nama' => $item->nama,
                 'jenis_kelamin' => $item->jenis_kelamin,
-                'keluarga' => $item->keluarga->no_kk,
-                'status_dalam_keluarga' => $item->status_dalam_keluarga
+                'tempat_lahir' => $item->tempat_lahir,
+                'tanggal_lahir' => $item->tanggal_lahir,
+                'status_dalam_keluarga' => $item->status_dalam_keluarga,
+                'status_perkawinan' => $item->status_perkawinan,
+                'pendidikan_terakhir' => $item->pendidikan_terakhir,
+                'pekerjaan' => $item->pekerjaan,
+                'keluarga_id' => $item->keluarga_id,
+                'keluarga' => [
+                    'id' => $item->keluarga->id,
+                    'no_kk' => $item->keluarga->no_kk,
+                    'nama_kepala_keluarga' => $item->keluarga->nama_kepala_keluarga
+                ]
             ]);
 
         return Inertia::render('AnggotaKeluarga/Index', [
@@ -91,8 +101,11 @@ class AnggotaKeluargaController extends Controller
      */
     public function show(AnggotaKeluarga $anggotaKeluarga)
     {
+        // Load relasi keluarga
+        $anggotaKeluarga->load('keluarga');
+
         return Inertia::render('AnggotaKeluarga/Show', [
-            'anggota' => $anggotaKeluarga->load('keluarga')
+            'anggotaKeluarga' => $anggotaKeluarga
         ]);
     }
 
@@ -101,10 +114,14 @@ class AnggotaKeluargaController extends Controller
      */
     public function edit(AnggotaKeluarga $anggotaKeluarga)
     {
+        // Load relasi keluarga untuk anggota yang akan diedit
+        $anggotaKeluarga->load('keluarga');
+        
+        // Ambil semua data keluarga untuk dropdown
         $keluarga = Keluarga::select('id', 'no_kk', 'nama_kepala_keluarga')->get();
 
         return Inertia::render('AnggotaKeluarga/Edit', [
-            'anggota' => $anggotaKeluarga,
+            'anggotaKeluarga' => $anggotaKeluarga, // Perbaikan: ubah dari 'anggota' ke 'anggotaKeluarga'
             'keluarga' => $keluarga
         ]);
     }
