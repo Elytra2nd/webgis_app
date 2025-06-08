@@ -6,6 +6,7 @@ import Dropdown from '@/Components/Dropdown';
 import ResponsiveNavLink from '@/Components/ResponsiveNavLink';
 import Breadcrumb from '@/Components/Breadcrumb';
 import { HiMenuAlt2 } from 'react-icons/hi';
+import { motion } from 'framer-motion';
 
 interface AuthenticatedProps {
     user: {
@@ -17,7 +18,7 @@ interface AuthenticatedProps {
     breadcrumbs?: Array<{
         label: string;
         href?: string;
-        active?: boolean;
+        current?: boolean;
     }>;
 }
 
@@ -26,9 +27,9 @@ export default function Authenticated({ user, header, children, breadcrumbs }: A
     const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
 
     return (
-        <div className="min-h-screen bg-gray-50/50 flex flex-col">
+        <div className="min-h-screen bg-gradient-to-br from-slate-50 via-cyan-50 to-teal-50 flex flex-col">
             {/* Top Navigation */}
-            <nav className="bg-white border-b border-gray-100/50 shadow-sm flex-shrink-0">
+            <nav className="bg-white/80 backdrop-blur-md border-b border-gray-100/50 shadow-sm flex-shrink-0">
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                     <div className="flex justify-between h-16">
                         <div className="flex">
@@ -46,7 +47,7 @@ export default function Authenticated({ user, header, children, breadcrumbs }: A
                                         <span className="inline-flex rounded-md">
                                             <button
                                                 type="button"
-                                                className="inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-gray-500 bg-white hover:text-gray-700 focus:outline-none transition ease-in-out duration-150"
+                                                className="inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-gray-500 bg-white/80 hover:text-gray-700 hover:bg-white focus:outline-none transition ease-in-out duration-150"
                                             >
                                                 {user.name}
                                                 <svg
@@ -106,6 +107,18 @@ export default function Authenticated({ user, header, children, breadcrumbs }: A
                         <ResponsiveNavLink href={route('dashboard')} active={route().current('dashboard')}>
                             Dashboard
                         </ResponsiveNavLink>
+                        <ResponsiveNavLink href={route('keluarga.index')} active={route().current('keluarga.*')}>
+                            Data Keluarga
+                        </ResponsiveNavLink>
+                        <ResponsiveNavLink href={route('anggota-keluarga.index')} active={route().current('anggota-keluarga.*')}>
+                            Anggota Keluarga
+                        </ResponsiveNavLink>
+                        <ResponsiveNavLink href={route('map')} active={route().current('map')}>
+                            Peta Penduduk
+                        </ResponsiveNavLink>
+                        <ResponsiveNavLink href={route('reports.index')} active={route().current('reports.*')}>
+                            Laporan
+                        </ResponsiveNavLink>
                     </div>
 
                     <div className="pt-4 pb-1 border-t border-gray-200">
@@ -127,24 +140,31 @@ export default function Authenticated({ user, header, children, breadcrumbs }: A
             {/* Main Layout Container */}
             <div className="flex flex-1 min-h-0">
                 {/* Sidebar - Fixed height dengan scrollable content */}
-                <aside className={`bg-white border-r border-gray-100/50 shadow-sm ${sidebarCollapsed ? 'w-16' : 'w-64'} transition-all duration-300 flex flex-col h-screen sticky top-0`}>
+                <aside className={`bg-white/90 backdrop-blur-sm border-r border-gray-100/50 shadow-sm ${sidebarCollapsed ? 'w-16' : 'w-64'} transition-all duration-300 flex flex-col h-screen sticky top-0`}>
                     {/* Sidebar Header - Fixed */}
                     <div className="p-4 flex justify-between items-center border-b border-gray-100/50 flex-shrink-0">
                         {!sidebarCollapsed && (
-                            <div className="flex items-center space-x-2">
-                                <div className="w-2 h-8 bg-gradient-to-b from-cyan-400 to-teal-500 rounded-full"></div>
+                            <motion.div
+                                className="flex items-center space-x-2"
+                                initial={{ opacity: 0, x: -10 }}
+                                animate={{ opacity: 1, x: 0 }}
+                                transition={{ duration: 0.3 }}
+                            >
+                                <div className="w-2 h-8 bg-gradient-to-b from-cyan-400 to-teal-500 rounded-full shadow-lg"></div>
                                 <h2 className="text-lg font-light text-gray-900">WebGIS</h2>
-                            </div>
+                            </motion.div>
                         )}
-                        <button
+                        <motion.button
                             onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
                             className="p-2 rounded-lg hover:bg-cyan-50 text-gray-600 hover:text-cyan-600 transition-all duration-200"
+                            whileHover={{ scale: 1.05 }}
+                            whileTap={{ scale: 0.95 }}
                         >
                             <HiMenuAlt2 className="h-5 w-5" />
-                        </button>
+                        </motion.button>
                     </div>
 
-                    {/* Navigation Menu - Scrollable - HANYA MENU UTAMA */}
+                    {/* Navigation Menu - Scrollable */}
                     <div className="flex-1 overflow-y-auto min-h-0">
                         <nav className="px-3 py-4 space-y-2">
                             <SidebarLink
@@ -171,7 +191,7 @@ export default function Authenticated({ user, header, children, breadcrumbs }: A
                                 icon="users"
                                 collapsed={sidebarCollapsed}
                             >
-                                Tambah Anggota Keluarga
+                                Anggota Keluarga
                             </SidebarLink>
 
                             <SidebarLink
@@ -200,51 +220,45 @@ export default function Authenticated({ user, header, children, breadcrumbs }: A
                             >
                                 Pengaturan
                             </SidebarLink>
-
-                            {/* HAPUS BAGIAN INI - Tambahan menu untuk testing scroll */}
-                            {/*
-                            <SidebarLink href="#" active={false} icon="dashboard" collapsed={sidebarCollapsed}>
-                                Menu 1
-                            </SidebarLink>
-                            <SidebarLink href="#" active={false} icon="users" collapsed={sidebarCollapsed}>
-                                Menu 2
-                            </SidebarLink>
-                            <SidebarLink href="#" active={false} icon="map" collapsed={sidebarCollapsed}>
-                                Menu 3
-                            </SidebarLink>
-                            <SidebarLink href="#" active={false} icon="reports" collapsed={sidebarCollapsed}>
-                                Menu 4
-                            </SidebarLink>
-                            <SidebarLink href="#" active={false} icon="settings" collapsed={sidebarCollapsed}>
-                                Menu 5
-                            </SidebarLink>
-                            */}
                         </nav>
                     </div>
 
                     {/* Footer Info - Fixed */}
                     {!sidebarCollapsed && (
-                        <div className="p-4 border-t border-gray-100/50 flex-shrink-0">
+                        <motion.div
+                            className="p-4 border-t border-gray-100/50 flex-shrink-0"
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            transition={{ delay: 0.2 }}
+                        >
                             <div className="text-xs text-gray-500 text-center">
-                                <p>WebGIS v1.0</p>
+                                <p className="font-medium">WebGIS v1.0</p>
                                 <p>© 2025</p>
                             </div>
-                        </div>
+                        </motion.div>
                     )}
                 </aside>
 
                 {/* Main Content Area */}
                 <div className="flex-1 flex flex-col min-w-0">
-                    {/* Header */}
-                    {header && (
-                        <header className="bg-white shadow-sm border-b border-gray-100/50 flex-shrink-0">
-                            <div className="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8">{header}</div>
-                        </header>
+                    {/* Breadcrumb Section - Separated from header */}
+                    {breadcrumbs && breadcrumbs.length > 0 && (
+                        <div className="bg-white/60 backdrop-blur-sm border-b border-gray-100/50 flex-shrink-0">
+                            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+                                <Breadcrumb items={breadcrumbs} />
+                            </div>
+                        </div>
                     )}
 
-                    {/* Main Content with Breadcrumb */}
+                    {/* Header Section - DIHILANGKAN */}
+                    {/* {header && (
+                        <header className="bg-white/80 backdrop-blur-sm shadow-sm border-b border-gray-100/50 flex-shrink-0">
+                            <div className="max-w-7xl mx-auto py-8 px-4 sm:px-6 lg:px-8">{header}</div>
+                        </header>
+                    )} */}
+
+                    {/* Main Content */}
                     <main className="flex-1 max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8 w-full overflow-y-auto">
-                        {breadcrumbs && <Breadcrumb items={breadcrumbs} />}
                         {children}
                     </main>
                 </div>
@@ -253,7 +267,7 @@ export default function Authenticated({ user, header, children, breadcrumbs }: A
     );
 }
 
-// Komponen SidebarLink yang diperbaiki
+// Komponen SidebarLink yang diperbaiki dengan animasi
 interface SidebarLinkProps {
     href: string;
     active: boolean;
@@ -295,18 +309,23 @@ function SidebarLink({ href, active, children, icon, collapsed }: SidebarLinkPro
     };
 
     return (
-        <Link
-            href={href}
-            className={`flex items-center px-3 py-3 rounded-lg text-sm font-medium transition-all duration-200 ${
-                active
-                    ? 'bg-gradient-to-r from-cyan-50 to-teal-50 text-cyan-700 border-r-2 border-cyan-500'
-                    : 'text-gray-600 hover:bg-gray-50 hover:text-cyan-600'
-            } ${collapsed ? 'justify-center' : ''}`}
+        <motion.div
+            whileHover={{ x: 2 }}
+            transition={{ type: "spring", stiffness: 300 }}
         >
-            <span className={`${collapsed ? '' : 'mr-3'} ${active ? 'text-cyan-600' : ''}`}>
-                {icon && iconMap[icon]}
-            </span>
-            {!collapsed && <span>{children}</span>}
-        </Link>
+            <Link
+                href={href}
+                className={`flex items-center px-3 py-3 rounded-lg text-sm font-medium transition-all duration-200 ${
+                    active
+                        ? 'bg-gradient-to-r from-cyan-50 to-teal-50 text-cyan-700 border-r-2 border-cyan-500 shadow-sm'
+                        : 'text-gray-600 hover:bg-gradient-to-r hover:from-cyan-50/50 hover:to-teal-50/50 hover:text-cyan-600'
+                } ${collapsed ? 'justify-center' : ''}`}
+            >
+                <span className={`${collapsed ? '' : 'mr-3'} ${active ? 'text-cyan-600' : ''}`}>
+                    {icon && iconMap[icon]}
+                </span>
+                {!collapsed && <span>{children}</span>}
+            </Link>
+        </motion.div>
     );
 }

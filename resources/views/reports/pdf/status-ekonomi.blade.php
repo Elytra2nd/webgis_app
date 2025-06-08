@@ -1,49 +1,87 @@
-{{-- resources/views/reports/pdf/status-ekonomi.blade.php --}}
 <!DOCTYPE html>
 <html>
 
 <head>
     <meta charset="utf-8">
-    <title>{{ $title }}</title>
+    <title>{{ $title ?? 'Laporan Status Ekonomi' }}</title>
     <style>
         body {
-            font-family: Arial, sans-serif;
+            font-family: 'DejaVu Sans', Arial, sans-serif;
             font-size: 12px;
             margin: 0;
             padding: 20px;
             line-height: 1.4;
+            color: #334155;
+            background: linear-gradient(135deg, #f0fdfa 0%, #ecfeff 100%);
         }
 
         .header {
             text-align: center;
             margin-bottom: 30px;
-            border-bottom: 2px solid #0891b2;
-            padding-bottom: 15px;
+            border-bottom: 3px solid #0891b2;
+            padding-bottom: 20px;
+            background: linear-gradient(135deg, #0891b2 0%, #0d9488 100%);
+            color: white;
+            margin: -20px -20px 30px -20px;
+            padding: 25px 20px 20px 20px;
+            border-radius: 0 0 15px 15px;
         }
 
         .header h1 {
-            color: #0891b2;
-            margin: 0;
-            font-size: 18px;
-            font-weight: bold;
+            margin: 0 0 8px 0;
+            font-size: 22px;
+            font-weight: 300;
+            letter-spacing: 0.5px;
         }
 
         .header p {
-            margin: 5px 0;
-            color: #666;
+            margin: 4px 0;
+            opacity: 0.9;
+            font-size: 13px;
+        }
+
+        .filter-info {
+            background: linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%);
+            border: 1px solid #cbd5e1;
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 25px;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+        }
+
+        .filter-info h3 {
+            color: #0f766e;
+            font-size: 14px;
+            margin: 0 0 10px 0;
+            font-weight: 600;
+        }
+
+        .filter-item {
+            display: inline-block;
+            background: white;
+            border: 1px solid #e2e8f0;
+            border-radius: 6px;
+            padding: 6px 12px;
+            margin: 3px;
+            font-size: 11px;
+            color: #475569;
         }
 
         .statistics {
-            margin-bottom: 20px;
-            background: #f8fafc;
-            padding: 15px;
-            border-radius: 5px;
+            margin-bottom: 25px;
+            background: linear-gradient(135deg, #f0fdfa 0%, #ccfbf1 100%);
+            padding: 20px;
+            border-radius: 10px;
+            border: 1px solid #5eead4;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
         }
 
         .statistics h3 {
             margin-top: 0;
-            color: #0891b2;
-            font-size: 14px;
+            color: #0d9488;
+            font-size: 16px;
+            font-weight: 600;
+            margin-bottom: 15px;
         }
 
         .stat-grid {
@@ -55,147 +93,279 @@
             display: table-cell;
             width: 33.33%;
             text-align: center;
-            padding: 10px;
+            padding: 15px;
+            background: white;
+            margin: 0 5px;
+            border-radius: 8px;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+        }
+
+        .stat-item:first-child {
+            margin-left: 0;
+        }
+
+        .stat-item:last-child {
+            margin-right: 0;
         }
 
         .stat-number {
-            font-size: 20px;
+            font-size: 24px;
             font-weight: bold;
             color: #0891b2;
+            margin-bottom: 5px;
         }
 
         .stat-label {
-            color: #666;
+            color: #64748b;
             font-size: 11px;
+            font-weight: 500;
         }
 
         table {
             width: 100%;
             border-collapse: collapse;
             margin-top: 20px;
+            background: white;
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
         }
 
         th,
         td {
-            border: 1px solid #ddd;
-            padding: 8px;
+            border: 1px solid #e2e8f0;
+            padding: 10px 8px;
             text-align: left;
             font-size: 10px;
         }
 
         th {
-            background-color: #0891b2;
+            background: linear-gradient(135deg, #0891b2 0%, #0d9488 100%);
             color: white;
-            font-weight: bold;
+            font-weight: 600;
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
         }
 
         tr:nth-child(even) {
-            background-color: #f9f9f9;
+            background-color: #f8fafc;
+        }
+
+        tr:hover {
+            background-color: #f1f5f9;
         }
 
         .status-badge {
-            padding: 3px 8px;
+            padding: 4px 10px;
             border-radius: 12px;
             font-size: 9px;
             font-weight: bold;
+            text-transform: uppercase;
+            letter-spacing: 0.3px;
+            display: inline-block;
         }
 
         .status-sangat-miskin {
-            background-color: #fee2e2;
+            background: linear-gradient(135deg, #fef2f2 0%, #fecaca 100%);
             color: #dc2626;
+            border: 1px solid #f87171;
         }
 
         .status-miskin {
-            background-color: #fef3c7;
+            background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
             color: #d97706;
+            border: 1px solid #fbbf24;
         }
 
         .status-rentan-miskin {
-            background-color: #cffafe;
+            background: linear-gradient(135deg, #cffafe 0%, #a5f3fc 100%);
             color: #0891b2;
+            border: 1px solid #67e8f9;
+        }
+
+        .currency {
+            font-family: 'Courier New', monospace;
+            font-size: 9px;
+            color: #059669;
+            background: #f0fdf4;
+            padding: 2px 4px;
+            border-radius: 4px;
         }
 
         .footer {
             margin-top: 30px;
             text-align: center;
-            color: #666;
+            color: #64748b;
             font-size: 10px;
+            background: #f8fafc;
+            padding: 15px;
+            border-radius: 8px;
+            border: 1px solid #e2e8f0;
+        }
+
+        .footer p {
+            margin: 5px 0;
+        }
+
+        .footer .total {
+            font-weight: bold;
+            color: #0891b2;
+            font-size: 11px;
+        }
+
+        .small-text {
+            font-size: 9px;
+            color: #64748b;
+            font-style: italic;
+        }
+
+        .no-data {
+            text-align: center;
+            padding: 40px;
+            background: #f8fafc;
+            border-radius: 8px;
+            border: 1px solid #e2e8f0;
+            color: #64748b;
+            font-size: 14px;
         }
     </style>
 </head>
 
 <body>
     <div class="header">
-        <h1>{{ $title }}</h1>
-        <p>Filter: {{ $filter }}</p>
-        <p>Digenerate pada: {{ $generated_at }}</p>
+        <h1>{{ $title ?? 'Laporan Status Ekonomi Keluarga' }}</h1>
+        <p>Sistem Informasi Geografis Data Keluarga</p>
+        <p>Digenerate pada: {{ $generated_at ?? now()->format('d/m/Y H:i:s') }}</p>
     </div>
 
-    <div class="statistics">
-        <h3>Statistik Status Ekonomi</h3>
-        <div class="stat-grid">
-            <div class="stat-item">
-                <div class="stat-number">{{ $statistics['sangat_miskin'] }}</div>
-                <div class="stat-label">Sangat Miskin</div>
-            </div>
-            <div class="stat-item">
-                <div class="stat-number">{{ $statistics['miskin'] }}</div>
-                <div class="stat-label">Miskin</div>
-            </div>
-            <div class="stat-item">
-                <div class="stat-number">{{ $statistics['rentan_miskin'] }}</div>
-                <div class="stat-label">Rentan Miskin</div>
+    {{-- Filter Information --}}
+    @if(isset($filters) && is_array($filters) && array_filter($filters, function ($value) {
+        return $value !== 'all'; }))
+        <div class="filter-info">
+            <h3>Filter yang Diterapkan:</h3>
+            @foreach($filters as $key => $value)
+                @if($value !== 'all')
+                    <span class="filter-item">
+                        <strong>{{ ucfirst(str_replace('_', ' ', $key)) }}:</strong>
+                        @if($key === 'status' && $value === 'sangat_miskin')
+                            Sangat Miskin
+                        @elseif($key === 'status' && $value === 'miskin')
+                            Miskin
+                        @elseif($key === 'status' && $value === 'rentan_miskin')
+                            Rentan Miskin
+                        @else
+                            {{ $value }}
+                        @endif
+                    </span>
+                @endif
+            @endforeach
+        </div>
+    @endif
+
+    {{-- Statistics Section --}}
+    @if(isset($statistics) && is_array($statistics))
+        <div class="statistics">
+            <h3>Statistik Status Ekonomi</h3>
+            <div class="stat-grid">
+                <div class="stat-item">
+                    <div class="stat-number">{{ $statistics['sangat_miskin'] ?? 0 }}</div>
+                    <div class="stat-label">Sangat Miskin</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-number">{{ $statistics['miskin'] ?? 0 }}</div>
+                    <div class="stat-label">Miskin</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-number">{{ $statistics['rentan_miskin'] ?? 0 }}</div>
+                    <div class="stat-label">Rentan Miskin</div>
+                </div>
             </div>
         </div>
-    </div>
+    @endif
 
-    <table>
-        <thead>
-            <tr>
-                <th style="width: 15%">No. KK</th>
-                <th style="width: 25%">Kepala Keluarga</th>
-                <th style="width: 35%">Alamat</th>
-                <th style="width: 15%">Status Ekonomi</th>
-                <th style="width: 10%">Penghasilan</th>
-            </tr>
-        </thead>
-        <tbody>
-            @foreach($keluarga as $item)
+    {{-- Data Table --}}
+    @if(isset($data) && count($data) > 0)
+        <table>
+            <thead>
                 <tr>
-                    <td>{{ $item->no_kk }}</td>
-                    <td>{{ $item->nama_kepala_keluarga }}</td>
-                    <td>
-                        {{ $item->alamat }}
-                        @if($item->kelurahan)
-                            <br><small>{{ $item->kelurahan }}, {{ $item->kecamatan }}</small>
-                        @endif
-                    </td>
-                    <td>
-                        <span class="status-badge status-{{ $item->status_ekonomi }}">
-                            @if($item->status_ekonomi == 'sangat_miskin')
-                                Sangat Miskin
-                            @elseif($item->status_ekonomi == 'miskin')
-                                Miskin
-                            @elseif($item->status_ekonomi == 'rentan_miskin')
-                                Rentan Miskin
-                            @endif
-                        </span>
-                    </td>
-                    <td>
-                        @if($item->penghasilan_bulanan)
-                            Rp {{ number_format($item->penghasilan_bulanan, 0, ',', '.') }}
-                        @else
-                            -
-                        @endif
-                    </td>
+                    <th style="width: 8%">No</th>
+                    <th style="width: 25%">Nama Keluarga</th>
+                    <th style="width: 32%">Alamat</th>
+                    <th style="width: 18%">Status Ekonomi</th>
+                    <th style="width: 17%">Penghasilan</th>
                 </tr>
-            @endforeach
-        </tbody>
-    </table>
+            </thead>
+            <tbody>
+                @foreach($data as $index => $item)
+                    @php
+                        $statusClass = 'status-' . str_replace(' ', '-', strtolower($item->status_ekonomi ?? ''));
+                        $statusLabel = '';
+
+                        switch ($item->status_ekonomi ?? '') {
+                            case 'sangat_miskin':
+                                $statusLabel = 'Sangat Miskin';
+                                break;
+                            case 'miskin':
+                                $statusLabel = 'Miskin';
+                                break;
+                            case 'rentan_miskin':
+                                $statusLabel = 'Rentan Miskin';
+                                break;
+                            default:
+                                $statusLabel = ucfirst(str_replace('_', ' ', $item->status_ekonomi ?? '-'));
+                        }
+                    @endphp
+                    <tr>
+                        <td style="text-align: center; font-weight: bold;">{{ $index + 1 }}</td>
+                        <td>
+                            <strong>{{ $item->nama_keluarga ?? $item->nama_kepala_keluarga ?? '-' }}</strong>
+                            @if(isset($item->no_kk) && $item->no_kk)
+                                <br><span class="small-text">No. KK: {{ $item->no_kk }}</span>
+                            @endif
+                            @if(isset($item->jumlah_anggota) && $item->jumlah_anggota)
+                                <br><span class="small-text">{{ $item->jumlah_anggota }} anggota</span>
+                            @endif
+                        </td>
+                        <td>
+                            {{ $item->alamat ?? '-' }}
+                            @if(isset($item->kelurahan) && $item->kelurahan)
+                                <br><span class="small-text">{{ $item->kelurahan }}
+                                    @if(isset($item->kecamatan) && $item->kecamatan)
+                                        , {{ $item->kecamatan }}
+                                    @endif
+                                </span>
+                            @endif
+                        </td>
+                        <td style="text-align: center;">
+                            <span class="status-badge {{ $statusClass }}">
+                                {{ $statusLabel }}
+                            </span>
+                        </td>
+                        <td style="text-align: right;">
+                            @if(isset($item->penghasilan_bulanan) && $item->penghasilan_bulanan)
+                                <span class="currency">Rp {{ number_format($item->penghasilan_bulanan, 0, ',', '.') }}</span>
+                            @elseif(isset($item->pendapatan) && $item->pendapatan)
+                                <span class="currency">Rp {{ number_format($item->pendapatan, 0, ',', '.') }}</span>
+                            @else
+                                <span class="small-text">-</span>
+                            @endif
+                        </td>
+                    </tr>
+                @endforeach
+            </tbody>
+        </table>
+    @else
+        <div class="no-data">
+            <p>Tidak ada data untuk ditampilkan.</p>
+        </div>
+    @endif
 
     <div class="footer">
-        <p>Total Data: {{ $keluarga->count() }} keluarga</p>
-        <p>Laporan ini digenerate secara otomatis oleh Sistem Informasi Geografis Penduduk Miskin</p>
+        <p class="total">Total Data: {{ isset($data) ? count($data) : (isset($keluarga) ? $keluarga->count() : 0) }}
+            keluarga</p>
+        <p>Laporan ini digenerate secara otomatis oleh Sistem Informasi Geografis Data Keluarga</p>
+        <p style="margin-top: 10px; font-size: 9px;">© {{ date('Y') }} - WebGIS Data Keluarga v1.0</p>
     </div>
 </body>
 

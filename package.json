@@ -18,19 +18,27 @@
         "laravel-vite-plugin": "^1.2.0",
         "react": "^18.2.0",
         "react-dom": "^18.2.0",
+        "tw-animate-css": "^1.3.4",
         "typescript": "^5.0.2",
         "vite": "^6.2.4"
     },
     "dependencies": {
+        "@radix-ui/react-select": "^2.2.5",
+        "@radix-ui/react-slot": "^1.2.3",
         "@tailwindcss/vite": "^4.1.7",
         "@types/leaflet": "^1.9.18",
         "chromium": "^3.0.3",
+        "class-variance-authority": "^0.7.1",
+        "clsx": "^2.1.1",
+        "framer-motion": "^12.16.0",
         "leaflet": "^1.9.4",
         "leaflet-draw": "^1.0.4",
+        "lucide-react": "^0.513.0",
         "puppeteer": "^24.9.0",
         "react-icons": "^5.5.0",
         "react-leaflet": "^4.2.1",
         "react-leaflet-draw": "^0.20.6",
+        "tailwind-merge": "^3.3.0",
         "tailwindcss": "^4.1.7"
     }
 }

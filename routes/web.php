@@ -78,6 +78,9 @@ Route::middleware('auth')->group(function () {
         Route::get('/{category}', [ReportController::class, 'show'])->name('show');
         Route::get('/{category}/export', [ReportController::class, 'export'])->name('export');
     });
+
+    Route::get('/reports', [ReportController::class, 'index'])->name('reports.index');
+    Route::post('/reports/export', [ReportController::class, 'export'])->name('reports.export');
 });
 
 require __DIR__ . '/auth.php';
