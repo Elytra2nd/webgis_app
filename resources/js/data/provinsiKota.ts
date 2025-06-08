@@ -589,3 +589,8 @@ export interface Provinsi {
     { id: 472, nama: 'Kota Tidore Kepulauan', provinsi_id: 32 }
 
 ];
+
+export const getKotaByProvinsi = (provinsiId: number | string): Kota[] => {
+    const id = typeof provinsiId === 'string' ? parseInt(provinsiId) : provinsiId;
+    return kotaData.filter(kota => kota.provinsi_id === id);
+};
