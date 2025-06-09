@@ -594,3 +594,12 @@ export const getKotaByProvinsi = (provinsiId: number | string): Kota[] => {
     const id = typeof provinsiId === 'string' ? parseInt(provinsiId) : provinsiId;
     return kotaData.filter(kota => kota.provinsi_id === id);
 };
+
+export const findProvinsiByNama = (nama: string): Provinsi | undefined => {
+  return provinsiData.find(provinsi => provinsi.nama === nama);
+};
+
+// Helper function untuk mencari kota berdasarkan nama
+export const findKotaByNama = (nama: string): Kota | undefined => {
+  return kotaData.find(kota => kota.nama === nama);
+};

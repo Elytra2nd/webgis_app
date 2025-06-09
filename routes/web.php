@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\ProfileController;
+use App\Http\Controllers\DashboardController;
 use App\Models\AnggotaKeluarga;
 use Illuminate\Foundation\Application;
 use Illuminate\Support\Facades\Route;
@@ -31,9 +32,10 @@ Route::get('/keluarga/{keluarga}/public', [KeluargaController::class, 'show'])->
 Route::get('/api/keluarga', [KeluargaController::class, 'getKeluargaForMap']);
 Route::get('/api/map-data/{keluargaId}', [MapController::class, 'getMapData']);
 
-Route::get('/dashboard', function () {
-    return Inertia::render('Dashboard');
-})->middleware(['auth', 'verified'])->name('dashboard');
+// Dashboard route - Updated to use DashboardController
+Route::get('/dashboard', DashboardController::class)
+    ->middleware(['auth', 'verified'])
+    ->name('dashboard');
 
 Route::middleware('auth')->group(function () {
     // Profile routes
@@ -66,6 +68,10 @@ Route::middleware('auth')->group(function () {
     // API routes untuk authenticated users
     Route::post('/api/keluarga', [KeluargaController::class, 'storeFromMap']); // Route POST untuk map
     Route::post('/api/map-data', [MapController::class, 'saveMapData']);
+
+    // Dashboard API routes (optional untuk real-time data)
+    Route::get('/api/dashboard', [DashboardController::class, 'apiData'])->name('dashboard.api');
+    Route::get('/api/dashboard/realtime', [DashboardController::class, 'realtimeStats'])->name('dashboard.realtime');
 
     // Settings route
     Route::get('/settings', function () {
