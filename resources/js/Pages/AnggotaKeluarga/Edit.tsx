@@ -1,8 +1,36 @@
-// resources/js/Pages/AnggotaKeluarga/Edit.tsx
 import React from 'react';
 import { Head, useForm, Link, router } from '@inertiajs/react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { PageProps } from '@/types';
+import { motion, AnimatePresence } from 'framer-motion';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/Components/ui/card';
+import { Button } from '@/Components/ui/button';
+import { Input } from '@/Components/ui/input';
+import { Label } from '@/Components/ui/label';
+import { Textarea } from '@/Components/ui/textarea';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/Components/ui/select';
+import { Badge } from '@/Components/ui/badge';
+import { Alert, AlertDescription } from '@/Components/ui/alert';
+import { Separator } from '@/Components/ui/separator';
+import { useToast } from '@/Hooks/use-toast';
+import {
+  User,
+  Edit as EditPencil,
+  ArrowLeft,
+  Save,
+  Loader2,
+  AlertTriangle,
+  CheckCircle,
+  Users,
+  Calendar,
+  MapPin,
+  Heart,
+  GraduationCap,
+  Briefcase,
+  IdCard,
+  Waves,
+  X
+} from 'lucide-react';
 
 interface Keluarga {
     id: number;
@@ -34,7 +62,6 @@ interface EditProps extends PageProps {
     anggotaKeluarga: AnggotaKeluarga;
 }
 
-// PERBAIKAN: Ubah interface menjadi type dengan index signature
 type AnggotaKeluargaFormData = {
     keluarga_id: string;
     nik: string;
@@ -46,50 +73,93 @@ type AnggotaKeluargaFormData = {
     status_perkawinan: string;
     pendidikan_terakhir: string;
     pekerjaan: string;
-} & Record<string, any>; // Index signature untuk kompatibilitas
+} & Record<string, any>;
 
 export default function Edit({ auth, keluarga = [], anggotaKeluarga }: EditProps) {
-    // Debug: Log data yang diterima
-    console.log('Data yang diterima:', { anggotaKeluarga, keluarga });
+    const { toast } = useToast();
+
+    // Animation variants
+    const containerVariants = {
+        hidden: { opacity: 0 },
+        visible: {
+            opacity: 1,
+            transition: {
+                staggerChildren: 0.1
+            }
+        }
+    };
+
+    const itemVariants = {
+        hidden: { y: 20, opacity: 0 },
+        visible: {
+            y: 0,
+            opacity: 1,
+            transition: {
+                type: "spring",
+                stiffness: 100
+            }
+        }
+    };
+
+    const waveVariants = {
+        animate: {
+            x: [0, -20, 0],
+            transition: {
+                duration: 3,
+                repeat: Infinity,
+                ease: "easeInOut"
+            }
+        }
+    };
+
+    // Breadcrumb
+    const breadcrumbs = [
+        { label: 'Dashboard', href: route('dashboard') },
+        { label: 'Anggota Keluarga', href: route('anggota-keluarga.index') },
+        { label: `Edit ${anggotaKeluarga?.nama || 'Data'}`, current: true }
+    ];
 
     // Pastikan data anggotaKeluarga ada sebelum digunakan
     if (!anggotaKeluarga || !anggotaKeluarga.id) {
         return (
-            <AuthenticatedLayout
-                user={auth.user}
-                header={
-                    <div className="flex items-center space-x-3">
-                        <div className="w-2 h-8 bg-gradient-to-b from-cyan-400 to-teal-500 rounded-full animate-pulse"></div>
-                        <h2 className="font-light text-2xl text-gray-900">Edit Anggota Keluarga</h2>
-                    </div>
-                }
-            >
+            <AuthenticatedLayout user={auth.user} breadcrumbs={breadcrumbs}>
                 <Head title="Data Tidak Ditemukan" />
-                <div className="min-h-screen flex items-center justify-center bg-gray-50">
-                    <div className="text-center bg-white p-8 rounded-lg shadow-lg">
-                        <div className="mb-4">
-                            <svg className="mx-auto h-12 w-12 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z" />
-                            </svg>
-                        </div>
-                        <h2 className="text-2xl font-bold text-gray-900 mb-4">Data Tidak Ditemukan</h2>
-                        <p className="text-gray-600 mb-6">Anggota keluarga yang Anda cari tidak ditemukan atau telah dihapus.</p>
-                        <Link
-                            href={route('anggota-keluarga.index')}
-                            className="inline-flex items-center px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors duration-200"
-                        >
-                            <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
-                            </svg>
-                            Kembali ke Daftar Anggota Keluarga
-                        </Link>
-                    </div>
-                </div>
+
+                <motion.div
+                    className="min-h-screen flex items-center justify-center"
+                    initial={{ opacity: 0, scale: 0.9 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    transition={{ type: "spring", stiffness: 100 }}
+                >
+                    <Card className="border-0 shadow-xl bg-white/90 backdrop-blur-md max-w-md w-full">
+                        <CardContent className="p-8 text-center">
+                            <motion.div
+                                className="w-20 h-20 bg-gradient-to-br from-red-100 to-red-200 rounded-full flex items-center justify-center mx-auto mb-6"
+                                whileHover={{ scale: 1.1, rotate: 5 }}
+                                transition={{ type: "spring", stiffness: 300 }}
+                            >
+                                <AlertTriangle className="w-10 h-10 text-red-500" />
+                            </motion.div>
+                            <h2 className="text-2xl font-semibold text-slate-800 mb-4">Data Tidak Ditemukan</h2>
+                            <p className="text-slate-600 mb-6">Anggota keluarga yang Anda cari tidak ditemukan atau telah dihapus.</p>
+                            <motion.div
+                                whileHover={{ scale: 1.05 }}
+                                whileTap={{ scale: 0.95 }}
+                            >
+                                <Button asChild className="bg-gradient-to-r from-cyan-500 to-teal-500 hover:from-cyan-600 hover:to-teal-600 text-white">
+                                    <Link href={route('anggota-keluarga.index')}>
+                                        <ArrowLeft className="w-4 h-4 mr-2" />
+                                        Kembali ke Daftar
+                                    </Link>
+                                </Button>
+                            </motion.div>
+                        </CardContent>
+                    </Card>
+                </motion.div>
             </AuthenticatedLayout>
         );
     }
 
-    // PERBAIKAN: Gunakan type yang sudah diperbaiki
     const { data, setData, put, processing, errors } = useForm<AnggotaKeluargaFormData>({
         keluarga_id: anggotaKeluarga.keluarga_id?.toString() || '',
         nik: anggotaKeluarga.nik || '',
@@ -103,494 +173,448 @@ export default function Edit({ auth, keluarga = [], anggotaKeluarga }: EditProps
         pekerjaan: anggotaKeluarga.pekerjaan || ''
     });
 
-    // PERBAIKAN: Gunakan router.post dengan _method untuk mengatasi masalah PUT
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
 
-        // Gunakan router.post dengan _method untuk kompatibilitas yang lebih baik
         const formData: Record<string, any> = {
             ...data,
             _method: 'PUT'
         };
 
-        // Menggunakan router.post dengan method spoofing
         router.post(route('anggota-keluarga.update', anggotaKeluarga.id), formData, {
             preserveScroll: true,
+            onStart: () => {
+                toast({
+                    title: "Memproses Data",
+                    description: "Sedang memperbarui data anggota keluarga...",
+                    variant: "default",
+                });
+            },
             onSuccess: () => {
-                console.log('Data berhasil diperbarui');
+                toast({
+                    title: "Data Berhasil Diperbarui! 🎉",
+                    description: `Data ${anggotaKeluarga.nama} telah berhasil diperbarui.`,
+                    variant: "default",
+                });
             },
             onError: (errors) => {
                 console.error('Validation errors:', errors);
+                const errorMessages = Object.values(errors).flat();
+                toast({
+                    title: "Gagal Memperbarui Data",
+                    description: errorMessages.join(', '),
+                    variant: "destructive",
+                });
             }
         });
     };
 
     return (
-        <>
-            <style>{`
-                .aquatic-gradient {
-                    background: linear-gradient(135deg, #0891b2 0%, #0e7490 25%, #155e75 50%, #164e63 75%, #1e3a8a 100%);
-                }
-                .glass-effect {
-                    background: rgba(255, 255, 255, 0.95);
-                    backdrop-filter: blur(20px);
-                    border: 1px solid rgba(255, 255, 255, 0.2);
-                }
-                .wave-pattern {
-                    background-image:
-                        radial-gradient(circle at 25% 25%, rgba(14, 116, 144, 0.1) 0%, transparent 50%),
-                        radial-gradient(circle at 75% 75%, rgba(21, 94, 117, 0.1) 0%, transparent 50%);
-                }
-                .floating-animation {
-                    animation: float 6s ease-in-out infinite;
-                }
-                .ripple-effect {
-                    position: relative;
-                    overflow: hidden;
-                }
-                .ripple-effect:before {
-                    content: '';
-                    position: absolute;
-                    top: 0;
-                    left: -100%;
-                    width: 100%;
-                    height: 100%;
-                    background: linear-gradient(90deg, transparent, rgba(14, 116, 144, 0.1), transparent);
-                    transition: left 0.5s;
-                }
-                .ripple-effect:hover:before {
-                    left: 100%;
-                }
-                .ocean-focus {
-                    transition: all 0.3s ease;
-                }
-                .ocean-focus:focus {
-                    border-color: #0891b2;
-                    box-shadow: 0 0 0 3px rgba(8, 145, 178, 0.1), 0 4px 12px rgba(8, 145, 178, 0.15);
-                    transform: translateY(-2px);
-                }
-                .ocean-button {
-                    background: linear-gradient(135deg, #0891b2, #0e7490);
-                    transition: all 0.3s ease;
-                    position: relative;
-                    overflow: hidden;
-                }
-                .ocean-button:hover {
-                    background: linear-gradient(135deg, #0e7490, #155e75);
-                    transform: translateY(-2px);
-                    box-shadow: 0 8px 25px rgba(8, 145, 178, 0.3);
-                }
-                .ocean-button:before {
-                    content: '';
-                    position: absolute;
-                    top: 0;
-                    left: -100%;
-                    width: 100%;
-                    height: 100%;
-                    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
-                    transition: left 0.5s;
-                }
-                .ocean-button:hover:before {
-                    left: 100%;
-                }
-                @keyframes float {
-                    0%, 100% { transform: translateY(0px); }
-                    50% { transform: translateY(-10px); }
-                }
-                .sea-foam {
-                    background: linear-gradient(135deg, #06b6d4, #0891b2);
-                }
-            `}</style>
+        <AuthenticatedLayout user={auth.user} breadcrumbs={breadcrumbs}>
+            <Head title={`Edit Anggota Keluarga - ${anggotaKeluarga.nama}`} />
 
-            <AuthenticatedLayout
-                user={auth.user}
-                header={
-                    <div className="flex items-center space-x-3">
-                        <div className="w-2 h-8 bg-gradient-to-b from-cyan-400 to-teal-500 rounded-full animate-pulse"></div>
-                        <h2 className="font-light text-2xl text-gray-900">Edit Anggota Keluarga</h2>
-                    </div>
-                }
+            <motion.div
+                className="space-y-8"
+                variants={containerVariants}
+                initial="hidden"
+                animate="visible"
             >
-                <Head title={`Edit Anggota Keluarga - ${anggotaKeluarga.nama}`} />
+                {/* Header dengan animasi wave */}
+                <motion.div
+                    className="flex items-center justify-between mb-8"
+                    variants={itemVariants}
+                >
+                    <div className="flex items-center space-x-4">
+                        <motion.div
+                            className="relative"
+                            variants={waveVariants}
+                            animate="animate"
+                        >
+                            <div className="w-3 h-10 bg-gradient-to-b from-cyan-400 via-teal-500 to-blue-600 rounded-full shadow-lg"></div>
+                            <div className="absolute -top-1 -left-1 w-5 h-12 bg-gradient-to-b from-cyan-300/30 via-teal-400/30 to-blue-500/30 rounded-full blur-sm"></div>
+                        </motion.div>
+                        <div className="flex items-center space-x-3">
+                            <EditPencil className="w-8 h-8 text-teal-600" />
+                            <div>
+                                <h1 className="font-light text-3xl text-slate-800 tracking-wide">Edit Anggota Keluarga</h1>
+                                <p className="text-slate-600 mt-1">{anggotaKeluarga.nama}</p>
+                            </div>
+                        </div>
+                    </div>
 
-                <div className="min-h-screen aquatic-gradient wave-pattern py-12">
-                    <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
-                        <div className="glass-effect rounded-3xl shadow-2xl overflow-hidden floating-animation">
-                            <div className="p-8">
-                                {/* Header Section */}
-                                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-8 space-y-4 sm:space-y-0">
-                                    <div className="space-y-2">
-                                        <div className="flex items-center space-x-3">
-                                            <div className="w-12 h-12 rounded-2xl sea-foam flex items-center justify-center">
-                                                <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                                                </svg>
-                                            </div>
-                                            <div>
-                                                <h3 className="text-2xl font-bold text-slate-800">Edit Data Anggota Keluarga</h3>
-                                                <p className="text-slate-600">Perbarui informasi anggota keluarga dengan akurat</p>
-                                                <p className="text-sm text-slate-500 mt-1">
-                                                    NIK: {anggotaKeluarga.nik} • {anggotaKeluarga.nama}
-                                                </p>
-                                            </div>
-                                        </div>
+                    <div className="flex space-x-3">
+                        <motion.div
+                            whileHover={{ scale: 1.05 }}
+                            whileTap={{ scale: 0.95 }}
+                        >
+                            <Button
+                                asChild
+                                variant="outline"
+                                className="border-slate-300 hover:bg-slate-50"
+                            >
+                                <Link href={route('anggota-keluarga.index')}>
+                                    <ArrowLeft className="w-4 h-4 mr-2" />
+                                    Kembali
+                                </Link>
+                            </Button>
+                        </motion.div>
+                    </div>
+                </motion.div>
+
+                {/* Main Form Card */}
+                <motion.div variants={itemVariants}>
+                    <Card className="border-0 shadow-xl bg-white/90 backdrop-blur-md overflow-hidden">
+                        {/* Header */}
+                        <CardHeader className="pb-6 bg-gradient-to-r from-cyan-50/50 to-teal-50/50 border-b border-gray-100/50">
+                            <div className="flex items-center space-x-4">
+                                <motion.div
+                                    className="w-16 h-16 bg-gradient-to-br from-cyan-100 to-teal-100 rounded-full flex items-center justify-center"
+                                    whileHover={{ scale: 1.1, rotate: 5 }}
+                                    transition={{ type: "spring", stiffness: 300 }}
+                                >
+                                    <User className="w-8 h-8 text-cyan-600" />
+                                </motion.div>
+                                <div>
+                                    <CardTitle className="text-xl font-medium text-slate-800">
+                                        Edit Data Anggota Keluarga
+                                    </CardTitle>
+                                    <CardDescription className="mt-2">
+                                        Perbarui informasi anggota keluarga dengan akurat
+                                    </CardDescription>
+                                    <div className="flex items-center space-x-2 mt-2">
+                                        <Badge variant="secondary" className="bg-cyan-100 text-cyan-800">
+                                            NIK: {anggotaKeluarga.nik}
+                                        </Badge>
+                                    </div>
+                                </div>
+                            </div>
+                        </CardHeader>
+
+                        <CardContent className="p-8">
+                            <form onSubmit={handleSubmit} className="space-y-8">
+                                {/* Family Selection */}
+                                <motion.div
+                                    className="space-y-4"
+                                    initial={{ opacity: 0, x: -20 }}
+                                    animate={{ opacity: 1, x: 0 }}
+                                    transition={{ delay: 0.1 }}
+                                >
+                                    <div className="flex items-center space-x-3 mb-4">
+                                        <Users className="w-5 h-5 text-teal-600" />
+                                        <h3 className="text-lg font-semibold text-slate-800">Informasi Keluarga</h3>
                                     </div>
 
-                                    <Link
-                                        href={route('anggota-keluarga.index')}
-                                        className="inline-flex items-center px-6 py-3 bg-slate-100 hover:bg-slate-200 rounded-2xl font-medium text-slate-700 transition-all duration-300 hover:shadow-lg ripple-effect"
-                                    >
-                                        <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
-                                        </svg>
-                                        Kembali
-                                    </Link>
-                                </div>
-
-                                <form onSubmit={handleSubmit} className="space-y-8">
-                                    {/* Family Selection */}
-                                    <div className="bg-gradient-to-r from-cyan-50 to-blue-50 p-6 rounded-2xl border border-cyan-100">
-                                        <label className="block text-sm font-semibold text-slate-700 mb-3">
-                                            <span className="flex items-center">
-                                                <svg className="w-5 h-5 mr-2 text-cyan-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2H5a2 2 0 00-2-2z" />
-                                                </svg>
-                                                Pilih Keluarga
-                                                <span className="text-red-500 ml-1">*</span>
-                                            </span>
-                                        </label>
-                                        <select
-                                            value={data.keluarga_id}
-                                            onChange={(e) => setData('keluarga_id', e.target.value)}
-                                            className="w-full border-0 bg-white rounded-xl px-4 py-3 ocean-focus shadow-sm text-slate-700"
-                                            required
-                                        >
-                                            <option value="">Pilih Keluarga</option>
-                                            {keluarga.map((item) => (
-                                                <option key={item.id} value={item.id}>
-                                                    {item.no_kk} - {item.nama_kepala_keluarga}
-                                                </option>
-                                            ))}
-                                        </select>
+                                    <div className="space-y-2">
+                                        <Label htmlFor="keluarga_id" className="text-sm font-medium text-slate-700">
+                                            Pilih Keluarga *
+                                        </Label>
+                                        <Select value={data.keluarga_id} onValueChange={(value) => setData('keluarga_id', value)}>
+                                            <SelectTrigger className="border-slate-200 focus:border-cyan-500 focus:ring-cyan-500/20">
+                                                <SelectValue placeholder="Pilih Keluarga" />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                {keluarga.map((item) => (
+                                                    <SelectItem key={item.id} value={item.id.toString()}>
+                                                        {item.no_kk} - {item.nama_kepala_keluarga}
+                                                    </SelectItem>
+                                                ))}
+                                            </SelectContent>
+                                        </Select>
                                         {errors.keluarga_id && (
-                                            <div className="text-red-500 text-sm mt-2 flex items-center">
-                                                <svg className="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
-                                                    <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
-                                                </svg>
-                                                {errors.keluarga_id}
-                                            </div>
+                                            <Alert variant="destructive">
+                                                <AlertTriangle className="h-4 w-4" />
+                                                <AlertDescription>{errors.keluarga_id}</AlertDescription>
+                                            </Alert>
                                         )}
                                     </div>
+                                </motion.div>
 
-                                    {/* Personal Information Grid */}
+                                <Separator />
+
+                                {/* Personal Information */}
+                                <motion.div
+                                    className="space-y-6"
+                                    initial={{ opacity: 0, x: -20 }}
+                                    animate={{ opacity: 1, x: 0 }}
+                                    transition={{ delay: 0.2 }}
+                                >
+                                    <div className="flex items-center space-x-3 mb-4">
+                                        <IdCard className="w-5 h-5 text-teal-600" />
+                                        <h3 className="text-lg font-semibold text-slate-800">Data Pribadi</h3>
+                                    </div>
+
                                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                                         {/* NIK */}
-                                        <div className="space-y-3">
-                                            <label className="block text-sm font-semibold text-slate-700">
-                                                <span className="flex items-center">
-                                                    <svg className="w-5 h-5 mr-2 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 6H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V8a2 2 0 00-2-2h-5m-4 0V4a2 2 0 114 0v2m-4 0a2 2 0 104 0m-5 8a2 2 0 100-4 2 2 0 000 4zm0 0c1.306 0 2.417.835 2.83 2M9 14a3.001 3.001 0 00-2.83 2M15 11h3m-3 4h2" />
-                                                    </svg>
-                                                    NIK <span className="text-red-500">*</span>
-                                                </span>
-                                            </label>
-                                            <input
+                                        <div className="space-y-2">
+                                            <Label htmlFor="nik" className="text-sm font-medium text-slate-700">
+                                                NIK *
+                                            </Label>
+                                            <Input
+                                                id="nik"
                                                 type="text"
                                                 value={data.nik}
                                                 onChange={(e) => setData('nik', e.target.value)}
-                                                className="w-full border-0 bg-white rounded-xl px-4 py-3 ocean-focus shadow-sm"
-                                                maxLength={16}
                                                 placeholder="16 digit NIK"
+                                                maxLength={16}
+                                                className="border-slate-200 focus:border-cyan-500 focus:ring-cyan-500/20"
                                                 required
                                             />
                                             {errors.nik && (
-                                                <div className="text-red-500 text-sm flex items-center">
-                                                    <svg className="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
-                                                        <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
-                                                    </svg>
+                                                <p className="text-sm text-red-600 flex items-center">
+                                                    <AlertTriangle className="w-4 h-4 mr-1" />
                                                     {errors.nik}
-                                                </div>
+                                                </p>
                                             )}
                                         </div>
 
                                         {/* Nama */}
-                                        <div className="space-y-3">
-                                            <label className="block text-sm font-semibold text-slate-700">
-                                                <span className="flex items-center">
-                                                    <svg className="w-5 h-5 mr-2 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                                                    </svg>
-                                                    Nama Lengkap <span className="text-red-500">*</span>
-                                                </span>
-                                            </label>
-                                            <input
+                                        <div className="space-y-2">
+                                            <Label htmlFor="nama" className="text-sm font-medium text-slate-700">
+                                                Nama Lengkap *
+                                            </Label>
+                                            <Input
+                                                id="nama"
                                                 type="text"
                                                 value={data.nama}
                                                 onChange={(e) => setData('nama', e.target.value)}
-                                                className="w-full border-0 bg-white rounded-xl px-4 py-3 ocean-focus shadow-sm"
                                                 placeholder="Nama lengkap sesuai KTP"
+                                                className="border-slate-200 focus:border-cyan-500 focus:ring-cyan-500/20"
                                                 required
                                             />
                                             {errors.nama && (
-                                                <div className="text-red-500 text-sm flex items-center">
-                                                    <svg className="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
-                                                        <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
-                                                    </svg>
+                                                <p className="text-sm text-red-600 flex items-center">
+                                                    <AlertTriangle className="w-4 h-4 mr-1" />
                                                     {errors.nama}
-                                                </div>
+                                                </p>
                                             )}
                                         </div>
-                                    </div>
 
-                                    {/* Gender and Birth Place */}
-                                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                                        <div className="space-y-3">
-                                            <label className="block text-sm font-semibold text-slate-700">
-                                                <span className="flex items-center">
-                                                    <svg className="w-5 h-5 mr-2 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13.5 14.5a2.5 2.5 0 11-5 0 2.5 2.5 0 015 0z" />
-                                                    </svg>
-                                                    Jenis Kelamin <span className="text-red-500">*</span>
-                                                </span>
-                                            </label>
-                                            <select
-                                                value={data.jenis_kelamin}
-                                                onChange={(e) => setData('jenis_kelamin', e.target.value)}
-                                                className="w-full border-0 bg-white rounded-xl px-4 py-3 ocean-focus shadow-sm"
-                                                required
-                                            >
-                                                <option value="">Pilih Jenis Kelamin</option>
-                                                <option value="L">Laki-laki</option>
-                                                <option value="P">Perempuan</option>
-                                            </select>
+                                        {/* Jenis Kelamin */}
+                                        <div className="space-y-2">
+                                            <Label htmlFor="jenis_kelamin" className="text-sm font-medium text-slate-700">
+                                                Jenis Kelamin *
+                                            </Label>
+                                            <Select value={data.jenis_kelamin} onValueChange={(value) => setData('jenis_kelamin', value)}>
+                                                <SelectTrigger className="border-slate-200 focus:border-cyan-500 focus:ring-cyan-500/20">
+                                                    <SelectValue placeholder="Pilih Jenis Kelamin" />
+                                                </SelectTrigger>
+                                                <SelectContent>
+                                                    <SelectItem value="L">Laki-laki</SelectItem>
+                                                    <SelectItem value="P">Perempuan</SelectItem>
+                                                </SelectContent>
+                                            </Select>
                                             {errors.jenis_kelamin && (
-                                                <div className="text-red-500 text-sm flex items-center">
-                                                    <svg className="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
-                                                        <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
-                                                    </svg>
+                                                <p className="text-sm text-red-600 flex items-center">
+                                                    <AlertTriangle className="w-4 h-4 mr-1" />
                                                     {errors.jenis_kelamin}
-                                                </div>
+                                                </p>
                                             )}
                                         </div>
 
-                                        <div className="space-y-3">
-                                            <label className="block text-sm font-semibold text-slate-700">
-                                                <span className="flex items-center">
-                                                    <svg className="w-5 h-5 mr-2 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-                                                    </svg>
-                                                    Tempat Lahir <span className="text-red-500">*</span>
-                                                </span>
-                                            </label>
-                                            <input
+                                        {/* Tempat Lahir */}
+                                        <div className="space-y-2">
+                                            <Label htmlFor="tempat_lahir" className="text-sm font-medium text-slate-700">
+                                                Tempat Lahir *
+                                            </Label>
+                                            <Input
+                                                id="tempat_lahir"
                                                 type="text"
                                                 value={data.tempat_lahir}
                                                 onChange={(e) => setData('tempat_lahir', e.target.value)}
-                                                className="w-full border-0 bg-white rounded-xl px-4 py-3 ocean-focus shadow-sm"
                                                 placeholder="Kota/Kabupaten kelahiran"
+                                                className="border-slate-200 focus:border-cyan-500 focus:ring-cyan-500/20"
                                                 required
                                             />
                                             {errors.tempat_lahir && (
-                                                <div className="text-red-500 text-sm flex items-center">
-                                                    <svg className="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
-                                                        <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
-                                                    </svg>
+                                                <p className="text-sm text-red-600 flex items-center">
+                                                    <AlertTriangle className="w-4 h-4 mr-1" />
                                                     {errors.tempat_lahir}
-                                                </div>
+                                                </p>
                                             )}
                                         </div>
-                                    </div>
 
-                                    {/* Birth Date and Family Status */}
-                                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                                        <div className="space-y-3">
-                                            <label className="block text-sm font-semibold text-slate-700">
-                                                <span className="flex items-center">
-                                                    <svg className="w-5 h-5 mr-2 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7V3a1 1 0 012 0v4m0 0V7a1 1 0 011 1v1m0 0h3m-3 0a1 1 0 01-1-1v-1m0 0H8m3 0a1 1 0 011 1v1h1M6 4a2 2 0 00-2 2v12a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2H6z" />
-                                                    </svg>
-                                                    Tanggal Lahir <span className="text-red-500">*</span>
-                                                </span>
-                                            </label>
-                                            <input
+                                        {/* Tanggal Lahir */}
+                                        <div className="space-y-2">
+                                            <Label htmlFor="tanggal_lahir" className="text-sm font-medium text-slate-700">
+                                                Tanggal Lahir *
+                                            </Label>
+                                            <Input
+                                                id="tanggal_lahir"
                                                 type="date"
                                                 value={data.tanggal_lahir}
                                                 onChange={(e) => setData('tanggal_lahir', e.target.value)}
-                                                className="w-full border-0 bg-white rounded-xl px-4 py-3 ocean-focus shadow-sm"
+                                                className="border-slate-200 focus:border-cyan-500 focus:ring-cyan-500/20"
                                                 required
                                             />
                                             {errors.tanggal_lahir && (
-                                                <div className="text-red-500 text-sm flex items-center">
-                                                    <svg className="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
-                                                        <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
-                                                    </svg>
+                                                <p className="text-sm text-red-600 flex items-center">
+                                                    <AlertTriangle className="w-4 h-4 mr-1" />
                                                     {errors.tanggal_lahir}
-                                                </div>
+                                                </p>
                                             )}
                                         </div>
 
-                                        <div className="space-y-3">
-                                            <label className="block text-sm font-semibold text-slate-700">
-                                                <span className="flex items-center">
-                                                    <svg className="w-5 h-5 mr-2 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 715.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 919.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
-                                                    </svg>
-                                                    Status dalam Keluarga <span className="text-red-500">*</span>
-                                                </span>
-                                            </label>
-                                            <select
-                                                value={data.status_dalam_keluarga}
-                                                onChange={(e) => setData('status_dalam_keluarga', e.target.value)}
-                                                className="w-full border-0 bg-white rounded-xl px-4 py-3 ocean-focus shadow-sm"
-                                                required
-                                            >
-                                                <option value="">Pilih Status</option>
-                                                <option value="kepala keluarga">Kepala Keluarga</option>
-                                                <option value="istri">Istri</option>
-                                                <option value="anak">Anak</option>
-                                                <option value="lainnya">Lainnya</option>
-                                            </select>
+                                        {/* Status dalam Keluarga */}
+                                        <div className="space-y-2">
+                                            <Label htmlFor="status_dalam_keluarga" className="text-sm font-medium text-slate-700">
+                                                Status dalam Keluarga *
+                                            </Label>
+                                            <Select value={data.status_dalam_keluarga} onValueChange={(value) => setData('status_dalam_keluarga', value)}>
+                                                <SelectTrigger className="border-slate-200 focus:border-cyan-500 focus:ring-cyan-500/20">
+                                                    <SelectValue placeholder="Pilih Status" />
+                                                </SelectTrigger>
+                                                <SelectContent>
+                                                    <SelectItem value="kepala keluarga">Kepala Keluarga</SelectItem>
+                                                    <SelectItem value="istri">Istri</SelectItem>
+                                                    <SelectItem value="anak">Anak</SelectItem>
+                                                    <SelectItem value="lainnya">Lainnya</SelectItem>
+                                                </SelectContent>
+                                            </Select>
                                             {errors.status_dalam_keluarga && (
-                                                <div className="text-red-500 text-sm flex items-center">
-                                                    <svg className="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
-                                                        <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
-                                                    </svg>
+                                                <p className="text-sm text-red-600 flex items-center">
+                                                    <AlertTriangle className="w-4 h-4 mr-1" />
                                                     {errors.status_dalam_keluarga}
-                                                </div>
+                                                </p>
                                             )}
                                         </div>
                                     </div>
+                                </motion.div>
 
-                                    {/* Marriage Status and Education */}
+                                <Separator />
+
+                                {/* Additional Information */}
+                                <motion.div
+                                    className="space-y-6"
+                                    initial={{ opacity: 0, x: -20 }}
+                                    animate={{ opacity: 1, x: 0 }}
+                                    transition={{ delay: 0.3 }}
+                                >
+                                    <div className="flex items-center space-x-3 mb-4">
+                                        <Briefcase className="w-5 h-5 text-teal-600" />
+                                        <h3 className="text-lg font-semibold text-slate-800">Informasi Tambahan</h3>
+                                    </div>
+
                                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                                        <div className="space-y-3">
-                                            <label className="block text-sm font-semibold text-slate-700">
-                                                <span className="flex items-center">
-                                                    <svg className="w-5 h-5 mr-2 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
-                                                    </svg>
-                                                    Status Perkawinan <span className="text-red-500">*</span>
-                                                </span>
-                                            </label>
-                                            <select
-                                                value={data.status_perkawinan}
-                                                onChange={(e) => setData('status_perkawinan', e.target.value)}
-                                                className="w-full border-0 bg-white rounded-xl px-4 py-3 ocean-focus shadow-sm"
-                                                required
-                                            >
-                                                <option value="">Pilih Status Perkawinan</option>
-                                                <option value="belum kawin">Belum Kawin</option>
-                                                <option value="kawin">Kawin</option>
-                                                <option value="cerai hidup">Cerai Hidup</option>
-                                                <option value="cerai mati">Cerai Mati</option>
-                                            </select>
+                                        {/* Status Perkawinan */}
+                                        <div className="space-y-2">
+                                            <Label htmlFor="status_perkawinan" className="text-sm font-medium text-slate-700">
+                                                Status Perkawinan *
+                                            </Label>
+                                            <Select value={data.status_perkawinan} onValueChange={(value) => setData('status_perkawinan', value)}>
+                                                <SelectTrigger className="border-slate-200 focus:border-cyan-500 focus:ring-cyan-500/20">
+                                                    <SelectValue placeholder="Pilih Status Perkawinan" />
+                                                </SelectTrigger>
+                                                <SelectContent>
+                                                    <SelectItem value="belum kawin">Belum Kawin</SelectItem>
+                                                    <SelectItem value="kawin">Kawin</SelectItem>
+                                                    <SelectItem value="cerai hidup">Cerai Hidup</SelectItem>
+                                                    <SelectItem value="cerai mati">Cerai Mati</SelectItem>
+                                                </SelectContent>
+                                            </Select>
                                             {errors.status_perkawinan && (
-                                                <div className="text-red-500 text-sm flex items-center">
-                                                    <svg className="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
-                                                        <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
-                                                    </svg>
+                                                <p className="text-sm text-red-600 flex items-center">
+                                                    <AlertTriangle className="w-4 h-4 mr-1" />
                                                     {errors.status_perkawinan}
-                                                </div>
+                                                </p>
                                             )}
                                         </div>
 
-                                        <div className="space-y-3">
-                                            <label className="block text-sm font-semibold text-slate-700">
-                                                <span className="flex items-center">
-                                                    <svg className="w-5 h-5 mr-2 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
-                                                    </svg>
-                                                    Pendidikan Terakhir <span className="text-red-500">*</span>
-                                                </span>
-                                            </label>
-                                            <input
+                                        {/* Pendidikan Terakhir */}
+                                        <div className="space-y-2">
+                                            <Label htmlFor="pendidikan_terakhir" className="text-sm font-medium text-slate-700">
+                                                Pendidikan Terakhir *
+                                            </Label>
+                                            <Input
+                                                id="pendidikan_terakhir"
                                                 type="text"
                                                 value={data.pendidikan_terakhir}
                                                 onChange={(e) => setData('pendidikan_terakhir', e.target.value)}
-                                                className="w-full border-0 bg-white rounded-xl px-4 py-3 ocean-focus shadow-sm"
                                                 placeholder="SD, SMP, SMA, D3, S1, S2, S3"
+                                                className="border-slate-200 focus:border-cyan-500 focus:ring-cyan-500/20"
                                                 required
                                             />
                                             {errors.pendidikan_terakhir && (
-                                                <div className="text-red-500 text-sm flex items-center">
-                                                    <svg className="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
-                                                        <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
-                                                    </svg>
+                                                <p className="text-sm text-red-600 flex items-center">
+                                                    <AlertTriangle className="w-4 h-4 mr-1" />
                                                     {errors.pendidikan_terakhir}
-                                                </div>
+                                                </p>
                                             )}
                                         </div>
                                     </div>
 
                                     {/* Pekerjaan */}
-                                    <div className="space-y-3">
-                                        <label className="block text-sm font-semibold text-slate-700">
-                                            <span className="flex items-center">
-                                                <svg className="w-5 h-5 mr-2 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2-2v2m8 0H8m8 0v2a2 2 0 01-2 2H10a2 2 0 01-2-2V6m8 0V4a2 2 0 00-2-2H10a2 2 0 00-2 2v2" />
-                                                </svg>
-                                                Pekerjaan <span className="text-red-500">*</span>
-                                            </span>
-                                        </label>
-                                        <input
+                                    <div className="space-y-2">
+                                        <Label htmlFor="pekerjaan" className="text-sm font-medium text-slate-700">
+                                            Pekerjaan *
+                                        </Label>
+                                        <Input
+                                            id="pekerjaan"
                                             type="text"
                                             value={data.pekerjaan}
                                             onChange={(e) => setData('pekerjaan', e.target.value)}
-                                            className="w-full border-0 bg-white rounded-xl px-4 py-3 ocean-focus shadow-sm"
                                             placeholder="Jenis pekerjaan atau profesi"
+                                            className="border-slate-200 focus:border-cyan-500 focus:ring-cyan-500/20"
                                             required
                                         />
                                         {errors.pekerjaan && (
-                                            <div className="text-red-500 text-sm flex items-center">
-                                                <svg className="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
-                                                    <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
-                                                </svg>
+                                            <p className="text-sm text-red-600 flex items-center">
+                                                <AlertTriangle className="w-4 h-4 mr-1" />
                                                 {errors.pekerjaan}
-                                            </div>
+                                            </p>
                                         )}
                                     </div>
+                                </motion.div>
 
-                                    {/* Action Buttons */}
-                                    <div className="flex flex-col sm:flex-row justify-end space-y-3 sm:space-y-0 sm:space-x-4 pt-8 border-t border-slate-200">
-                                        <Link
-                                            href={route('anggota-keluarga.index')}
-                                            className="inline-flex items-center justify-center px-8 py-3 bg-slate-100 hover:bg-slate-200 rounded-2xl font-semibold text-slate-700 transition-all duration-300 hover:shadow-lg ripple-effect"
+                                {/* Action Buttons */}
+                                <motion.div
+                                    className="flex flex-col sm:flex-row justify-end space-y-3 sm:space-y-0 sm:space-x-4 pt-8 border-t border-slate-200"
+                                    initial={{ opacity: 0, y: 20 }}
+                                    animate={{ opacity: 1, y: 0 }}
+                                    transition={{ delay: 0.4 }}
+                                >
+                                    <motion.div
+                                        whileHover={{ scale: 1.02 }}
+                                        whileTap={{ scale: 0.98 }}
+                                    >
+                                        <Button
+                                            asChild
+                                            variant="outline"
+                                            className="border-slate-300 hover:bg-slate-50"
                                         >
-                                            <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
-                                            </svg>
-                                            Batal
-                                        </Link>
-                                        <button
+                                            <Link href={route('anggota-keluarga.index')}>
+                                                <X className="w-4 h-4 mr-2" />
+                                                Batal
+                                            </Link>
+                                        </Button>
+                                    </motion.div>
+                                    <motion.div
+                                        whileHover={{ scale: 1.02 }}
+                                        whileTap={{ scale: 0.98 }}
+                                    >
+                                        <Button
                                             type="submit"
                                             disabled={processing}
-                                            className="ocean-button inline-flex items-center justify-center px-8 py-3 rounded-2xl font-semibold text-white transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
+                                            className="bg-gradient-to-r from-cyan-500 to-teal-500 hover:from-cyan-600 hover:to-teal-600 text-white shadow-lg hover:shadow-xl transition-all duration-200"
                                         >
                                             {processing ? (
                                                 <>
-                                                    <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                                                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                                                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                                                    </svg>
-                                                    Memperbarui Data...
+                                                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                                                    Memperbarui...
                                                 </>
                                             ) : (
                                                 <>
-                                                    <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
-                                                    </svg>
+                                                    <Save className="w-4 h-4 mr-2" />
                                                     Perbarui Data
                                                 </>
                                             )}
-                                        </button>
-                                    </div>
-                                </form>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </AuthenticatedLayout>
-        </>
+                                        </Button>
+                                    </motion.div>
+                                </motion.div>
+                            </form>
+                        </CardContent>
+                    </Card>
+                </motion.div>
+            </motion.div>
+        </AuthenticatedLayout>
     );
 }

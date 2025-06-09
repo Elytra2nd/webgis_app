@@ -10,6 +10,7 @@ use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\Rule;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Http\JsonResponse;
 
 class KeluargaController extends Controller
 {
@@ -119,7 +120,6 @@ class KeluargaController extends Controller
                 'miskin' => $statusCounts['miskin'] ?? 0,
                 'rentan_miskin' => $statusCounts['rentan_miskin'] ?? 0,
             ];
-
         } catch (\Exception $e) {
             Log::error('Error getting statistics: ' . $e->getMessage());
 
@@ -236,6 +236,155 @@ class KeluargaController extends Controller
             return Redirect::back()
                 ->withErrors(['error' => 'Terjadi kesalahan saat menyimpan data: ' . $e->getMessage()])
                 ->withInput();
+        }
+    }
+
+    /**
+     * Store a newly created resource from map - NEW METHOD
+     */
+    public function storeFromMap(Request $request): JsonResponse
+    {
+        try {
+            Log::info('Store from map request received:', [
+                'method' => $request->method(),
+                'content_type' => $request->header('Content-Type'),
+                'all_data' => $this->sanitizeDataForLogging($request->all())
+            ]);
+
+            // Sanitize input data untuk UTF-8
+            $inputData = $this->sanitizeUtf8Data($request->all());
+
+            // Validasi input untuk map
+            $validator = Validator::make($inputData, [
+                'no_kk' => 'required|string|max:16|unique:keluarga,no_kk',
+                'nama_kepala_keluarga' => 'required|string|max:255',
+                'alamat' => 'required|string',
+                'status_ekonomi' => 'required|in:sangat_miskin,miskin,rentan_miskin',
+                'latitude' => 'required|numeric|between:-90,90',
+                'longitude' => 'required|numeric|between:-180,180',
+            ], [
+                'no_kk.required' => 'Nomor KK wajib diisi.',
+                'no_kk.unique' => 'Nomor KK sudah terdaftar.',
+                'no_kk.max' => 'Nomor KK maksimal 16 karakter.',
+                'nama_kepala_keluarga.required' => 'Nama kepala keluarga wajib diisi.',
+                'alamat.required' => 'Alamat wajib diisi.',
+                'status_ekonomi.required' => 'Status ekonomi wajib dipilih.',
+                'status_ekonomi.in' => 'Status ekonomi tidak valid.',
+                'latitude.required' => 'Latitude wajib diisi.',
+                'latitude.between' => 'Latitude harus antara -90 dan 90.',
+                'longitude.required' => 'Longitude wajib diisi.',
+                'longitude.between' => 'Longitude harus antara -180 dan 180.',
+            ]);
+
+            if ($validator->fails()) {
+                Log::warning('Store from map validation failed:', $validator->errors()->toArray());
+
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Validasi gagal',
+                    'errors' => $validator->errors()
+                ], 422, [], JSON_UNESCAPED_UNICODE);
+            }
+
+            DB::beginTransaction();
+
+            $data = $validator->validated();
+            $lat = (float) $data['latitude'];
+            $lng = (float) $data['longitude'];
+
+            // Create keluarga record
+            $keluarga = Keluarga::create([
+                'no_kk' => $data['no_kk'],
+                'nama_kepala_keluarga' => $data['nama_kepala_keluarga'],
+                'alamat' => $data['alamat'],
+                'status_ekonomi' => $data['status_ekonomi'],
+                'latitude' => $lat,
+                'longitude' => $lng,
+                // Set default values untuk field yang required
+                'kelurahan' => 'Belum diisi',
+                'kecamatan' => 'Belum diisi',
+                'kota' => 'Belum diisi',
+                'provinsi' => 'Belum diisi',
+            ]);
+
+            // Update POINT setelah create
+            DB::statement(
+                "UPDATE keluarga SET lokasi = POINT(?, ?) WHERE id = ?",
+                [$lng, $lat, $keluarga->id]
+            );
+
+            DB::commit();
+
+            Log::info('Keluarga created from map successfully:', ['id' => $keluarga->id]);
+
+            // Return data yang sudah disanitize
+            $responseData = $this->sanitizeKeluargaForResponse($keluarga->fresh());
+            $responseData['latitude'] = $lat;
+            $responseData['longitude'] = $lng;
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Data keluarga berhasil ditambahkan',
+                'data' => $responseData
+            ], 201, [], JSON_UNESCAPED_UNICODE);
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error('Error storing keluarga from map: ' . $e->getMessage(), [
+                'trace' => $e->getTraceAsString()
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Terjadi kesalahan: ' . $e->getMessage()
+            ], 500, [], JSON_UNESCAPED_UNICODE);
+        }
+    }
+
+    /**
+     * Get keluarga data for map display - NEW METHOD
+     */
+    public function getForMap(Request $request): JsonResponse
+    {
+        try {
+            $query = Keluarga::query()
+                ->whereNotNull('lokasi');
+
+            // Apply filters if provided
+            if ($request->has('status') && $request->status !== 'all') {
+                $query->where('status_ekonomi', $request->status);
+            }
+
+            // Get data dengan extract koordinat dari POINT
+            $keluarga = $query->select([
+                'id', 'no_kk', 'nama_kepala_keluarga', 'alamat',
+                'kelurahan', 'kecamatan', 'kota', 'provinsi',
+                'status_ekonomi',
+                DB::raw('ST_X(lokasi) as longitude'),
+                DB::raw('ST_Y(lokasi) as latitude')
+            ])->get();
+
+            // Sanitize data untuk response
+            $sanitizedData = $keluarga->map(function ($item) {
+                $data = $this->sanitizeKeluargaForResponse($item);
+                // Ensure latitude and longitude are properly formatted
+                $data['latitude'] = isset($data['latitude']) ? (float) $data['latitude'] : null;
+                $data['longitude'] = isset($data['longitude']) ? (float) $data['longitude'] : null;
+                return $data;
+            })->filter(function ($item) {
+                // Filter hanya yang memiliki koordinat valid
+                return $item['latitude'] !== null && $item['longitude'] !== null;
+            })->values();
+
+            return response()->json($sanitizedData, 200, [], JSON_UNESCAPED_UNICODE);
+
+        } catch (\Exception $e) {
+            Log::error('Error getting keluarga for map: ' . $e->getMessage());
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Terjadi kesalahan saat memuat data peta: ' . $e->getMessage()
+            ], 500, [], JSON_UNESCAPED_UNICODE);
         }
     }
 
@@ -444,42 +593,11 @@ class KeluargaController extends Controller
     }
 
     /**
-     * Get keluarga data for map display
+     * Get keluarga data for map display - LEGACY METHOD (kept for compatibility)
      */
     public function getKeluargaForMap(Request $request)
     {
-        try {
-            $query = Keluarga::query()
-                ->whereNotNull('lokasi');
-
-            // Apply filters if provided
-            if ($request->has('status') && $request->status !== 'all') {
-                $query->where('status_ekonomi', $request->status);
-            }
-
-            // Get data dengan extract koordinat dari POINT
-            $keluarga = $query->select([
-                'id', 'no_kk', 'nama_kepala_keluarga', 'alamat',
-                'kelurahan', 'kecamatan', 'kota', 'provinsi',
-                'status_ekonomi',
-                DB::raw('ST_X(lokasi) as longitude'),
-                DB::raw('ST_Y(lokasi) as latitude')
-            ])->get();
-
-            // PERBAIKAN: Sanitize data untuk response
-            $sanitizedData = $keluarga->map(function ($item) {
-                return $this->sanitizeKeluargaForResponse($item);
-            });
-
-            return response()->json($sanitizedData, 200, [], JSON_UNESCAPED_UNICODE);
-
-        } catch (\Exception $e) {
-            Log::error('Error getting keluarga for map: ' . $e->getMessage());
-
-            return response()->json([
-                'error' => 'Terjadi kesalahan saat memuat data peta'
-            ], 500, [], JSON_UNESCAPED_UNICODE);
-        }
+        return $this->getForMap($request);
     }
 
     /**

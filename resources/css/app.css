@@ -145,3 +145,33 @@ body {
     @apply bg-background text-foreground;
     }
 }
+
+@keyframes toast-in-right {
+  from {
+    transform: translateX(calc(100% + 1rem));
+  }
+  to {
+    transform: translateX(0);
+  }
+}
+
+@keyframes toast-out-right {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(calc(100% + 1rem));
+  }
+}
+
+.toast-success {
+  @apply border-green-200 bg-green-50 text-green-800;
+}
+
+.toast-success .toast-title {
+  @apply text-green-900;
+}
+
+.toast-success .toast-description {
+  @apply text-green-700;
+}

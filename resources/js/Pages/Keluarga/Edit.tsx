@@ -1,13 +1,47 @@
-// resources/js/Pages/Keluarga/Edit.tsx
 import React, { useState, useEffect } from 'react';
 import { Head, useForm, Link, router } from '@inertiajs/react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import MapDrawing from '@/Components/Map/MapDrawing';
-import InputError from '@/Components/InputError';
-import InputLabel from '@/Components/InputLabel';
-import PrimaryButton from '@/Components/PrimaryButton';
-import TextInput from '@/Components/TextInput';
 import { PageProps } from '@/types';
+import { motion, AnimatePresence } from 'framer-motion';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/Components/ui/card';
+import { Button } from '@/Components/ui/button';
+import { Input } from '@/Components/ui/input';
+import { Label } from '@/Components/ui/label';
+import { Textarea } from '@/Components/ui/textarea';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/Components/ui/select';
+import { Badge } from '@/Components/ui/badge';
+import { Alert, AlertDescription } from '@/Components/ui/alert';
+import { Separator } from '@/Components/ui/separator';
+import { useToast } from '@/Hooks/use-toast';
+import {
+  Home,
+  Edit as EditIcon,
+  ArrowLeft,
+  Save,
+  Loader2,
+  AlertTriangle,
+  CheckCircle,
+  Users,
+  MapPin,
+  DollarSign,
+  FileText,
+  Waves,
+  Navigation,
+  RotateCcw,
+  Eye,
+  Map
+} from 'lucide-react';
+
+// Import data dari file terpisah
+import {
+  provinsiData,
+  kotaData,
+  getKotaByProvinsi,
+  findProvinsiByNama,
+  type Provinsi,
+  type Kota
+} from '@/data/provinsiKota';
 
 // Interface untuk form data
 type KeluargaFormData = {
@@ -59,6 +93,8 @@ interface EditPageProps extends PageProps {
 }
 
 export default function Edit({ auth, keluarga }: EditPageProps) {
+  const { toast } = useToast();
+
   const { data, setData, put, processing, errors, reset, clearErrors, isDirty } = useForm<KeluargaFormData>({
     no_kk: keluarga?.no_kk || '',
     nama_kepala_keluarga: keluarga?.nama_kepala_keluarga || '',
@@ -77,20 +113,47 @@ export default function Edit({ auth, keluarga }: EditPageProps) {
     keterangan: keluarga?.keterangan || ''
   });
 
+  // State untuk dependent dropdown
+  const [selectedProvinsi, setSelectedProvinsi] = useState<Provinsi | null>(null);
+  const [availableKota, setAvailableKota] = useState<Kota[]>([]);
   const [showMapSection, setShowMapSection] = useState<boolean>(false);
   const [currentLocation, setCurrentLocation] = useState<LocationData | null>(null);
   const [showMap, setShowMap] = useState(false);
   const [isFormUpdated, setIsFormUpdated] = useState<boolean>(false);
-  const [lastSavedData, setLastSavedData] = useState<KeluargaFormData>(data);
+
+  // Animation variants
+  const containerVariants = {
+    hidden: { opacity: 0 },
+    visible: {
+      opacity: 1,
+      transition: { staggerChildren: 0.1 }
+    }
+  };
+
+  const itemVariants = {
+    hidden: { y: 20, opacity: 0 },
+    visible: {
+      y: 0,
+      opacity: 1,
+      transition: { type: "spring", stiffness: 100 }
+    }
+  };
+
+  const waveVariants = {
+    animate: {
+      x: [0, -20, 0],
+      transition: { duration: 3, repeat: Infinity, ease: "easeInOut" }
+    }
+  };
 
   // Breadcrumb
   const breadcrumbs = [
     { label: 'Dashboard', href: route('dashboard') },
     { label: 'Data Keluarga', href: route('keluarga.index') },
-    { label: 'Edit Data', active: true }
+    { label: 'Edit Data', current: true }
   ];
 
-  // Set initial location jika ada koordinat
+  // Set initial location dan provinsi jika ada
   useEffect(() => {
     if (keluarga?.latitude && keluarga?.longitude) {
       const lat = parseFloat(keluarga.latitude);
@@ -99,20 +162,60 @@ export default function Edit({ auth, keluarga }: EditPageProps) {
         setCurrentLocation({ lat, lng });
       }
     }
+
+    // Set initial provinsi dan kota
+    if (keluarga?.provinsi) {
+      const provinsi = findProvinsiByNama(keluarga.provinsi);
+      setSelectedProvinsi(provinsi || null);
+
+      if (provinsi) {
+        const filteredKota = getKotaByProvinsi(provinsi.id);
+        setAvailableKota(filteredKota);
+      }
+    }
   }, [keluarga]);
+
+  // Handle perubahan provinsi
+  const handleProvinsiChange = (provinsiNama: string) => {
+    setData('provinsi', provinsiNama);
+    setData('kota', ''); // Reset kota
+
+    if (provinsiNama) {
+      const provinsi = findProvinsiByNama(provinsiNama);
+      setSelectedProvinsi(provinsi || null);
+
+      if (provinsi) {
+        const filteredKota = getKotaByProvinsi(provinsi.id);
+        setAvailableKota(filteredKota);
+      } else {
+        setAvailableKota([]);
+      }
+    } else {
+      setSelectedProvinsi(null);
+      setAvailableKota([]);
+    }
+  };
 
   // Handle submit form
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
 
-    router.post(route('keluarga.update', keluarga.id), {
-      ...data,
-      _method: 'PUT'
-    }, {
-      forceFormData: true,
+    put(route('keluarga.update', keluarga.id), {
+      onStart: () => {
+        toast({
+          title: "Memproses Data",
+          description: "Sedang memperbarui data keluarga...",
+          variant: "default",
+        });
+      },
       onSuccess: () => {
         setIsFormUpdated(true);
-        setLastSavedData(data);
+
+        toast({
+          title: "Data Berhasil Diperbarui! 🎉",
+          description: `Data keluarga ${data.nama_kepala_keluarga} telah berhasil diperbarui.`,
+          variant: "default",
+        });
 
         setTimeout(() => {
           setIsFormUpdated(false);
@@ -120,14 +223,18 @@ export default function Edit({ auth, keluarga }: EditPageProps) {
       },
       onError: (errors) => {
         console.error('Error updating keluarga:', errors);
+        const errorMessages = Object.values(errors).flat();
+        toast({
+          title: "Gagal Memperbarui Data",
+          description: errorMessages.join(', '),
+          variant: "destructive",
+        });
       }
     });
   };
 
   // Handle koordinat dari peta
   const handleMapPointSaved = (point: LocationData) => {
-    console.log('Received point from map:', point);
-
     if (point && point.lat && point.lng) {
       const updatedData = {
         ...data,
@@ -138,23 +245,24 @@ export default function Edit({ auth, keluarga }: EditPageProps) {
       setData(updatedData);
       setCurrentLocation(point);
 
-      router.post(route('keluarga.update', keluarga.id), {
+      put(route('keluarga.update', keluarga.id), {
         ...updatedData,
-        _method: 'PUT'
-      }, {
-        forceFormData: true,
         onSuccess: () => {
-          setLastSavedData(updatedData);
-          alert('Koordinat berhasil diperbarui!');
+          toast({
+            title: "Koordinat Berhasil Diperbarui! 📍",
+            description: "Lokasi keluarga telah berhasil ditentukan pada peta.",
+            variant: "default",
+          });
         },
         onError: (errors: any) => {
           console.error('Error updating coordinates:', errors);
-          alert('Terjadi kesalahan saat menyimpan koordinat. Silakan coba lagi.');
+          toast({
+            title: "Gagal Menyimpan Koordinat",
+            description: "Terjadi kesalahan saat menyimpan koordinat.",
+            variant: "destructive",
+          });
         }
       });
-    } else {
-      console.error('Invalid point data:', point);
-      alert('Data koordinat tidak valid');
     }
   };
 
@@ -197,22 +305,11 @@ export default function Edit({ auth, keluarga }: EditPageProps) {
         return;
       }
     }
-
-    try {
-      router.visit(route('keluarga.index'));
-    } catch (error) {
-      console.error('Error navigating back:', error);
-      window.location.href = route('keluarga.index');
-    }
+    router.visit(route('keluarga.index'));
   };
 
   const handleViewDetail = () => {
-    try {
-      router.visit(route('keluarga.show', keluarga.id));
-    } catch (error) {
-      console.error('Error navigating to detail:', error);
-      window.location.href = route('keluarga.show', keluarga.id);
-    }
+    router.visit(route('keluarga.show', keluarga.id));
   };
 
   // Reset form to original values
@@ -240,6 +337,17 @@ export default function Edit({ auth, keluarga }: EditPageProps) {
         keterangan: keluarga?.keterangan || ''
       });
 
+      // Reset provinsi dan kota
+      if (keluarga?.provinsi) {
+        const provinsi = findProvinsiByNama(keluarga.provinsi);
+        setSelectedProvinsi(provinsi || null);
+
+        if (provinsi) {
+          const filteredKota = getKotaByProvinsi(provinsi.id);
+          setAvailableKota(filteredKota);
+        }
+      }
+
       if (keluarga?.latitude && keluarga?.longitude) {
         const lat = parseFloat(keluarga.latitude);
         const lng = parseFloat(keluarga.longitude);
@@ -255,598 +363,688 @@ export default function Edit({ auth, keluarga }: EditPageProps) {
   };
 
   return (
-    <AuthenticatedLayout
-      user={auth.user}
-      breadcrumbs={breadcrumbs}
-      header={
-        <div className="flex items-center space-x-4 animate-slideInDown">
-          <div className="w-1 h-10 bg-gradient-to-b from-cyan-400 via-cyan-500 to-teal-600 rounded-full shadow-lg animate-pulse"></div>
-          <h2 className="font-extralight text-3xl text-slate-800 tracking-wide">Edit Data Keluarga</h2>
-        </div>
-      }
-    >
+    <AuthenticatedLayout user={auth.user} breadcrumbs={breadcrumbs}>
       <Head title={`Edit Data Keluarga - ${keluarga?.nama_kepala_keluarga}`} />
 
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-cyan-50 to-teal-50">
-        <div className="space-y-8 p-6">
-          {/* Success Message */}
-          {isFormUpdated && (
-            <div className="bg-gradient-to-r from-emerald-50 to-cyan-50 border border-emerald-200 rounded-3xl p-6 shadow-lg animate-slideInUp backdrop-blur-sm">
-              <div className="flex items-center">
-                <div className="flex-shrink-0">
-                  <div className="w-8 h-8 bg-gradient-to-r from-emerald-400 to-cyan-400 rounded-full flex items-center justify-center animate-bounce">
-                    <svg className="w-5 h-5 text-white" fill="currentColor" viewBox="0 0 20 20">
-                      <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-                    </svg>
-                  </div>
-                </div>
-                <div className="ml-4">
-                  <p className="text-sm font-medium text-emerald-800">
-                    Data keluarga berhasil diperbarui!
-                  </p>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* Header Info */}
-          <div className="bg-white/70 backdrop-blur-md rounded-3xl border border-white/20 p-8 shadow-xl animate-fadeInUp">
-            <div className="flex items-center justify-between">
-              <div className="space-y-2">
-                <h3 className="text-xl font-light text-slate-800">Informasi Keluarga</h3>
-                <p className="text-slate-600 font-mono text-sm">
-                  KK: {keluarga?.no_kk} • {keluarga?.nama_kepala_keluarga}
-                </p>
-                <p className="text-xs text-slate-500">
-                  Terakhir diperbarui: {new Date(keluarga?.updated_at).toLocaleDateString('id-ID', {
-                    year: 'numeric',
-                    month: 'long',
-                    day: 'numeric',
-                    hour: '2-digit',
-                    minute: '2-digit'
-                  })}
-                </p>
-              </div>
-              <div className="flex space-x-3">
-                <button
-                  onClick={handleViewDetail}
-                  className="group inline-flex items-center px-6 py-3 border border-cyan-200 rounded-2xl text-sm font-medium text-cyan-700 bg-white/50 hover:bg-cyan-50 transition-all duration-300 transform hover:scale-105 hover:shadow-lg backdrop-blur-sm"
-                >
-                  <svg className="w-4 h-4 mr-2 group-hover:rotate-12 transition-transform duration-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                  </svg>
-                  Detail
-                </button>
-                <button
-                  onClick={handleBackToList}
-                  className="group inline-flex items-center px-6 py-3 border border-slate-200 rounded-2xl text-sm font-medium text-slate-700 bg-white/50 hover:bg-slate-50 transition-all duration-300 transform hover:scale-105 hover:shadow-lg backdrop-blur-sm"
-                >
-                  <svg className="w-4 h-4 mr-2 group-hover:-translate-x-1 transition-transform duration-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
-                  </svg>
-                  Kembali
-                </button>
+      <motion.div
+        className="space-y-8"
+        variants={containerVariants}
+        initial="hidden"
+        animate="visible"
+      >
+        {/* Header dengan animasi wave */}
+        <motion.div
+          className="flex items-center justify-between mb-8"
+          variants={itemVariants}
+        >
+          <div className="flex items-center space-x-4">
+            <motion.div
+              className="relative"
+              variants={waveVariants}
+              animate="animate"
+            >
+              <div className="w-3 h-10 bg-gradient-to-b from-cyan-400 via-teal-500 to-blue-600 rounded-full shadow-lg"></div>
+              <div className="absolute -top-1 -left-1 w-5 h-12 bg-gradient-to-b from-cyan-300/30 via-teal-400/30 to-blue-500/30 rounded-full blur-sm"></div>
+            </motion.div>
+            <div className="flex items-center space-x-3">
+              <EditIcon className="w-8 h-8 text-teal-600" />
+              <div>
+                <h1 className="font-light text-3xl text-slate-800 tracking-wide">Edit Data Keluarga</h1>
+                <p className="text-slate-600 mt-1">{keluarga?.nama_kepala_keluarga}</p>
               </div>
             </div>
           </div>
 
-          {/* Form Data Keluarga */}
-          <div className="bg-white/70 backdrop-blur-md rounded-3xl border border-white/20 overflow-hidden shadow-xl animate-fadeInUp">
-            <div className="p-8">
-              <div className="flex items-center space-x-3 mb-8">
-                <div className="w-2 h-8 bg-gradient-to-b from-cyan-400 to-teal-500 rounded-full animate-pulse"></div>
-                <h3 className="text-2xl font-extralight text-slate-800 tracking-wide">Edit Data Keluarga</h3>
-              </div>
+          <div className="flex space-x-3">
+            <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
+              <Button asChild variant="outline" className="border-slate-300 hover:bg-slate-50">
+                <Link href={route('keluarga.index')}>
+                  <ArrowLeft className="w-4 h-4 mr-2" />
+                  Kembali
+                </Link>
+              </Button>
+            </motion.div>
+            <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
+              <Button asChild variant="outline" className="border-cyan-200 text-cyan-700 hover:bg-cyan-50">
+                <Link href={route('keluarga.show', keluarga.id)}>
+                  <Eye className="w-4 h-4 mr-2" />
+                  Detail
+                </Link>
+              </Button>
+            </motion.div>
+          </div>
+        </motion.div>
 
-              <form onSubmit={handleSubmit} className="space-y-10">
+        {/* Success Message */}
+        <AnimatePresence>
+          {isFormUpdated && (
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              transition={{ type: "spring", stiffness: 200 }}
+            >
+              <Alert className="border-green-200 bg-green-50">
+                <CheckCircle className="h-4 w-4 text-green-600" />
+                <AlertDescription className="text-green-700">
+                  Data keluarga berhasil diperbarui!
+                </AlertDescription>
+              </Alert>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* Header Info */}
+        <motion.div variants={itemVariants}>
+          <Card className="border-0 shadow-lg bg-white/80 backdrop-blur-sm">
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between">
+                <div className="space-y-2">
+                  <h3 className="text-lg font-medium text-slate-800">Informasi Keluarga</h3>
+                  <p className="text-slate-600 font-mono text-sm">
+                    KK: {keluarga?.no_kk} • {keluarga?.nama_kepala_keluarga}
+                  </p>
+                  <p className="text-xs text-slate-500">
+                    Terakhir diperbarui: {new Date(keluarga?.updated_at).toLocaleDateString('id-ID', {
+                      year: 'numeric',
+                      month: 'long',
+                      day: 'numeric',
+                      hour: '2-digit',
+                      minute: '2-digit'
+                    })}
+                  </p>
+                </div>
+                {isDirty && (
+                  <Badge variant="secondary" className="bg-amber-100 text-amber-800">
+                    Ada perubahan yang belum disimpan
+                  </Badge>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        </motion.div>
+
+        {/* Form Data Keluarga */}
+        <motion.div variants={itemVariants}>
+          <Card className="border-0 shadow-xl bg-white/90 backdrop-blur-md overflow-hidden">
+            <CardHeader className="pb-6 bg-gradient-to-r from-cyan-50/50 to-teal-50/50 border-b border-gray-100/50">
+              <div className="flex items-center space-x-4">
+                <motion.div
+                  className="w-16 h-16 bg-gradient-to-br from-cyan-100 to-teal-100 rounded-full flex items-center justify-center"
+                  whileHover={{ scale: 1.1, rotate: 5 }}
+                  transition={{ type: "spring", stiffness: 300 }}
+                >
+                  <Home className="w-8 h-8 text-cyan-600" />
+                </motion.div>
+                <div>
+                  <CardTitle className="text-xl font-medium text-slate-800">
+                    Edit Data Keluarga
+                  </CardTitle>
+                  <CardDescription className="mt-2">
+                    Perbarui informasi keluarga dengan akurat
+                  </CardDescription>
+                </div>
+              </div>
+            </CardHeader>
+
+            <CardContent className="p-8">
+              <form onSubmit={handleSubmit} className="space-y-8">
                 {/* Data KK Section */}
-                <div className="group bg-gradient-to-br from-slate-50/50 to-cyan-50/30 p-8 rounded-3xl border border-slate-100/50 hover:shadow-lg transition-all duration-500 animate-slideInLeft">
-                  <h4 className="text-lg font-light text-slate-800 mb-6 flex items-center">
-                    <div className="w-1.5 h-6 bg-gradient-to-b from-cyan-400 to-teal-500 rounded-full mr-4"></div>
-                    Data Kartu Keluarga
-                  </h4>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                <motion.div
+                  className="space-y-6"
+                  initial={{ opacity: 0, x: -20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: 0.1 }}
+                >
+                  <div className="flex items-center space-x-3 mb-4">
+                    <FileText className="w-5 h-5 text-teal-600" />
+                    <h3 className="text-lg font-semibold text-slate-800">Data Kartu Keluarga</h3>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div className="space-y-2">
-                      <InputLabel htmlFor="no_kk" value="Nomor KK *" className="text-slate-700 font-medium" />
-                      <TextInput
+                      <Label htmlFor="no_kk" className="text-sm font-medium text-slate-700">
+                        Nomor KK *
+                      </Label>
+                      <Input
                         id="no_kk"
-                        className="mt-2 block w-full border-0 bg-white/60 backdrop-blur-sm rounded-2xl shadow-sm focus:ring-2 focus:ring-cyan-400 focus:border-transparent transition-all duration-300 hover:shadow-md"
                         value={data.no_kk}
                         onChange={(e) => setData('no_kk', e.target.value)}
-                        required
                         placeholder="16 digit nomor KK"
+                        maxLength={16}
+                        className="border-slate-200 focus:border-cyan-500 focus:ring-cyan-500/20"
+                        required
                       />
-                      <InputError message={errors.no_kk} className="mt-2" />
+                      {errors.no_kk && (
+                        <p className="text-sm text-red-600 flex items-center">
+                          <AlertTriangle className="w-4 h-4 mr-1" />
+                          {errors.no_kk}
+                        </p>
+                      )}
                     </div>
 
                     <div className="space-y-2">
-                      <InputLabel htmlFor="nama_kepala_keluarga" value="Nama Kepala Keluarga *" className="text-slate-700 font-medium" />
-                      <TextInput
+                      <Label htmlFor="nama_kepala_keluarga" className="text-sm font-medium text-slate-700">
+                        Nama Kepala Keluarga *
+                      </Label>
+                      <Input
                         id="nama_kepala_keluarga"
-                        className="mt-2 block w-full border-0 bg-white/60 backdrop-blur-sm rounded-2xl shadow-sm focus:ring-2 focus:ring-cyan-400 focus:border-transparent transition-all duration-300 hover:shadow-md"
                         value={data.nama_kepala_keluarga}
                         onChange={(e) => setData('nama_kepala_keluarga', e.target.value)}
-                        required
                         placeholder="Nama lengkap kepala keluarga"
+                        className="border-slate-200 focus:border-cyan-500 focus:ring-cyan-500/20"
+                        required
                       />
-                      <InputError message={errors.nama_kepala_keluarga} className="mt-2" />
+                      {errors.nama_kepala_keluarga && (
+                        <p className="text-sm text-red-600 flex items-center">
+                          <AlertTriangle className="w-4 h-4 mr-1" />
+                          {errors.nama_kepala_keluarga}
+                        </p>
+                      )}
                     </div>
                   </div>
-                </div>
+                </motion.div>
 
-                {/* Alamat Section */}
-                <div className="group bg-gradient-to-br from-blue-50/30 to-cyan-50/50 p-8 rounded-3xl border border-blue-100/50 hover:shadow-lg transition-all duration-500 animate-slideInRight">
-                  <h4 className="text-lg font-light text-slate-800 mb-6 flex items-center">
-                    <div className="w-1.5 h-6 bg-gradient-to-b from-blue-400 to-cyan-500 rounded-full mr-4"></div>
-                    Alamat Lengkap
-                  </h4>
-                  <div className="space-y-8">
+                <Separator />
+
+                {/* Alamat Section dengan Enhanced Dropdown */}
+                <motion.div
+                  className="space-y-6"
+                  initial={{ opacity: 0, x: -20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: 0.2 }}
+                >
+                  <div className="flex items-center space-x-3 mb-4">
+                    <MapPin className="w-5 h-5 text-teal-600" />
+                    <h3 className="text-lg font-semibold text-slate-800">Alamat Lengkap</h3>
+                  </div>
+
+                  <div className="space-y-6">
+                    {/* Provinsi Dropdown */}
                     <div className="space-y-2">
-                      <InputLabel htmlFor="alamat" value="Alamat *" className="text-slate-700 font-medium" />
-                      <textarea
-                        id="alamat"
-                        className="mt-2 block w-full border-0 bg-white/60 backdrop-blur-sm rounded-2xl shadow-sm focus:ring-2 focus:ring-cyan-400 focus:border-transparent transition-all duration-300 hover:shadow-md resize-none"
-                        rows={3}
-                        value={data.alamat}
-                        onChange={(e) => setData('alamat', e.target.value)}
-                        required
-                        placeholder="Alamat lengkap (jalan, nomor rumah, dll)"
-                      />
-                      <InputError message={errors.alamat} className="mt-2" />
+                      <Label htmlFor="provinsi" className="text-sm font-medium text-slate-700">
+                        Provinsi *
+                      </Label>
+                      <Select value={data.provinsi} onValueChange={handleProvinsiChange}>
+                        <SelectTrigger className="border-slate-200 focus:border-cyan-500 focus:ring-cyan-500/20">
+                          <SelectValue placeholder="Pilih Provinsi" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {provinsiData.map((provinsi) => (
+                            <SelectItem key={provinsi.id} value={provinsi.nama}>
+                              {provinsi.nama}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      {errors.provinsi && (
+                        <p className="text-sm text-red-600 flex items-center">
+                          <AlertTriangle className="w-4 h-4 mr-1" />
+                          {errors.provinsi}
+                        </p>
+                      )}
                     </div>
 
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
-                      <div className="space-y-2">
-                        <InputLabel htmlFor="rt" value="RT" className="text-slate-700 font-medium" />
-                        <TextInput
-                          id="rt"
-                          className="mt-2 block w-full border-0 bg-white/60 backdrop-blur-sm rounded-2xl shadow-sm focus:ring-2 focus:ring-cyan-400 focus:border-transparent transition-all duration-300 hover:shadow-md"
-                          value={data.rt}
-                          onChange={(e) => setData('rt', e.target.value)}
-                          placeholder="001"
-                        />
-                        <InputError message={errors.rt} className="mt-2" />
-                      </div>
-
-                      <div className="space-y-2">
-                        <InputLabel htmlFor="rw" value="RW" className="text-slate-700 font-medium" />
-                        <TextInput
-                          id="rw"
-                          className="mt-2 block w-full border-0 bg-white/60 backdrop-blur-sm rounded-2xl shadow-sm focus:ring-2 focus:ring-cyan-400 focus:border-transparent transition-all duration-300 hover:shadow-md"
-                          value={data.rw}
-                          onChange={(e) => setData('rw', e.target.value)}
-                          placeholder="001"
-                        />
-                        <InputError message={errors.rw} className="mt-2" />
-                      </div>
-
-                      <div className="space-y-2">
-                        <InputLabel htmlFor="kode_pos" value="Kode Pos" className="text-slate-700 font-medium" />
-                        <TextInput
-                          id="kode_pos"
-                          className="mt-2 block w-full border-0 bg-white/60 backdrop-blur-sm rounded-2xl shadow-sm focus:ring-2 focus:ring-cyan-400 focus:border-transparent transition-all duration-300 hover:shadow-md"
-                          value={data.kode_pos}
-                          onChange={(e) => setData('kode_pos', e.target.value)}
-                          placeholder="12345"
-                        />
-                        <InputError message={errors.kode_pos} className="mt-2" />
-                      </div>
+                    {/* Kota/Kabupaten Dropdown */}
+                    <div className="space-y-2">
+                      <Label htmlFor="kota" className="text-sm font-medium text-slate-700">
+                        Kota/Kabupaten *
+                      </Label>
+                      <Select
+                        value={data.kota}
+                        onValueChange={(value) => setData('kota', value)}
+                        disabled={!selectedProvinsi}
+                      >
+                        <SelectTrigger className="border-slate-200 focus:border-cyan-500 focus:ring-cyan-500/20">
+                          <SelectValue placeholder={
+                            selectedProvinsi ? 'Pilih Kota/Kabupaten' : 'Pilih Provinsi Terlebih Dahulu'
+                          } />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {availableKota.map((kota) => (
+                            <SelectItem key={kota.id} value={kota.nama}>
+                              {kota.nama}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      {errors.kota && (
+                        <p className="text-sm text-red-600 flex items-center">
+                          <AlertTriangle className="w-4 h-4 mr-1" />
+                          {errors.kota}
+                        </p>
+                      )}
                     </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                    {/* Rest of address fields */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                       <div className="space-y-2">
-                        <InputLabel htmlFor="kelurahan" value="Kelurahan *" className="text-slate-700 font-medium" />
-                        <TextInput
-                          id="kelurahan"
-                          className="mt-2 block w-full border-0 bg-white/60 backdrop-blur-sm rounded-2xl shadow-sm focus:ring-2 focus:ring-cyan-400 focus:border-transparent transition-all duration-300 hover:shadow-md"
-                          value={data.kelurahan}
-                          onChange={(e) => setData('kelurahan', e.target.value)}
-                          placeholder="Nama kelurahan"
-                          required
-                        />
-                        <InputError message={errors.kelurahan} className="mt-2" />
-                      </div>
-
-                      <div className="space-y-2">
-                        <InputLabel htmlFor="kecamatan" value="Kecamatan *" className="text-slate-700 font-medium" />
-                        <TextInput
+                        <Label htmlFor="kecamatan" className="text-sm font-medium text-slate-700">
+                          Kecamatan *
+                        </Label>
+                        <Input
                           id="kecamatan"
-                          className="mt-2 block w-full border-0 bg-white/60 backdrop-blur-sm rounded-2xl shadow-sm focus:ring-2 focus:ring-cyan-400 focus:border-transparent transition-all duration-300 hover:shadow-md"
                           value={data.kecamatan}
                           onChange={(e) => setData('kecamatan', e.target.value)}
                           placeholder="Nama kecamatan"
+                          className="border-slate-200 focus:border-cyan-500 focus:ring-cyan-500/20"
                           required
                         />
-                        <InputError message={errors.kecamatan} className="mt-2" />
+                        {errors.kecamatan && (
+                          <p className="text-sm text-red-600 flex items-center">
+                            <AlertTriangle className="w-4 h-4 mr-1" />
+                            {errors.kecamatan}
+                          </p>
+                        )}
                       </div>
 
                       <div className="space-y-2">
-                        <InputLabel htmlFor="kota" value="Kota/Kabupaten *" className="text-slate-700 font-medium" />
-                        <TextInput
-                          id="kota"
-                          className="mt-2 block w-full border-0 bg-white/60 backdrop-blur-sm rounded-2xl shadow-sm focus:ring-2 focus:ring-cyan-400 focus:border-transparent transition-all duration-300 hover:shadow-md"
-                          value={data.kota}
-                          onChange={(e) => setData('kota', e.target.value)}
-                          placeholder="Nama kota/kabupaten"
+                        <Label htmlFor="kelurahan" className="text-sm font-medium text-slate-700">
+                          Kelurahan/Desa *
+                        </Label>
+                        <Input
+                          id="kelurahan"
+                          value={data.kelurahan}
+                          onChange={(e) => setData('kelurahan', e.target.value)}
+                          placeholder="Nama kelurahan/desa"
+                          className="border-slate-200 focus:border-cyan-500 focus:ring-cyan-500/20"
                           required
                         />
-                        <InputError message={errors.kota} className="mt-2" />
+                        {errors.kelurahan && (
+                          <p className="text-sm text-red-600 flex items-center">
+                            <AlertTriangle className="w-4 h-4 mr-1" />
+                            {errors.kelurahan}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="alamat" className="text-sm font-medium text-slate-700">
+                        Alamat (Jalan dan Nomor) *
+                      </Label>
+                      <Textarea
+                        id="alamat"
+                        rows={3}
+                        value={data.alamat}
+                        onChange={(e) => setData('alamat', e.target.value)}
+                        placeholder="Nama jalan, nomor rumah, gang, dll"
+                        className="border-slate-200 focus:border-cyan-500 focus:ring-cyan-500/20"
+                        required
+                      />
+                      {errors.alamat && (
+                        <p className="text-sm text-red-600 flex items-center">
+                          <AlertTriangle className="w-4 h-4 mr-1" />
+                          {errors.alamat}
+                        </p>
+                      )}
+                    </div>
+
+                    <div className="grid grid-cols-3 gap-6">
+                      <div className="space-y-2">
+                        <Label htmlFor="rt" className="text-sm font-medium text-slate-700">
+                          RT
+                        </Label>
+                        <Input
+                          id="rt"
+                          value={data.rt}
+                          onChange={(e) => setData('rt', e.target.value)}
+                          placeholder="001"
+                          className="border-slate-200 focus:border-cyan-500 focus:ring-cyan-500/20"
+                        />
+                        {errors.rt && (
+                          <p className="text-sm text-red-600 flex items-center">
+                            <AlertTriangle className="w-4 h-4 mr-1" />
+                            {errors.rt}
+                          </p>
+                        )}
                       </div>
 
                       <div className="space-y-2">
-                        <InputLabel htmlFor="provinsi" value="Provinsi *" className="text-slate-700 font-medium" />
-                        <TextInput
-                          id="provinsi"
-                          className="mt-2 block w-full border-0 bg-white/60 backdrop-blur-sm rounded-2xl shadow-sm focus:ring-2 focus:ring-cyan-400 focus:border-transparent transition-all duration-300 hover:shadow-md"
-                          value={data.provinsi}
-                          onChange={(e) => setData('provinsi', e.target.value)}
-                          placeholder="Nama provinsi"
-                          required
+                        <Label htmlFor="rw" className="text-sm font-medium text-slate-700">
+                          RW
+                        </Label>
+                        <Input
+                          id="rw"
+                          value={data.rw}
+                          onChange={(e) => setData('rw', e.target.value)}
+                          placeholder="001"
+                          className="border-slate-200 focus:border-cyan-500 focus:ring-cyan-500/20"
                         />
-                        <InputError message={errors.provinsi} className="mt-2" />
+                        {errors.rw && (
+                          <p className="text-sm text-red-600 flex items-center">
+                            <AlertTriangle className="w-4 h-4 mr-1" />
+                            {errors.rw}
+                          </p>
+                        )}
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label htmlFor="kode_pos" className="text-sm font-medium text-slate-700">
+                          Kode Pos
+                        </Label>
+                        <Input
+                          id="kode_pos"
+                          value={data.kode_pos}
+                          onChange={(e) => setData('kode_pos', e.target.value)}
+                          placeholder="12345"
+                          className="border-slate-200 focus:border-cyan-500 focus:ring-cyan-500/20"
+                        />
+                        {errors.kode_pos && (
+                          <p className="text-sm text-red-600 flex items-center">
+                            <AlertTriangle className="w-4 h-4 mr-1" />
+                            {errors.kode_pos}
+                          </p>
+                        )}
                       </div>
                     </div>
                   </div>
-                </div>
+                </motion.div>
+
+                <Separator />
 
                 {/* Status Ekonomi Section */}
-                <div className="group bg-gradient-to-br from-emerald-50/30 to-cyan-50/50 p-8 rounded-3xl border border-emerald-100/50 hover:shadow-lg transition-all duration-500 animate-slideInLeft">
-                  <h4 className="text-lg font-light text-slate-800 mb-6 flex items-center">
-                    <div className="w-1.5 h-6 bg-gradient-to-b from-emerald-400 to-cyan-500 rounded-full mr-4"></div>
-                    Status Ekonomi
-                  </h4>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                <motion.div
+                  className="space-y-6"
+                  initial={{ opacity: 0, x: -20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: 0.3 }}
+                >
+                  <div className="flex items-center space-x-3 mb-4">
+                    <DollarSign className="w-5 h-5 text-teal-600" />
+                    <h3 className="text-lg font-semibold text-slate-800">Status Ekonomi</h3>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div className="space-y-2">
-                      <InputLabel htmlFor="status_ekonomi" value="Status Ekonomi *" className="text-slate-700 font-medium" />
-                      <select
-                        id="status_ekonomi"
-                        className="mt-2 block w-full border-0 bg-white/60 backdrop-blur-sm rounded-2xl shadow-sm focus:ring-2 focus:ring-cyan-400 focus:border-transparent transition-all duration-300 hover:shadow-md"
+                      <Label htmlFor="status_ekonomi" className="text-sm font-medium text-slate-700">
+                        Status Ekonomi *
+                      </Label>
+                      <Select
                         value={data.status_ekonomi}
-                        onChange={(e) => setData('status_ekonomi', e.target.value)}
-                        required
+                        onValueChange={(value) => setData('status_ekonomi', value)}
                       >
-                        <option value="sangat_miskin">Sangat Miskin</option>
-                        <option value="miskin">Miskin</option>
-                        <option value="rentan_miskin">Rentan Miskin</option>
-                      </select>
-                      <InputError message={errors.status_ekonomi} className="mt-2" />
+                        <SelectTrigger className="border-slate-200 focus:border-cyan-500 focus:ring-cyan-500/20">
+                          <SelectValue placeholder="Pilih Status Ekonomi" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="sangat_miskin">Sangat Miskin</SelectItem>
+                          <SelectItem value="miskin">Miskin</SelectItem>
+                          <SelectItem value="rentan_miskin">Rentan Miskin</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      {errors.status_ekonomi && (
+                        <p className="text-sm text-red-600 flex items-center">
+                          <AlertTriangle className="w-4 h-4 mr-1" />
+                          {errors.status_ekonomi}
+                        </p>
+                      )}
                     </div>
 
                     <div className="space-y-2">
-                      <InputLabel htmlFor="penghasilan_bulanan" value="Penghasilan Bulanan (Rp)" className="text-slate-700 font-medium" />
-                      <TextInput
+                      <Label htmlFor="penghasilan_bulanan" className="text-sm font-medium text-slate-700">
+                        Penghasilan Bulanan (Rp)
+                      </Label>
+                      <Input
                         id="penghasilan_bulanan"
                         type="number"
-                        className="mt-2 block w-full border-0 bg-white/60 backdrop-blur-sm rounded-2xl shadow-sm focus:ring-2 focus:ring-cyan-400 focus:border-transparent transition-all duration-300 hover:shadow-md"
                         value={data.penghasilan_bulanan}
                         onChange={(e) => setData('penghasilan_bulanan', e.target.value)}
                         placeholder="0"
                         min="0"
+                        className="border-slate-200 focus:border-cyan-500 focus:ring-cyan-500/20"
                       />
-                      <InputError message={errors.penghasilan_bulanan} className="mt-2" />
+                      {errors.penghasilan_bulanan && (
+                        <p className="text-sm text-red-600 flex items-center">
+                          <AlertTriangle className="w-4 h-4 mr-1" />
+                          {errors.penghasilan_bulanan}
+                        </p>
+                      )}
                     </div>
                   </div>
 
-                  <div className="mt-8 space-y-2">
-                    <InputLabel htmlFor="keterangan" value="Keterangan" className="text-slate-700 font-medium" />
-                    <textarea
+                  <div className="space-y-2">
+                    <Label htmlFor="keterangan" className="text-sm font-medium text-slate-700">
+                      Keterangan
+                    </Label>
+                    <Textarea
                       id="keterangan"
-                      className="mt-2 block w-full border-0 bg-white/60 backdrop-blur-sm rounded-2xl shadow-sm focus:ring-2 focus:ring-cyan-400 focus:border-transparent transition-all duration-300 hover:shadow-md resize-none"
                       rows={3}
                       value={data.keterangan}
                       onChange={(e) => setData('keterangan', e.target.value)}
                       placeholder="Keterangan tambahan (opsional)"
+                      className="border-slate-200 focus:border-cyan-500 focus:ring-cyan-500/20"
                     />
-                    <InputError message={errors.keterangan} className="mt-2" />
+                    {errors.keterangan && (
+                      <p className="text-sm text-red-600 flex items-center">
+                        <AlertTriangle className="w-4 h-4 mr-1" />
+                        {errors.keterangan}
+                      </p>
+                    )}
                   </div>
-                </div>
+                </motion.div>
+
+                <Separator />
 
                 {/* Lokasi Section */}
-                <div className="group bg-gradient-to-br from-violet-50/30 to-cyan-50/50 p-8 rounded-3xl border border-violet-100/50 hover:shadow-lg transition-all duration-500 animate-slideInRight">
-                  <div className="flex items-center justify-between mb-8">
-                    <h4 className="text-lg font-light text-slate-800 flex items-center">
-                      <div className="w-1.5 h-6 bg-gradient-to-b from-violet-400 to-cyan-500 rounded-full mr-4"></div>
-                      Lokasi Geografis
-                    </h4>
-                    <button
-                      type="button"
-                      onClick={toggleMapSection}
-                      className="group inline-flex items-center px-6 py-3 text-sm font-medium text-violet-700 bg-violet-100/60 backdrop-blur-sm rounded-2xl hover:bg-violet-200/60 transition-all duration-300 transform hover:scale-105 hover:shadow-lg"
-                    >
-                      <svg className="w-4 h-4 mr-2 group-hover:rotate-12 transition-transform duration-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 20l-5.447-2.724A1 1 0 0 1 3 16.382V5.618a1 1 0 0 1 1.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0 0 21 18.382V7.618a1 1 0 0 0-.553-.894L15 4m0 13V4m0 0L9 7" />
-                      </svg>
-                      {showMapSection ? 'Sembunyikan Peta' : 'Tampilkan Peta'}
-                    </button>
+                <motion.div
+                  className="space-y-6"
+                  initial={{ opacity: 0, x: -20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: 0.4 }}
+                >
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="flex items-center space-x-3">
+                      <Navigation className="w-5 h-5 text-teal-600" />
+                      <h3 className="text-lg font-semibold text-slate-800">Lokasi Geografis</h3>
+                    </div>
+                    <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
+                      <Button
+                        type="button"
+                        onClick={toggleMapSection}
+                        variant="outline"
+                        className="border-violet-200 text-violet-700 hover:bg-violet-50"
+                      >
+                        <Map className="w-4 h-4 mr-2" />
+                        {showMapSection ? 'Sembunyikan Peta' : 'Tampilkan Peta'}
+                      </Button>
+                    </motion.div>
                   </div>
 
                   {/* Koordinat Manual */}
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-8">
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                     <div className="space-y-2">
-                      <InputLabel htmlFor="latitude" value="Latitude" className="text-slate-700 font-medium" />
-                      <TextInput
+                      <Label htmlFor="latitude" className="text-sm font-medium text-slate-700">
+                        Latitude
+                      </Label>
+                      <Input
                         id="latitude"
                         type="number"
                         step="any"
-                        className="mt-2 block w-full border-0 bg-white/60 backdrop-blur-sm rounded-2xl shadow-sm focus:ring-2 focus:ring-cyan-400 focus:border-transparent transition-all duration-300 hover:shadow-md"
                         value={data.latitude}
                         onChange={(e) => handleCoordinateChange('latitude', e.target.value)}
                         placeholder="-6.200000"
+                        className="border-slate-200 focus:border-cyan-500 focus:ring-cyan-500/20"
                       />
-                      <InputError message={errors.latitude} className="mt-2" />
+                      {errors.latitude && (
+                        <p className="text-sm text-red-600 flex items-center">
+                          <AlertTriangle className="w-4 h-4 mr-1" />
+                          {errors.latitude}
+                        </p>
+                      )}
                     </div>
 
                     <div className="space-y-2">
-                      <InputLabel htmlFor="longitude" value="Longitude" className="text-slate-700 font-medium" />
-                      <TextInput
+                      <Label htmlFor="longitude" className="text-sm font-medium text-slate-700">
+                        Longitude
+                      </Label>
+                      <Input
                         id="longitude"
                         type="number"
                         step="any"
-                        className="mt-2 block w-full border-0 bg-white/60 backdrop-blur-sm rounded-2xl shadow-sm focus:ring-2 focus:ring-cyan-400 focus:border-transparent transition-all duration-300 hover:shadow-md"
                         value={data.longitude}
                         onChange={(e) => handleCoordinateChange('longitude', e.target.value)}
                         placeholder="106.816666"
+                        className="border-slate-200 focus:border-cyan-500 focus:ring-cyan-500/20"
                       />
-                      <InputError message={errors.longitude} className="mt-2" />
+                      {errors.longitude && (
+                        <p className="text-sm text-red-600 flex items-center">
+                          <AlertTriangle className="w-4 h-4 mr-1" />
+                          {errors.longitude}
+                        </p>
+                      )}
                     </div>
 
                     <div className="flex items-end">
-                      <button
-                        type="button"
-                        onClick={toggleMap}
-                        className="group w-full inline-flex justify-center items-center px-6 py-3 bg-gradient-to-r from-violet-500 to-cyan-500 text-white font-medium rounded-2xl hover:from-violet-600 hover:to-cyan-600 transition-all duration-300 transform hover:scale-105 hover:shadow-xl backdrop-blur-sm"
-                      >
-                        <svg className="w-4 h-4 mr-2 group-hover:rotate-12 transition-transform duration-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-                        </svg>
-                        {showMap ? 'Sembunyikan' : 'Tampilkan'} Peta
-                      </button>
+                      <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} className="w-full">
+                        <Button
+                          type="button"
+                          onClick={toggleMap}
+                          variant="outline"
+                          className="w-full border-violet-200 text-violet-700 hover:bg-violet-50"
+                        >
+                          <MapPin className="w-4 h-4 mr-2" />
+                          {showMap ? 'Sembunyikan' : 'Tampilkan'} Peta
+                        </Button>
+                      </motion.div>
                     </div>
                   </div>
 
                   {/* Status Koordinat */}
-                  <div className="p-6 bg-white/60 backdrop-blur-sm rounded-2xl border border-violet-200/50">
+                  <div className="p-4 bg-slate-50 rounded-lg border border-slate-200">
                     <div className="flex items-center justify-between">
                       <div>
                         <p className="text-sm font-medium text-slate-700">Status Koordinat:</p>
                         {data.latitude && data.longitude ? (
-                          <p className="text-sm text-emerald-600 flex items-center mt-2">
-                            <svg className="w-4 h-4 mr-2 animate-pulse" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                            </svg>
+                          <p className="text-sm text-emerald-600 flex items-center mt-1">
+                            <CheckCircle className="w-4 h-4 mr-2" />
                             Tersedia - Lat: {data.latitude}, Lng: {data.longitude}
                           </p>
                         ) : (
-                          <p className="text-sm text-amber-600 flex items-center mt-2">
-                            <svg className="w-4 h-4 mr-2 animate-pulse" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
-                            </svg>
+                          <p className="text-sm text-amber-600 flex items-center mt-1">
+                            <AlertTriangle className="w-4 h-4 mr-2" />
                             Belum ditentukan - Klik pada peta untuk menentukan lokasi
                           </p>
                         )}
                       </div>
-                      {currentLocation && (
-                        <div className="text-xs text-slate-500 bg-slate-50/60 backdrop-blur-sm px-4 py-2 rounded-xl">
-                          <div>Current: {currentLocation.lat.toFixed(6)}, {currentLocation.lng.toFixed(6)}</div>
-                        </div>
-                      )}
                     </div>
                   </div>
 
                   {/* Peta Inline */}
-                  {showMap && (
-                    <div className="border border-violet-200/50 rounded-2xl overflow-hidden mt-8 animate-slideInUp" style={{ height: '400px' }}>
-                      <MapDrawing
-                        onSave={handleMapPointSaved}
-                        keluargaId={keluarga.id}
-                        initialLat={currentLocation?.lat || -2.548926}
-                        initialLng={currentLocation?.lng || 118.0148634}
-                        existingMarker={currentLocation}
-                      />
-                    </div>
-                  )}
-                </div>
+                  <AnimatePresence>
+                    {showMap && (
+                      <motion.div
+                        initial={{ opacity: 0, height: 0 }}
+                        animate={{ opacity: 1, height: 'auto' }}
+                        exit={{ opacity: 0, height: 0 }}
+                        transition={{ duration: 0.3 }}
+                        className="border border-violet-200 rounded-lg overflow-hidden"
+                        style={{ height: '400px' }}
+                      >
+                        <MapDrawing
+                          onSave={handleMapPointSaved}
+                          keluargaId={keluarga.id}
+                          initialLat={currentLocation?.lat || -2.548926}
+                          initialLng={currentLocation?.lng || 118.0148634}
+                          existingMarker={currentLocation}
+                        />
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </motion.div>
 
                 {/* Submit Buttons */}
-                <div className="flex items-center justify-between pt-8 border-t border-slate-200/50">
-                  <button
-                    type="button"
-                    onClick={handleResetForm}
-                    className="group inline-flex items-center px-8 py-4 border border-slate-300/50 rounded-2xl text-sm font-medium text-slate-700 bg-white/60 backdrop-blur-sm hover:bg-slate-50/60 transition-all duration-300 transform hover:scale-105 hover:shadow-lg"
-                    disabled={processing}
-                  >
-                    <svg className="w-4 h-4 mr-2 group-hover:rotate-180 transition-transform duration-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                    </svg>
-                    Reset ke Data Asli
-                  </button>
+                <motion.div
+                  className="flex items-center justify-between pt-8 border-t border-slate-200"
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.5 }}
+                >
+                  <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
+                    <Button
+                      type="button"
+                      onClick={handleResetForm}
+                      variant="outline"
+                      className="border-slate-300 hover:bg-slate-50"
+                      disabled={processing}
+                    >
+                      <RotateCcw className="w-4 h-4 mr-2" />
+                      Reset ke Data Asli
+                    </Button>
+                  </motion.div>
 
-                  <div className="flex items-center space-x-6">
-                    {isDirty && (
-                      <span className="text-sm text-amber-600 flex items-center animate-pulse">
-                        <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
-                        </svg>
-                        Ada perubahan yang belum disimpan
-                      </span>
-                    )}
-                    <button
+                  <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
+                    <Button
                       type="submit"
                       disabled={processing}
-                      className="group inline-flex items-center px-10 py-4 bg-gradient-to-r from-cyan-500 via-cyan-600 to-teal-600 text-white font-medium rounded-2xl hover:from-cyan-600 hover:via-cyan-700 hover:to-teal-700 focus:outline-none focus:ring-4 focus:ring-cyan-200 transition-all duration-300 transform hover:scale-105 hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed backdrop-blur-sm"
+                      className="bg-gradient-to-r from-cyan-500 to-teal-500 hover:from-cyan-600 hover:to-teal-600 text-white shadow-lg hover:shadow-xl transition-all duration-200"
                     >
                       {processing ? (
-                        <div className="flex items-center">
-                          <svg className="w-5 h-5 mr-3 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                          </svg>
+                        <>
+                          <Loader2 className="w-4 h-4 mr-2 animate-spin" />
                           Menyimpan...
-                        </div>
+                        </>
                       ) : (
-                        <div className="flex items-center">
-                          <svg className="w-5 h-5 mr-3 group-hover:rotate-12 transition-transform duration-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                          </svg>
+                        <>
+                          <Save className="w-4 h-4 mr-2" />
                           Simpan Perubahan
-                        </div>
+                        </>
                       )}
-                    </button>
-                  </div>
-                </div>
+                    </Button>
+                  </motion.div>
+                </motion.div>
               </form>
-            </div>
-          </div>
+            </CardContent>
+          </Card>
+        </motion.div>
 
-          {/* Section Peta Terpisah */}
+        {/* Section Peta Terpisah */}
+        <AnimatePresence>
           {showMapSection && (
-            <div id="map-section" className="bg-white/70 backdrop-blur-md rounded-3xl border border-white/20 overflow-hidden shadow-xl animate-slideInUp">
-              <div className="p-8">
-                <div className="flex items-center justify-between mb-8">
-                  <h3 className="text-2xl font-extralight text-slate-800 flex items-center tracking-wide">
-                    <div className="w-2 h-8 bg-gradient-to-b from-violet-400 to-cyan-500 rounded-full mr-4 animate-pulse"></div>
-                    Peta Lokasi Keluarga
-                  </h3>
-                  <div className="flex items-center text-violet-600">
-                    <svg className="w-5 h-5 mr-2 animate-pulse" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-                    </svg>
-                    Peta Interaktif
+            <motion.div
+              id="map-section"
+              initial={{ opacity: 0, y: 50 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -50 }}
+              transition={{ type: "spring", stiffness: 100 }}
+            >
+              <Card className="border-0 shadow-xl bg-white/90 backdrop-blur-md overflow-hidden">
+                <CardHeader className="pb-6 bg-gradient-to-r from-violet-50/50 to-purple-50/50 border-b border-gray-100/50">
+                  <div className="flex items-center space-x-4">
+                    <motion.div
+                      className="w-16 h-16 bg-gradient-to-br from-violet-100 to-purple-100 rounded-full flex items-center justify-center"
+                      whileHover={{ scale: 1.1, rotate: 5 }}
+                      transition={{ type: "spring", stiffness: 300 }}
+                    >
+                      <Navigation className="w-8 h-8 text-violet-600" />
+                    </motion.div>
+                    <div>
+                      <CardTitle className="text-xl font-medium text-slate-800">
+                        Peta Lokasi Keluarga
+                      </CardTitle>
+                      <CardDescription className="mt-2">
+                        Klik pada peta untuk menentukan atau memperbarui koordinat lokasi keluarga
+                      </CardDescription>
+                    </div>
                   </div>
-                </div>
+                </CardHeader>
 
-                <p className="text-sm text-slate-600 mb-8 p-4 bg-slate-50/60 backdrop-blur-sm rounded-2xl border border-slate-200/50">
-                  {currentLocation
-                    ? 'Lokasi saat ini sudah ditentukan. Klik pada peta untuk memindahkan marker ke lokasi baru.'
-                    : 'Klik pada peta untuk menentukan lokasi keluarga.'
-                  }
-                </p>
-
-                <div className="border border-violet-200/50 rounded-3xl overflow-hidden shadow-lg" style={{ height: '500px' }}>
-                  <MapDrawing
-                    keluargaId={keluarga.id}
-                    onSave={handleMapPointSaved}
-                    initialLat={currentLocation?.lat || -2.548926}
-                    initialLng={currentLocation?.lng || 118.0148634}
-                    existingMarker={currentLocation}
-                  />
-                </div>
-              </div>
-            </div>
+                <CardContent className="p-8">
+                  <div className="border border-violet-200 rounded-xl overflow-hidden shadow-inner" style={{ height: '500px' }}>
+                    <MapDrawing
+                      keluargaId={keluarga.id}
+                      onSave={handleMapPointSaved}
+                      initialLat={currentLocation?.lat || -2.548926}
+                      initialLng={currentLocation?.lng || 118.0148634}
+                      existingMarker={currentLocation}
+                    />
+                  </div>
+                </CardContent>
+              </Card>
+            </motion.div>
           )}
-        </div>
-      </div>
-
-      {/* Custom CSS untuk animasi aqua modern */}
-      <style>{`
-        @keyframes slideInDown {
-          from {
-            opacity: 0;
-            transform: translateY(-30px);
-          }
-          to {
-            opacity: 1;
-            transform: translateY(0);
-          }
-        }
-
-        @keyframes slideInUp {
-          from {
-            opacity: 0;
-            transform: translateY(30px);
-          }
-          to {
-            opacity: 1;
-            transform: translateY(0);
-          }
-        }
-
-        @keyframes slideInLeft {
-          from {
-            opacity: 0;
-            transform: translateX(-30px);
-          }
-          to {
-            opacity: 1;
-            transform: translateX(0);
-          }
-        }
-
-        @keyframes slideInRight {
-          from {
-            opacity: 0;
-            transform: translateX(30px);
-          }
-          to {
-            opacity: 1;
-            transform: translateX(0);
-          }
-        }
-
-        @keyframes fadeInUp {
-          from {
-            opacity: 0;
-            transform: translateY(20px);
-          }
-          to {
-            opacity: 1;
-            transform: translateY(0);
-          }
-        }
-
-        .animate-slideInDown {
-          animation: slideInDown 0.6s ease-out forwards;
-        }
-
-        .animate-slideInUp {
-          animation: slideInUp 0.6s ease-out forwards;
-        }
-
-        .animate-slideInLeft {
-          animation: slideInLeft 0.6s ease-out forwards;
-        }
-
-        .animate-slideInRight {
-          animation: slideInRight 0.6s ease-out forwards;
-        }
-
-        .animate-fadeInUp {
-          animation: fadeInUp 0.8s ease-out forwards;
-        }
-
-        /* Aqua glass morphism effect */
-        .backdrop-blur-md {
-          backdrop-filter: blur(12px);
-          -webkit-backdrop-filter: blur(12px);
-        }
-
-        .backdrop-blur-sm {
-          backdrop-filter: blur(6px);
-          -webkit-backdrop-filter: blur(6px);
-        }
-
-        /* Hover effects */
-        .group:hover .group-hover\\:rotate-12 {
-          transform: rotate(12deg);
-        }
-
-        .group:hover .group-hover\\:rotate-180 {
-          transform: rotate(180deg);
-        }
-
-        .group:hover .group-hover\\:-translate-x-1 {
-          transform: translateX(-0.25rem);
-        }
-
-        /* Staggered animation delays */
-        .group:nth-child(1) { animation-delay: 0.1s; }
-        .group:nth-child(2) { animation-delay: 0.2s; }
-        .group:nth-child(3) { animation-delay: 0.3s; }
-        .group:nth-child(4) { animation-delay: 0.4s; }
-        .group:nth-child(5) { animation-delay: 0.5s; }
-      `}</style>
+        </AnimatePresence>
+      </motion.div>
     </AuthenticatedLayout>
   );
 }

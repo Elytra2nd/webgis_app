@@ -5,6 +5,7 @@ import ApplicationLogo from '@/Components/ApplicationLogo';
 import Dropdown from '@/Components/Dropdown';
 import ResponsiveNavLink from '@/Components/ResponsiveNavLink';
 import Breadcrumb from '@/Components/Breadcrumb';
+import { Toaster } from '@/Components/ui/toaster';
 import { HiMenuAlt2 } from 'react-icons/hi';
 import { motion } from 'framer-motion';
 
@@ -263,6 +264,9 @@ export default function Authenticated({ user, header, children, breadcrumbs }: A
                     </main>
                 </div>
             </div>
+
+            {/* Toast Notifications - Added at the end */}
+            <Toaster />
         </div>
     );
 }
