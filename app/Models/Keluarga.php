@@ -5,6 +5,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use MatanYadaev\EloquentSpatial\Traits\HasSpatial;
 use MatanYadaev\EloquentSpatial\Objects\Point;
 
@@ -39,6 +40,31 @@ class Keluarga extends Model
         'longitude' => 'decimal:8',
         'lokasi' => Point::class, // Spatial cast
     ];
+
+    /**
+     * Relationship: One to Many dengan AnggotaKeluarga
+     * TAMBAHAN: Relationship yang hilang
+     */
+    public function anggota_keluarga(): HasMany
+    {
+        return $this->hasMany(AnggotaKeluarga::class, 'keluarga_id', 'id');
+    }
+
+    /**
+     * Alternative method name (camelCase) untuk konsistensi
+     */
+    public function anggotaKeluarga(): HasMany
+    {
+        return $this->hasMany(AnggotaKeluarga::class, 'keluarga_id', 'id');
+    }
+
+    /**
+     * Accessor untuk mendapatkan jumlah anggota keluarga
+     */
+    public function getJumlahAnggotaAttribute(): int
+    {
+        return $this->anggota_keluarga()->count();
+    }
 
     /**
      * Override toArray untuk memastikan UTF-8 encoding pada string.
@@ -77,5 +103,21 @@ class Keluarga extends Model
         }
 
         return $value;
+    }
+
+    /**
+     * Scope untuk filter berdasarkan status ekonomi
+     */
+    public function scopeByStatusEkonomi($query, $status)
+    {
+        return $query->where('status_ekonomi', $status);
+    }
+
+    /**
+     * Scope untuk filter berdasarkan kota
+     */
+    public function scopeByKota($query, $kota)
+    {
+        return $query->where('kota', $kota);
     }
 }
