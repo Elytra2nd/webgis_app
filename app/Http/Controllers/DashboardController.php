@@ -19,7 +19,7 @@ class DashboardController extends Controller
      * @param  \Illuminate\Http\Request  $request
      * @return \Inertia\Response
      */
-    public function __invoke(Request $request)
+    public function index(Request $request)
     {
         try {
             // Statistik Keluarga dengan error handling
@@ -279,7 +279,7 @@ class DashboardController extends Controller
     public function apiData(Request $request)
     {
         try {
-            $data = $this->__invoke($request);
+            $data = $this->index($request);
             return response()->json([
                 'success' => true,
                 'data' => $data->getData()

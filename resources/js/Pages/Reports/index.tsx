@@ -19,7 +19,7 @@ export default function Index({ auth }: PageProps) {
 
     const breadcrumbItems = [
         { label: 'Home', href: route('dashboard') },
-        { label: 'Laporan', href: route('reports.index') },
+        { label: 'Laporan', href: route('admin.reports.index') },
         { label: 'Data Keluarga', current: true }
     ];
 

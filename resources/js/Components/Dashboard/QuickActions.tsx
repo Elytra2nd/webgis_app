@@ -20,7 +20,7 @@ const QuickActions: React.FC = () => {
           <div className="flex space-x-3">
             <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
               <Button asChild className="bg-gradient-to-r from-emerald-500 to-green-500 hover:from-emerald-600 hover:to-green-600 text-white">
-                <Link href={route('keluarga.create')}>
+                <Link href={route('admin.keluarga.create')}>
                   <Plus className="w-4 h-4 mr-2" />
                   Tambah Keluarga
                 </Link>

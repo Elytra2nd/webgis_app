@@ -29,7 +29,7 @@ const RegionalStats: React.FC<RegionalStatsProps> = ({ regions }) => {
           </div>
           <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
             <Button asChild size="sm" variant="outline" className="border-cyan-200 text-cyan-700 hover:bg-cyan-50">
-              <Link href={route('keluarga.create')}>
+              <Link href={route('admin.keluarga.create')}>
                 <Plus className="w-4 h-4 mr-2" />
                 Tambah Data
               </Link>

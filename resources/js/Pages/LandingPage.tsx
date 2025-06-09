@@ -1,13 +1,12 @@
 import React, { useRef, useEffect, useState } from 'react';
 import { Head, Link } from '@inertiajs/react';
-import { motion } from 'framer-motion';
 import { gsap } from 'gsap';
 import { useGSAP } from '@gsap/react';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import { ScrollSmoother } from 'gsap/ScrollSmoother';
 import { TextPlugin } from 'gsap/TextPlugin';
 import { DrawSVGPlugin } from 'gsap/DrawSVGPlugin';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/Components/ui/card';
+import { Card, CardContent } from '@/Components/ui/card';
 import { Button } from '@/Components/ui/button';
 import { Badge } from '@/Components/ui/badge';
 import { Separator } from '@/Components/ui/separator';
@@ -42,18 +41,11 @@ import {
   Cloud,
   Building,
   UserCheck,
-  MapIcon,
-  PieChart,
-  BarChart2,
-  TrendingDown,
   Calendar,
   FileText,
-  Settings,
   Trophy,
   Crown,
   Medal,
-  Anchor,
-  Fish,
   Compass
 } from 'lucide-react';
 
@@ -725,7 +717,7 @@ export default function LandingPage({ stats, featured_regions }: LandingPageProp
                 <span className="absolute -bottom-1 left-0 w-0 h-0.5 bg-gradient-to-r from-cyan-500 to-teal-500 transition-all duration-300 group-hover:w-full"></span>
               </Link>
               <Link
-                href="/keluarga/public"
+                href={route('keluarga.index')}
                 className="text-slate-600 hover:text-cyan-600 transition-all duration-300 font-medium relative group"
               >
                 Data Keluarga
@@ -781,7 +773,7 @@ export default function LandingPage({ stats, featured_regions }: LandingPageProp
           </div>
 
           <div className="hero-buttons flex flex-col sm:flex-row gap-6 justify-center items-center mb-16 relative z-20">
-            <Link href="/keluarga/public">
+            <Link href={route('keluarga.index')}>
               <Button size="lg" className="bg-gradient-to-r from-cyan-500 via-teal-500 to-blue-500 hover:from-cyan-600 hover:via-teal-600 hover:to-blue-600 text-white shadow-2xl hover:shadow-cyan-500/25 transition-all duration-500 hover:scale-105 px-8 py-4">
                 <Eye className="w-5 h-5 mr-3" />
                 Lihat Data Keluarga

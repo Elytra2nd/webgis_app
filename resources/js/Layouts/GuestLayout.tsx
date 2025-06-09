@@ -1,58 +1,84 @@
-// resources/js/Layouts/GuestLayout.tsx
-import React from 'react';
+import React, { useRef } from 'react';
 import { Link } from '@inertiajs/react';
-import ApplicationLogo from '@/Components/ApplicationLogo';
+import { useGSAP } from '@gsap/react';
+import { gsap } from 'gsap';
+import { Toaster } from "@/Components/ui/toaster";
+import { Button } from '@/Components/ui/button';
+import { Home, Map, Database, LogIn } from 'lucide-react';
 
 interface GuestLayoutProps {
   children: React.ReactNode;
+  showNavbar?: boolean;
 }
+export default function GuestLayout({ children, showNavbar = true }: GuestLayoutProps) {
+  const navRef = useRef(null);
 
-export default function GuestLayout({ children }: GuestLayoutProps) {
+  useGSAP(() => {
+    if (showNavbar && navRef.current) {
+      gsap.from(navRef.current, {
+        y: -100,
+        opacity: 0,
+        duration: 0.8,
+        ease: 'power3.out',
+        delay: 0.2
+      });
+    }
+  });
+
   return (
-    <div className="min-h-screen bg-gray-100">
-      <nav className="bg-white border-b border-gray-100">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between h-16">
-            <div className="flex">
-              <div className="shrink-0 flex items-center">
-                <Link href="/">
-                  <ApplicationLogo className="block h-9 w-auto fill-current text-gray-800" />
-                </Link>
-              </div>
-              <div className="hidden space-x-8 sm:-my-px sm:ml-10 sm:flex">
-                <Link
-                  href="/"
-                  className="inline-flex items-center px-1 pt-1 border-b-2 border-transparent text-sm font-medium leading-5 text-gray-500 hover:text-gray-700 hover:border-gray-300 focus:outline-none focus:text-gray-700 focus:border-gray-300 transition duration-150 ease-in-out"
-                >
-                  Beranda
-                </Link>
-                <Link
-                  href={route('map')}
-                  className="inline-flex items-center px-1 pt-1 border-b-2 border-transparent text-sm font-medium leading-5 text-gray-500 hover:text-gray-700 hover:border-gray-300 focus:outline-none focus:text-gray-700 focus:border-gray-300 transition duration-150 ease-in-out"
-                >
-                  Peta
-                </Link>
-                <Link
-                  href={route('keluarga.public')}
-                  className="inline-flex items-center px-1 pt-1 border-b-2 border-transparent text-sm font-medium leading-5 text-gray-500 hover:text-gray-700 hover:border-gray-300 focus:outline-none focus:text-gray-700 focus:border-gray-300 transition duration-150 ease-in-out"
-                >
-                  Data Keluarga
-                </Link>
-              </div>
-            </div>
-            <div className="hidden sm:flex sm:items-center sm:ml-6">
-              <Link
-                href={route('login')}
-                className="inline-flex items-center px-4 py-2 bg-blue-500 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-blue-600 active:bg-blue-700 focus:outline-none focus:border-blue-700 focus:ring ring-blue-300 disabled:opacity-25 transition ease-in-out duration-150"
-              >
-                Login
+    <div className="min-h-screen bg-gradient-to-br from-cyan-50/50 via-white to-teal-50/50 text-slate-800">
+      {showNavbar && (
+        <nav ref={navRef} className="fixed top-4 left-1/2 -translate-x-1/2 w-full max-w-4xl z-50">
+          {/* Desain ulang navigasi agar modern, floating, dan menggunakan backdrop-blur */}
+          <div className="bg-white/80 backdrop-blur-lg rounded-2xl shadow-lg border border-slate-200/80 mx-4">
+            <div className="flex justify-between h-16 items-center px-6">
+              {/* Logo Aplikasi */}
+              <Link href="/" className="flex items-center space-x-3">
+                <div className="w-3 h-8 bg-gradient-to-b from-cyan-400 via-teal-500 to-blue-600 rounded-full"></div>
+                <span className="font-semibold text-lg tracking-wide text-slate-800">SiKeluarga</span>
               </Link>
+
+              <div className="hidden space-x-8 sm:flex">
+                <NavLink href={route('landing')} icon={<Home size={16} />}>
+                  Beranda
+                </NavLink>
+                <NavLink href={route('map.public')} icon={<Map size={16} />}>
+                  Peta
+                </NavLink>
+                <NavLink href={route('keluarga.index')} icon={<Database size={16} />}>
+                  Data Keluarga
+                </NavLink>
+              </div>
+              <div className="hidden sm:flex items-center">
+                <Button asChild className="bg-gradient-to-r from-cyan-500 to-teal-500 text-white shadow-md hover:shadow-lg hover:scale-105 transition-all duration-300">
+                  <Link href={route('login')}>
+                    <LogIn className="mr-2 h-4 w-4" />
+                    Login
+                  </Link>
+                </Button>
+              </div>
             </div>
           </div>
-        </div>
-      </nav>
+        </nav>
+      )}
 
-      <main>{children}</main>
+      <main className={showNavbar ? 'pt-28' : ''}>
+        {children}
+      </main>
+
+      <Toaster />
     </div>
   );
 }
+
+// Komponen helper untuk NavLink agar kode lebih bersih
+const NavLink = ({ href, icon, children }: { href: string; icon: React.ReactNode; children: React.ReactNode }) => (
+  <Link
+    href={href}
+    className="inline-flex items-center space-x-2 px-1 pt-1 text-sm font-medium text-slate-600 hover:text-cyan-700 transition-colors duration-200 group relative"
+  >
+    {icon}
+    <span>{children}</span>
+    <div className="absolute bottom-0 left-0 w-full h-0.5 bg-cyan-500 scale-x-0 group-hover:scale-x-100 transition-transform duration-300 origin-center"></div>
+  </Link>
+);

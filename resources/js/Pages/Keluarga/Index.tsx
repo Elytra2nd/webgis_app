@@ -322,7 +322,7 @@ export default function Index({ auth, keluarga, filters = {}, stats }: IndexProp
               <p className="text-slate-600 mb-6">Mohon tunggu sebentar...</p>
               <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
                 <Button asChild className="bg-gradient-to-r from-cyan-500 to-teal-500 hover:from-cyan-600 hover:to-teal-600 text-white">
-                  <Link href={route('keluarga.create')}>
+                  <Link href={route('admin.keluarga.create')}>
                     <Plus className="w-4 h-4 mr-2" />
                     Tambah Keluarga
                   </Link>
@@ -519,7 +519,7 @@ export default function Index({ auth, keluarga, filters = {}, stats }: IndexProp
                     asChild
                     className="bg-gradient-to-r from-cyan-500 to-teal-500 hover:from-cyan-600 hover:to-teal-600 text-white shadow-lg hover:shadow-xl transition-all duration-200"
                   >
-                    <Link href={route('keluarga.create')}>
+                    <Link href={route('admin.keluarga.create')}>
                       <Plus className="w-4 h-4 mr-2" />
                       Tambah Keluarga
                     </Link>
@@ -696,14 +696,14 @@ export default function Index({ auth, keluarga, filters = {}, stats }: IndexProp
                               <div className="flex justify-center space-x-1">
                                 <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
                                   <Button asChild size="sm" variant="outline" className="border-cyan-200 text-cyan-700 hover:bg-cyan-50 text-xs px-2 py-1">
-                                    <Link href={route('keluarga.show', item.id)}>
+                                    <Link href={route('admin.keluarga.show', item.id)}>
                                       <Eye className="w-3 h-3" />
                                     </Link>
                                   </Button>
                                 </motion.div>
                                 <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
                                   <Button asChild size="sm" variant="outline" className="border-amber-200 text-amber-700 hover:bg-amber-50 text-xs px-2 py-1">
-                                    <Link href={route('keluarga.edit', item.id)}>
+                                    <Link href={route('admin.keluarga.edit', item.id)}>
                                       <Edit className="w-3 h-3" />
                                     </Link>
                                   </Button>

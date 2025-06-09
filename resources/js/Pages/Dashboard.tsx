@@ -405,7 +405,7 @@ export default function Dashboard({
               <p className="text-slate-600 mb-6">Mohon tunggu sebentar...</p>
               <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
                 <Button asChild className="bg-gradient-to-r from-cyan-500 to-teal-500 hover:from-cyan-600 hover:to-teal-600 text-white">
-                  <Link href={route('keluarga.create')}>
+                  <Link href={route('admin.keluarga.create')}>
                     <Plus className="w-4 h-4 mr-2" />
                     Tambah Data Keluarga
                   </Link>
