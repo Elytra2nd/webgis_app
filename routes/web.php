@@ -2,6 +2,8 @@
 
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\LandingPageController;
+use App\Http\Controllers\PublicKeluargaController;
 use App\Models\AnggotaKeluarga;
 use Illuminate\Foundation\Application;
 use Illuminate\Support\Facades\Route;
@@ -11,28 +13,35 @@ use App\Http\Controllers\MapController;
 use App\Http\Controllers\ReportController;
 use App\Http\Controllers\AnggotaKeluargaController;
 
-Route::get('/', function () {
-    return Inertia::render('Welcome', [
-        'canLogin' => Route::has('login'),
-        'canRegister' => Route::has('register'),
-        'laravelVersion' => Application::VERSION,
-        'phpVersion' => PHP_VERSION,
-    ]);
-});
+/*
+|--------------------------------------------------------------------------
+| Public Routes (No Authentication Required)
+|--------------------------------------------------------------------------
+*/
 
-// Route untuk guest (read-only)
+// Landing page route - Main homepage
+Route::get('/', [LandingPageController::class, 'index'])->name('landing');
+
+// Public map access
 Route::get('/map', function() {
     return Inertia::render('Map/Index');
 })->name('map.public');
 
-Route::get('/keluarga/public', [KeluargaController::class, 'index'])->name('keluarga.public');
-Route::get('/keluarga/{keluarga}/public', [KeluargaController::class, 'show'])->name('keluarga.public.show');
+// Public keluarga routes (read-only access)
+Route::get('/keluarga/public', [PublicKeluargaController::class, 'index'])->name('keluarga.public');
+Route::get('/keluarga/{keluarga}/public', [PublicKeluargaController::class, 'show'])->name('keluarga.public.show');
 
-// API route untuk mendapatkan data keluarga untuk peta (read-only)
+// API routes untuk public access (read-only)
 Route::get('/api/keluarga', [KeluargaController::class, 'getKeluargaForMap']);
 Route::get('/api/map-data/{keluargaId}', [MapController::class, 'getMapData']);
 
-// Dashboard route - Updated to use DashboardController
+/*
+|--------------------------------------------------------------------------
+| Authenticated Routes
+|--------------------------------------------------------------------------
+*/
+
+// Dashboard route - Requires authentication
 Route::get('/dashboard', DashboardController::class)
     ->middleware(['auth', 'verified'])
     ->name('dashboard');
@@ -43,7 +52,7 @@ Route::middleware('auth')->group(function () {
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
 
-    // Keluarga routes
+    // Keluarga routes (Admin access)
     Route::resource('keluarga', KeluargaController::class);
 
     Route::post('keluarga/{keluarga}/coordinates', [KeluargaController::class, 'updateCoordinates'])
@@ -60,16 +69,16 @@ Route::middleware('auth')->group(function () {
         'destroy' => 'anggota-keluarga.destroy'
     ]);
 
-    // Map routes (authenticated)
+    // Map routes (authenticated admin access)
     Route::get('/map/admin', function () {
         return Inertia::render('Map/Index');
-    })->name('map');
+    })->name('map.admin');
 
     // API routes untuk authenticated users
-    Route::post('/api/keluarga', [KeluargaController::class, 'storeFromMap']); // Route POST untuk map
+    Route::post('/api/keluarga', [KeluargaController::class, 'storeFromMap']);
     Route::post('/api/map-data', [MapController::class, 'saveMapData']);
 
-    // Dashboard API routes (optional untuk real-time data)
+    // Dashboard API routes (real-time data)
     Route::get('/api/dashboard', [DashboardController::class, 'apiData'])->name('dashboard.api');
     Route::get('/api/dashboard/realtime', [DashboardController::class, 'realtimeStats'])->name('dashboard.realtime');
 
@@ -85,8 +94,15 @@ Route::middleware('auth')->group(function () {
         Route::get('/{category}/export', [ReportController::class, 'export'])->name('export');
     });
 
+    // Additional reports routes
     Route::get('/reports', [ReportController::class, 'index'])->name('reports.index');
     Route::post('/reports/export', [ReportController::class, 'export'])->name('reports.export');
 });
+
+/*
+|--------------------------------------------------------------------------
+| Authentication Routes
+|--------------------------------------------------------------------------
+*/
 
 require __DIR__ . '/auth.php';

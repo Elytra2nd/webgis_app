@@ -14,6 +14,7 @@
 /* Custom styles */
 body {
     font-family: 'Poppins', sans-serif;
+    overflow-x: hidden;
 }
 
 .leaflet-marker-icon {
@@ -144,6 +145,270 @@ body {
   body {
     @apply bg-background text-foreground;
     }
+}
+
+/* ScrollSmoother Setup - FIXED untuk mencegah overlap */
+#smooth-wrapper {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100vh;
+  overflow: hidden;
+}
+
+#smooth-content {
+  position: relative;
+  width: 100%;
+  min-height: 100vh;
+}
+
+/* Custom Cursor */
+.cursor-hidden {
+  cursor: none;
+}
+
+/* Layout Fixes untuk mencegah text overlap */
+.hero-title {
+  position: relative;
+  z-index: 20;
+  margin-bottom: 2rem;
+}
+
+.hero-subtitle {
+  position: relative;
+  z-index: 20;
+  min-height: 5rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 3rem;
+}
+
+.hero-buttons {
+  position: relative;
+  z-index: 20;
+  margin-bottom: 4rem;
+}
+
+/* Text Overlap Prevention */
+.typing-text {
+  min-height: 5rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 1rem;
+}
+
+/* Section Spacing Fixes */
+section {
+  position: relative;
+  clear: both;
+  margin-bottom: 0;
+  padding-top: 4rem;
+  padding-bottom: 4rem;
+}
+
+/* Enhanced Z-Index Management */
+.bg-element {
+  z-index: 0;
+}
+
+.navbar {
+  z-index: 50;
+}
+
+/* Prevent text from overlapping */
+h1, h2, h3, p {
+  position: relative;
+  z-index: 10;
+}
+
+/* Enhanced Card Positioning */
+.stat-card {
+  position: relative;
+  z-index: 10;
+  transform-style: preserve-3d;
+  backface-visibility: hidden;
+  transform-origin: center center;
+}
+
+.stat-card:hover {
+  transform: translateY(-12px) scale(1.03);
+  box-shadow: 0 25px 50px -12px rgba(6, 182, 212, 0.25);
+  z-index: 20;
+}
+
+.feature-card {
+  position: relative;
+  z-index: 10;
+}
+
+.feature-card:hover {
+  transform: translateY(-8px) scale(1.02);
+  box-shadow: 0 25px 50px -12px rgba(20, 184, 166, 0.2);
+  z-index: 20;
+}
+
+.benefit-card {
+  position: relative;
+  z-index: 10;
+}
+
+.testimonial-card {
+  position: relative;
+  z-index: 10;
+}
+
+.region-item {
+  position: relative;
+  z-index: 10;
+}
+
+/* Enhanced Parallax Effects */
+.parallax-element {
+  will-change: transform;
+}
+
+/* Enhanced Navbar Scroll Effect */
+.navbar.nav-scrolled {
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(20px);
+  border-bottom: 1px solid rgba(6, 182, 212, 0.2);
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+}
+
+/* SVG Animation Setup */
+.svg-line {
+  stroke-dasharray: 1000;
+  stroke-dashoffset: 1000;
+}
+
+.stat-svg {
+  stroke-dasharray: 290;
+  stroke-dashoffset: 290;
+}
+
+.feature-svg {
+  stroke-dasharray: 200;
+  stroke-dashoffset: 200;
+}
+
+.cta-svg {
+  stroke-dasharray: 800;
+  stroke-dashoffset: 800;
+}
+
+/* Enhanced Blend Mode Effects */
+.mix-blend-difference {
+  mix-blend-mode: difference;
+}
+
+/* Smooth Transitions */
+* {
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Custom Scrollbar dengan tema aquatic */
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: linear-gradient(to bottom, #f0fdfa, #ecfeff);
+}
+
+::-webkit-scrollbar-thumb {
+  background: linear-gradient(to bottom, #06b6d4, #0891b2);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(to bottom, #0891b2, #0e7490);
+}
+
+/* Responsive Text Fixes */
+@media (max-width: 768px) {
+  .hero-title h1 {
+    font-size: 3rem;
+    line-height: 1.1;
+    margin-bottom: 1.5rem;
+  }
+
+  .hero-subtitle {
+    min-height: 4rem;
+    margin-bottom: 2rem;
+  }
+
+  .typing-text {
+    font-size: 1rem;
+    line-height: 1.5;
+    min-height: 4rem;
+  }
+
+  section {
+    padding-top: 3rem;
+    padding-bottom: 3rem;
+  }
+
+  .stats-grid {
+    grid-template-columns: 1fr;
+    gap: 1.5rem;
+  }
+}
+
+@media (max-width: 640px) {
+  .hero-title h1 {
+    font-size: 2.5rem;
+    margin-bottom: 1rem;
+  }
+
+  .hero-subtitle {
+    min-height: 3rem;
+    margin-bottom: 1.5rem;
+  }
+
+  section {
+    padding-top: 2rem;
+    padding-bottom: 2rem;
+  }
+}
+
+/* Ensure proper grid layout */
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 2rem;
+  align-items: stretch;
+}
+
+/* Prevent card overflow */
+.stat-card-container {
+  overflow: visible;
+  position: relative;
+}
+
+/* Fix untuk GSAP transform conflicts */
+.gsap-fix {
+  will-change: transform;
+  transform: translate3d(0, 0, 0);
+}
+
+/* Fade In Up Animation */
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fade-in-up {
+  animation: fadeInUp 0.6s ease-out forwards;
 }
 
 @keyframes toast-in-right {
