@@ -709,6 +709,18 @@ export default function LandingPage({ stats, featured_regions }: LandingPageProp
               <span className="font-light text-xl text-slate-800 tracking-wide">SiKeluarga</span>
             </div>
             <div className="hidden md:flex items-center space-x-8">
+              {/* Menu Tentang Kami yang ditambahkan */}
+              <Link
+                href="#about"
+                className="text-slate-600 hover:text-cyan-600 transition-all duration-300 font-medium relative group"
+                onClick={(e) => {
+                  e.preventDefault();
+                  aboutRef.current?.scrollIntoView({ behavior: 'smooth' });
+                }}
+              >
+                Tentang Kami
+                <span className="absolute -bottom-1 left-0 w-0 h-0.5 bg-gradient-to-r from-cyan-500 to-teal-500 transition-all duration-300 group-hover:w-full"></span>
+              </Link>
               <Link
                 href="/map"
                 className="text-slate-600 hover:text-cyan-600 transition-all duration-300 font-medium relative group"
@@ -737,7 +749,6 @@ export default function LandingPage({ stats, featured_regions }: LandingPageProp
       {/* Enhanced Hero Section dengan Fixed Spacing */}
       <section ref={heroRef} className="relative min-h-screen flex items-center justify-center px-4 sm:px-6 lg:px-8 pt-24 pb-24">
         <div className="max-w-7xl mx-auto text-center relative z-10">
-
           {/* SVG Decorative Elements - Reduced Opacity */}
           <svg className="absolute inset-0 w-full h-full pointer-events-none z-0" viewBox="0 0 1200 800">
             <defs>
@@ -802,7 +813,7 @@ export default function LandingPage({ stats, featured_regions }: LandingPageProp
               <BarChart3 className="w-4 h-4 mr-2" />
               Data Terkini
             </Badge>
-            <h2 className="text-3xl md:text-4xl lg:text-5xl font-extralight text-slate-800 mb-6 tracking-wide">Statistik Keluarga</h2>
+            <h2 className="text-3xl md:text-4xl lg:text-5xl font-semibold text-slate-800 mb-6 tracking-wide">Statistik Keluarga</h2>
             <p className="text-lg md:text-xl text-slate-600 font-light max-w-3xl mx-auto">Data real-time yang terdaftar dalam sistem dengan visualisasi interaktif</p>
           </div>
 
@@ -966,7 +977,7 @@ export default function LandingPage({ stats, featured_regions }: LandingPageProp
             <p className="text-lg md:text-xl text-slate-600 font-light max-w-3xl mx-auto">Teknologi modern untuk masyarakat digital</p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
             {[
               {
                 icon: Search,
@@ -1253,272 +1264,285 @@ export default function LandingPage({ stats, featured_regions }: LandingPageProp
                         </div>
                       </div>
 
-                      {/* Progress Bar dengan Aquatic Theme */}
-                      <div className="mt-4">
-                        <div className="flex justify-between items-center mb-2">
-                          <span className="text-xs text-slate-600">Tingkat Partisipasi</span>
-                          <span className="text-xs font-medium text-cyan-600">
-                            {Math.min(100, Math.round((region.total / Math.max(...safeFeaturedRegions.map(r => r.total))) * 100))}%
-                          </span>
-                        </div>
-                        <div className="w-full bg-slate-200 rounded-full h-2 overflow-hidden">
-                        <div
-                            className="h-full bg-gradient-to-r from-cyan-500 to-teal-500 rounded-full transition-all duration-1000 ease-out relative"
-                            style={{
-                              width: `${Math.min(100, Math.round((region.total / Math.max(...safeFeaturedRegions.map(r => r.total))) * 100))}%`
-                            }}
-                          >
-                            {/* Wave effect inside progress bar */}
-                            <div className="absolute inset-0 bg-gradient-to-r from-cyan-400/50 to-teal-400/50 rounded-full animate-pulse"></div>
-                          </div>
-                        </div>
-                      </div>
+                      
+<div className="mt-4">
+  <div className="flex justify-between items-center mb-2">
+    <span className="text-xs text-slate-600">Tingkat Partisipasi</span>
+    <span className="text-xs font-medium text-cyan-600">
+      {Math.min(100, Math.round((region.total / Math.max(...safeFeaturedRegions.map(r => r.total))) * 100))}%
+    </span>
+  </div>
+  <div className="w-full bg-slate-100 rounded-full h-2 overflow-hidden">
+    <div
+      className="h-full bg-gradient-to-r from-cyan-400 to-teal-500 rounded-full transition-all duration-1000 ease-out relative"
+      style={{
+        width: `${Math.min(100, Math.round((region.total / Math.max(...safeFeaturedRegions.map(r => r.total))) * 100))}%`
+      }}
+    >
+      {/* Wave Animation Inside Progress Bar */}
+      <div className="absolute inset-0 bg-gradient-to-r from-cyan-300/50 to-teal-400/50 rounded-full animate-pulse"></div>
+    </div>
+  </div>
+</div>
 
-                      {/* Aquatic Statistics */}
-                      <div className="mt-4 pt-4 border-t border-slate-100">
-                        <div className="flex items-center justify-between text-xs text-slate-500">
-                          <div className="flex items-center space-x-1">
-                            <Droplets className="w-3 h-3 text-cyan-500" />
-                            <span>Tingkat Aktivitas</span>
-                          </div>
-                          <div className="flex items-center space-x-1">
-                            <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
-                            <span>Aktif</span>
-                          </div>
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                </div>
-              ))}
+{/* Floating Particles Effect untuk Top 3 */}
+{index < 3 && (
+  <div className="absolute top-2 left-2 w-1 h-1 bg-cyan-400 rounded-full opacity-60 animate-bounce" style={{ animationDelay: '0.5s' }}></div>
+)}
+</CardContent>
+</Card>
+</div>
+))}
+</div>
+</div>
+</section>
+)}
+
+{/* About Section - Perkenalan Kelompok */}
+<section ref={aboutRef} id="about" className="py-24 px-4 sm:px-6 lg:px-8 bg-gradient-to-br from-slate-50/50 via-cyan-50/30 to-teal-50/50 relative z-10">
+<div className="max-w-7xl mx-auto">
+<div className="text-center mb-20">
+  <Badge variant="secondary" className="bg-blue-100 text-blue-800 px-4 py-2 mb-6">
+    <Users className="w-4 h-4 mr-2" />
+    Tentang Kami
+  </Badge>
+  <h2 className="text-3xl md:text-4xl lg:text-5xl font-semibold text-slate-800 mb-6 tracking-wide">Tim Pengembang SiKeluarga</h2>
+  <p className="text-lg md:text-xl text-slate-600 font-light max-w-3xl mx-auto">
+    Kami adalah kelompok mahasiswa yang berkomitmen untuk menghadirkan solusi digital inovatif dalam pengelolaan data keluarga
+  </p>
+</div>
+
+{/* Perkenalan Kelompok */}
+<div className="about-content mb-16">
+  <Card className="border-0 shadow-xl bg-white/90 backdrop-blur-sm">
+    <CardContent className="p-8 lg:p-12 text-center">
+      <div className="max-w-4xl mx-auto">
+        <h3 className="text-2xl font-semibold text-slate-800 mb-6">Kelompok 4 </h3>
+        <p className="text-lg text-slate-600 leading-relaxed mb-8">
+          Selamat datang! Kami adalah tim yang terdiri dari mahasiswa yang berdedikasi untuk mengembangkan
+          Sistem Informasi Keluarga (SiKeluarga) sebagai bagian dari tugas besar mata kuliah Sistem Informasi Geografis Dasar.
+          Proyek ini merupakan hasil kolaborasi dan kerja keras kami dalam menciptakan solusi teknologi
+          yang dapat membantu masyarakat dalam pengelolaan data keluarga dengan lebih efisien dan modern.
+        </p>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+          <div className="text-center">
+            <div className="w-16 h-16 bg-gradient-to-br from-cyan-100 to-teal-100 rounded-2xl flex items-center justify-center mx-auto mb-4">
+              <Target className="w-8 h-8 text-cyan-600" />
             </div>
-
-            {/* Enhanced Call to Action dengan Aquatic Elements */}
-            <div className="text-center mt-16 relative">
-              {/* Decorative Wave Background */}
-              <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                <svg width="400" height="100" viewBox="0 0 400 100" className="opacity-10">
-                  <path d="M0,50 Q100,20 200,50 T400,50" stroke="url(#actionWaveGradient)" strokeWidth="2" fill="none"/>
-                  <path d="M0,60 Q100,30 200,60 T400,60" stroke="url(#actionWaveGradient)" strokeWidth="1.5" fill="none"/>
-                  <defs>
-                    <linearGradient id="actionWaveGradient" x1="0%" y1="0%" x2="100%" y2="0%">
-                      <stop offset="0%" stopColor="#06b6d4"/>
-                      <stop offset="50%" stopColor="#0891b2"/>
-                      <stop offset="100%" stopColor="#0e7490"/>
-                    </linearGradient>
-                  </defs>
-                </svg>
-              </div>
-
-              <div className="relative z-10">
-                <h3 className="text-2xl font-light text-slate-800 mb-4">Jelajahi Lebih Dalam</h3>
-                <p className="text-slate-600 mb-8 max-w-2xl mx-auto">
-                  Temukan data keluarga lengkap dari seluruh wilayah Indonesia dengan teknologi pencarian yang canggih dan visualisasi yang menarik.
-                </p>
-
-                <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
-                  <Link href="/keluarga/public">
-                    <Button className="bg-gradient-to-r from-cyan-500 via-teal-500 to-blue-500 hover:from-cyan-600 hover:via-teal-600 hover:to-blue-600 text-white shadow-xl hover:shadow-cyan-500/25 transition-all duration-500 hover:scale-105 px-8 py-3 relative overflow-hidden group">
-                      <div className="absolute inset-0 bg-gradient-to-r from-white/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
-                      <Search className="w-5 h-5 mr-3 relative z-10" />
-                      <span className="relative z-10">Lihat Semua Data</span>
-                      <ArrowRight className="w-5 h-5 ml-3 relative z-10 group-hover:translate-x-1 transition-transform duration-300" />
-                    </Button>
-                  </Link>
-
-                  <Link href="/map">
-                    <Button variant="outline" className="border-2 border-cyan-200 text-cyan-700 hover:bg-gradient-to-r hover:from-cyan-50 hover:to-teal-50 hover:border-cyan-300 transition-all duration-300 hover:scale-105 px-8 py-3 relative group">
-                      <Compass className="w-5 h-5 mr-3 group-hover:rotate-45 transition-transform duration-300" />
-                      <span>Jelajahi Peta</span>
-                    </Button>
-                  </Link>
-                </div>
-              </div>
-            </div>
+            <h4 className="font-semibold text-slate-800 mb-2">Visi Kami</h4>
+            <p className="text-slate-600 text-sm">Menciptakan sistem informasi yang user-friendly dan dapat diandalkan</p>
           </div>
-        </section>
-      )}
+          <div className="text-center">
+            <div className="w-16 h-16 bg-gradient-to-br from-teal-100 to-blue-100 rounded-2xl flex items-center justify-center mx-auto mb-4">
+              <Zap className="w-8 h-8 text-teal-600" />
+            </div>
+            <h4 className="font-semibold text-slate-800 mb-2">Misi Kami</h4>
+            <p className="text-slate-600 text-sm">Mengimplementasikan teknologi modern untuk kemudahan akses data</p>
+          </div>
+          <div className="text-center">
+            <div className="w-16 h-16 bg-gradient-to-br from-blue-100 to-indigo-100 rounded-2xl flex items-center justify-center mx-auto mb-4">
+              <Heart className="w-8 h-8 text-blue-600" />
+            </div>
+            <h4 className="font-semibold text-slate-800 mb-2">Komitmen</h4>
+            <p className="text-slate-600 text-sm">Memberikan solusi terbaik dengan pendekatan yang inovatif</p>
+          </div>
+        </div>
+      </div>
+    </CardContent>
+  </Card>
+</div>
 
-      {/* About Section - Smaller Cards */}
-      <section ref={aboutRef} className="py-24 px-4 sm:px-6 lg:px-8 bg-gradient-to-br from-slate-50/50 via-cyan-50/30 to-teal-50/50 relative z-10">
-        <div className="max-w-7xl mx-auto">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
-            <div className="about-content">
-              <Badge variant="secondary" className="bg-blue-100 text-blue-800 px-4 py-2 mb-6">
-                <Award className="w-4 h-4 mr-2" />
-                Tentang SiKeluarga
+{/* Anggota Kelompok */}
+<div className="about-content">
+  <h3 className="text-2xl font-semibold text-slate-800 text-center mb-12">Anggota Kelompok</h3>
+  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
+    {[
+      {
+        nama: "M. Imam Firdaus",
+        nim: "H1101231051",
+        role: "Project Manager & Frontend Developer",
+        foto: "A1", // Inisial untuk avatar
+        skills: ["React", "TypeScript", "UI/UX Design"],
+        color: "from-cyan-500 to-blue-500"
+      },
+      {
+        nama: "Abiyasha Syahrizal Romdhon",
+        nim: "H1101231031",
+        role: "Backend Developer & Database Designer",
+        foto: "A2",
+        skills: ["Laravel", "PHP", "MySQL"],
+        color: "from-teal-500 to-cyan-500"
+      },
+      {
+        nama: "Suryanto",
+        nim: "H1101231037",
+        role: "Frontend Developer & System Analyst",
+        foto: "A3",
+        skills: ["JavaScript", "CSS", "System Design"],
+        color: "from-blue-500 to-indigo-500"
+      },
+      {
+        nama: "Maida Al Ghazali",
+        nim: "H1101231059",
+        role: "Quality Assurance & Documentation",
+        foto: "A4",
+        skills: ["Testing", "Documentation", "Research"],
+        color: "from-indigo-500 to-purple-500"
+      },
+      {
+        nama: "Muhammad Ilham Nugraha",
+        nim: "H110231011",
+        role: "DevOps & Deployment Specialist",
+        foto: "A5",
+        skills: ["Docker", "CI/CD", "Cloud Services"],
+        color: "from-purple-500 to-pink-500"
+      }
+    ].map((anggota, index) => (
+      <Card key={anggota.nama} className="border-0 shadow-lg bg-white/90 backdrop-blur-sm hover:shadow-xl transition-all duration-500 group">
+        <CardContent className="p-6 text-center">
+          {/* Avatar */}
+          <div className={`w-20 h-20 bg-gradient-to-br ${anggota.color} rounded-2xl flex items-center justify-center mx-auto mb-4 text-white font-bold text-xl group-hover:scale-110 transition-transform duration-300`}>
+            {anggota.foto}
+          </div>
+
+          {/* Info Anggota */}
+          <h4 className="font-semibold text-slate-800 text-lg mb-1">{anggota.nama}</h4>
+          <p className="text-cyan-600 text-sm font-medium mb-2">{anggota.nim}</p>
+          <p className="text-slate-600 text-sm mb-4">{anggota.role}</p>
+
+          {/* Skills */}
+          <div className="flex flex-wrap gap-1 justify-center">
+            {anggota.skills.map((skill, skillIndex) => (
+              <Badge key={skillIndex} variant="secondary" className="text-xs bg-slate-100 text-slate-600">
+                {skill}
               </Badge>
-              <h2 className="text-3xl md:text-4xl font-extralight text-slate-800 mb-6 tracking-wide">Inovasi Digital untuk Masa Depan</h2>
-              <p className="text-lg text-slate-600 font-light leading-relaxed mb-6">
-                SiKeluarga hadir sebagai solusi digital terdepan untuk mengelola data keluarga dengan pendekatan yang modern, aman, dan user-friendly. Kami berkomitmen untuk memberikan layanan terbaik dalam digitalisasi data kependudukan.
-              </p>
-              <div className="grid grid-cols-2 gap-4 mb-6">
-                <div className="text-center">
-                  <div className="text-2xl font-light text-cyan-600 mb-1">99.9%</div>
-                  <div className="text-slate-600 text-sm">Uptime Server</div>
-                </div>
-                <div className="text-center">
-                  <div className="text-2xl font-light text-teal-600 mb-1">24/7</div>
-                  <div className="text-slate-600 text-sm">Support</div>
-                </div>
-              </div>
-              <div className="flex flex-col sm:flex-row gap-3">
-                <Button className="bg-gradient-to-r from-cyan-500 to-teal-500 hover:from-cyan-600 hover:to-teal-600 text-white">
-                  <CheckCircle className="w-4 h-4 mr-2" />
-                  Mulai Sekarang
-                </Button>
-                <Button variant="outline" className="border-cyan-200 text-cyan-700 hover:bg-cyan-50">
-                  <Monitor className="w-4 h-4 mr-2" />
-                  Lihat Demo
-                </Button>
-              </div>
-            </div>
-            <div className="about-content">
-              <div className="relative">
-                <div className="bg-gradient-to-br from-cyan-100 to-teal-100 rounded-2xl p-6 shadow-xl">
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="bg-white rounded-xl p-4 shadow-md">
-                      <Database className="w-6 h-6 text-cyan-600 mb-3" />
-                      <h4 className="font-semibold text-slate-800 mb-1 text-sm">Data Terpusat</h4>
-                      <p className="text-slate-600 text-xs">Sistem database yang terintegrasi dan aman</p>
-                    </div>
-                    <div className="bg-white rounded-xl p-4 shadow-md">
-                      <Shield className="w-6 h-6 text-teal-600 mb-3" />
-                      <h4 className="font-semibold text-slate-800 mb-1 text-sm">Keamanan Tinggi</h4>
-                      <p className="text-slate-600 text-xs">Enkripsi end-to-end untuk melindungi data</p>
-                    </div>
-                    <div className="bg-white rounded-xl p-4 shadow-md">
-                      <Smartphone className="w-6 h-6 text-blue-600 mb-3" />
-                      <h4 className="font-semibold text-slate-800 mb-1 text-sm">Mobile Ready</h4>
-                      <p className="text-slate-600 text-xs">Akses mudah dari perangkat mobile</p>
-                    </div>
-                    <div className="bg-white rounded-xl p-4 shadow-md">
-                      <Cloud className="w-6 h-6 text-indigo-600 mb-3" />
-                      <h4 className="font-semibold text-slate-800 mb-1 text-sm">Cloud Based</h4>
-                      <p className="text-slate-600 text-xs">Infrastruktur cloud yang scalable</p>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
+            ))}
           </div>
+        </CardContent>
+      </Card>
+    ))}
+  </div>
+</div>
+
+{/* Penutup */}
+<div className="text-center mt-16">
+  <Card className="border-0 shadow-lg bg-gradient-to-r from-cyan-50 to-teal-50">
+    <CardContent className="p-8">
+      <h4 className="text-xl font-semibold text-slate-800 mb-4">Terima Kasih</h4>
+      <p className="text-slate-600 leading-relaxed max-w-3xl mx-auto">
+        Kami mengucapkan terima kasih kepada Bapak Dr. Ir. YUS SHOLVA, ST., MT. selaku dosen pembimbing, teman-teman, dan semua pihak yang telah
+        mendukung pengembangan proyek SiKeluarga ini. Semoga sistem yang kami kembangkan dapat memberikan
+        manfaat nyata bagi masyarakat dalam pengelolaan data keluarga yang lebih efisien dan modern.
+      </p>
+      <div className="flex justify-center items-center mt-6 space-x-4">
+        <Badge variant="secondary" className="bg-white text-slate-600">
+          <Calendar className="w-3 h-3 mr-1" />
+          Tahun Akademik 2024/2025
+        </Badge>
+        <Badge variant="secondary" className="bg-white text-slate-600">
+          <Award className="w-3 h-3 mr-1" />
+          Tugas Besar
+        </Badge>
+      </div>
+    </CardContent>
+  </Card>
+</div>
+</div>
+</section>
+
+{/* Enhanced CTA Section */}
+<section ref={ctaRef} className="py-24 px-4 sm:px-6 lg:px-8 bg-gradient-to-br from-cyan-600 via-teal-600 to-blue-600 relative z-10 overflow-hidden">
+  <div className="absolute inset-0 bg-[url('data:image/svg+xml,%3Csvg width=\'60\' height=\'60\' viewBox=\'0 0 60 60\' xmlns=\'http://www.w3.org/2000/svg\'%3E%3Cg fill=\'none\' fill-rule=\'evenodd\'%3E%3Cg fill=\'%23ffffff\' fill-opacity=\'0.05\'%3E%3Ccircle cx=\'30\' cy=\'30\' r=\'4\'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E')] opacity-20"></div>
+<div className="max-w-4xl mx-auto text-center relative z-10">
+  <div className="cta-content">
+    <h2 className="text-3xl md:text-4xl lg:text-5xl font-extralight text-white mb-6 tracking-wide">
+      Siap Memulai Perjalanan Digital?
+    </h2>
+    <p className="text-lg md:text-xl text-cyan-100 font-light mb-8 max-w-2xl mx-auto">
+      Bergabunglah dengan ribuan keluarga yang telah merasakan kemudahan pengelolaan data dengan SiKeluarga
+    </p>
+    <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
+      <Link href={route('keluarga.index')}>
+        <Button size="lg" className="bg-white text-cyan-700 hover:bg-cyan-50 shadow-xl hover:shadow-2xl transition-all duration-300 hover:scale-105 px-8 py-4">
+          <Compass className="w-5 h-5 mr-3" />
+          Mulai Eksplorasi
+          <ArrowRight className="w-5 h-5 ml-3" />
+        </Button>
+      </Link>
+      <Link href="/map">
+        <Button size="lg" variant="outline" className="border-2 border-white text-white hover:bg-white hover:text-cyan-700 transition-all duration-300 hover:scale-105 px-8 py-4">
+          <Globe className="w-5 h-5 mr-3" />
+          Lihat Peta Interaktif
+        </Button>
+      </Link>
+    </div>
+  </div>
+
+  {/* Decorative SVG */}
+  <svg className="absolute top-10 left-10 opacity-10" width="100" height="100" viewBox="0 0 100 100">
+    <path className="cta-svg" d="M20,50 Q50,20 80,50 T140,50" stroke="white" strokeWidth="2" fill="none"/>
+  </svg>
+  <svg className="absolute bottom-10 right-10 opacity-10" width="100" height="100" viewBox="0 0 100 100">
+    <circle className="cta-svg" cx="50" cy="50" r="30" stroke="white" strokeWidth="2" fill="none"/>
+  </svg>
+</div>
+</section>
+
+{/* Footer */}
+<footer className="bg-slate-900 text-white py-16 px-4 sm:px-6 lg:px-8 relative z-10">
+<div className="max-w-7xl mx-auto">
+  <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
+    <div className="md:col-span-2">
+      <div className="flex items-center space-x-3 mb-4">
+        <div className="w-3 h-8 bg-gradient-to-b from-cyan-400 via-teal-500 to-blue-600 rounded-full"></div>
+        <span className="font-light text-xl tracking-wide">SiKeluarga</span>
+      </div>
+      <p className="text-slate-400 leading-relaxed mb-6 max-w-md">
+        Platform terpadu untuk mengelola dan memantau data keluarga dengan teknologi modern dan antarmuka yang intuitif.
+      </p>
+      <div className="flex space-x-4">
+        <div className="w-10 h-10 bg-slate-800 rounded-lg flex items-center justify-center hover:bg-cyan-600 transition-colors cursor-pointer">
+          <Globe className="w-5 h-5" />
         </div>
-      </section>
-
-      {/* CTA Section */}
-      <section ref={ctaRef} className="py-24 px-4 sm:px-6 lg:px-8 bg-gradient-to-br from-cyan-600 via-teal-600 to-blue-600 relative overflow-hidden z-10">
-        <div className="absolute inset-0 bg-gradient-to-r from-cyan-600/90 to-teal-600/90"></div>
-        <div className="absolute inset-0">
-          <div className="absolute top-8 left-8 w-24 h-24 bg-white/5 rounded-full blur-xl"></div>
-          <div className="absolute bottom-8 right-8 w-36 h-36 bg-white/3 rounded-full blur-2xl"></div>
+        <div className="w-10 h-10 bg-slate-800 rounded-lg flex items-center justify-center hover:bg-cyan-600 transition-colors cursor-pointer">
+          <Activity className="w-5 h-5" />
         </div>
+      </div>
+    </div>
 
-        <svg className="absolute inset-0 w-full h-full pointer-events-none" viewBox="0 0 1200 400">
-          <defs>
-            <linearGradient id="ctaGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-              <stop offset="0%" stopColor="rgba(255,255,255,0.08)"/>
-              <stop offset="100%" stopColor="rgba(255,255,255,0.04)"/>
-            </linearGradient>
-          </defs>
-          <path className="cta-svg" d="M0,200 Q300,100 600,200 T1200,200" stroke="url(#ctaGradient)" strokeWidth="1.5" fill="none"/>
-          <path className="cta-svg" d="M0,250 Q400,150 800,250 T1200,250" stroke="url(#ctaGradient)" strokeWidth="1" fill="none"/>
-        </svg>
+    <div>
+      <h3 className="font-semibold text-lg mb-4">Navigasi</h3>
+      <ul className="space-y-2 text-slate-400">
+        <li><Link href="/" className="hover:text-cyan-400 transition-colors">Beranda</Link></li>
+        <li><Link href={route('keluarga.index')} className="hover:text-cyan-400 transition-colors">Data Keluarga</Link></li>
+        <li><Link href="/map" className="hover:text-cyan-400 transition-colors">Peta</Link></li>
+        <li><Link href="#about" className="hover:text-cyan-400 transition-colors">Tentang Kami</Link></li>
+      </ul>
+    </div>
 
-        <div className="cta-content max-w-4xl mx-auto text-center relative z-10">
-          <h2 className="text-3xl md:text-4xl lg:text-5xl font-extralight text-white mb-6 tracking-wide">
-            Mulai Jelajahi Data Keluarga
-          </h2>
-          <p className="text-lg md:text-xl text-cyan-100 mb-10 font-light leading-relaxed max-w-3xl mx-auto">
-            Bergabunglah dengan ribuan pengguna yang telah merasakan kemudahan SiKeluarga dalam mengelola data keluarga
-          </p>
-          <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <Link href="/keluarga/public">
-              <Button size="lg" variant="secondary" className="bg-white text-cyan-600 hover:bg-cyan-50 shadow-2xl hover:shadow-white/25 transition-all duration-500 hover:scale-105 px-8 py-4">
-                <Search className="w-5 h-5 mr-3" />
-                Cari Data Keluarga
-              </Button>
-            </Link>
-            <Link href="/map">
-              <Button size="lg" variant="outline" className="border-2 border-white text-white hover:bg-white/10 hover:border-cyan-200 transition-all duration-300 hover:scale-105 px-8 py-4">
-                <Globe className="w-5 h-5 mr-3" />
-                Lihat Peta Wilayah
-              </Button>
-            </Link>
-          </div>
-        </div>
-      </section>
+    <div>
+      <h3 className="font-semibold text-lg mb-4">Kontak</h3>
+      <ul className="space-y-2 text-slate-400">
+        <li>Email: info@sikeluarga.id</li>
+        <li>Telepon: (021) 1234-5678</li>
+        <li>Alamat: Jakarta, Indonesia</li>
+      </ul>
+    </div>
+  </div>
 
-      {/* Footer */}
-      <footer className="bg-slate-900 text-white py-20 px-4 sm:px-6 lg:px-8 relative z-10">
-        <div className="absolute inset-0 bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900"></div>
-        <div className="max-w-7xl mx-auto relative z-10">
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-12">
-            <div className="md:col-span-2">
-              <div className="flex items-center space-x-3 mb-6">
-                <div className="relative">
-                  <div className="w-3 h-8 bg-gradient-to-b from-cyan-400 via-teal-500 to-blue-600 rounded-full shadow-lg"></div>
-                  <div className="absolute -top-1 -left-1 w-5 h-10 bg-gradient-to-b from-cyan-300/30 via-teal-400/30 to-blue-500/30 rounded-full blur-sm"></div>
-                </div>
-                <span className="font-light text-2xl tracking-wide">SiKeluarga</span>
-              </div>
-              <p className="text-slate-400 leading-relaxed mb-6 max-w-md">
-                Sistem informasi keluarga yang modern dan terpercaya untuk kemudahan akses data masyarakat dengan teknologi terdepan dan keamanan tingkat tinggi.
-              </p>
-              <div className="flex space-x-4">
-                <Badge variant="secondary" className="bg-slate-800 text-slate-300">
-                  <Activity className="w-3 h-3 mr-1" />
-                  Real-time
-                </Badge>
-                <Badge variant="secondary" className="bg-slate-800 text-slate-300">
-                  <Shield className="w-3 h-3 mr-1" />
-                  Secure
-                </Badge>
-                <Badge variant="secondary" className="bg-slate-800 text-slate-300">
-                  <Cloud className="w-3 h-3 mr-1" />
-                  Cloud-based
-                </Badge>
-              </div>
-            </div>
-            <div>
-              <h3 className="font-semibold mb-6 text-lg">Fitur</h3>
-              <ul className="space-y-3 text-slate-400">
-                <li><Link href="/keluarga/public" className="hover:text-white transition-colors duration-200 hover:translate-x-1 inline-block">Data Keluarga</Link></li>
-                <li><Link href="/map" className="hover:text-white transition-colors duration-200 hover:translate-x-1 inline-block">Peta Interaktif</Link></li>
-                <li><Link href="#" className="hover:text-white transition-colors duration-200 hover:translate-x-1 inline-block">Statistik Real-time</Link></li>
-                <li><Link href="#" className="hover:text-white transition-colors duration-200 hover:translate-x-1 inline-block">Analytics Dashboard</Link></li>
-                <li><Link href="#" className="hover:text-white transition-colors duration-200 hover:translate-x-1 inline-block">Export Data</Link></li>
-              </ul>
-            </div>
-            <div>
-              <h3 className="font-semibold mb-6 text-lg">Dukungan</h3>
-              <ul className="space-y-3 text-slate-400">
-                <li><Link href="/login" className="hover:text-white transition-colors duration-200 hover:translate-x-1 inline-block">Login Admin</Link></li>
-                <li><Link href="/register" className="hover:text-white transition-colors duration-200 hover:translate-x-1 inline-block">Daftar</Link></li>
-                <li><Link href="#" className="hover:text-white transition-colors duration-200 hover:translate-x-1 inline-block">Dokumentasi</Link></li>
-                <li><Link href="#" className="hover:text-white transition-colors duration-200 hover:translate-x-1 inline-block">FAQ</Link></li>
-                <li><Link href="#" className="hover:text-white transition-colors duration-200 hover:translate-x-1 inline-block">Kontak</Link></li>
-              </ul>
-            </div>
-          </div>
+  <Separator className="my-8 bg-slate-800" />
 
-          <Separator className="my-12 bg-slate-700" />
-
-          <div className="flex flex-col md:flex-row justify-between items-center">
-            <p className="text-slate-400 text-sm">
-              &copy; 2025 SiKeluarga. Semua hak dilindungi undang-undang. Dibuat dengan ❤️ untuk Indonesia.
-            </p>
-            <div className="flex items-center space-x-4 mt-4 md:mt-0">
-              <Badge variant="secondary" className="bg-slate-800 text-slate-400">
-                <Waves className="w-3 h-3 mr-1" />
-                Aquatic Theme
-              </Badge>
-              <Badge variant="secondary" className="bg-slate-800 text-slate-400">
-                v2.0.0
-              </Badge>
-            </div>
-          </div>
-        </div>
-      </footer>
+  <div className="flex flex-col md:flex-row justify-between items-center">
+    <p className="text-slate-400 text-sm">
+      © 2024 SiKeluarga. Dikembangkan dengan ❤️ untuk Indonesia.
+    </p>
+    <p className="text-slate-400 text-sm mt-2 md:mt-0">
+      Tugas Besar - Tahun Akademik 2024/2025
+    </p>
+  </div>
+</div>
+</footer>
     </div>
   );
 }
+
