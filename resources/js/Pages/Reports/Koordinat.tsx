@@ -1,4 +1,3 @@
-// resources/js/Pages/Reports/Koordinat.tsx
 import React, { useState, useEffect } from 'react';
 import { Head, Link, router } from '@inertiajs/react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
@@ -6,11 +5,13 @@ import Pagination from '@/Components/Pagination';
 import ExportModal from '@/Components/ExportModal';
 import { useExportModal } from '@/Hooks/useExportModal';
 import { PageProps } from '@/types';
+import { motion, AnimatePresence } from 'framer-motion';
+import { MapPin, Navigation, CheckCircle, AlertCircle, ExternalLink, Filter, Download } from 'lucide-react';
 
 interface Keluarga {
   id: number;
   no_kk: string;
-  nama_kepala_keluarga: string;
+  nama_keluarga: string;
   alamat: string;
   kelurahan?: string;
   kecamatan?: string;
@@ -20,6 +21,8 @@ interface Keluarga {
   latitude?: number | null;
   longitude?: number | null;
   lokasi?: string | null;
+  created_at: string;
+  updated_at: string;
 }
 
 interface PaginatedKeluarga {
@@ -47,6 +50,7 @@ interface KoordinatProps extends PageProps {
   };
   filters?: {
     status?: string;
+    tahun?: string;
   };
   category?: string;
 }
@@ -56,14 +60,15 @@ export default function Koordinat({
   keluarga,
   statistics,
   filters = {},
-  category = 'Koordinat'
+  category = 'Data Koordinat PKH'
 }: KoordinatProps) {
   const [statusFilter, setStatusFilter] = useState(filters.status || 'all');
   const exportModal = useExportModal();
 
+  // PERBAIKAN: Update breadcrumbs untuk menggunakan route admin yang benar
   const breadcrumbs = [
     { label: 'Dashboard', href: route('dashboard') },
-    { label: 'Laporan', href: route('reports.index') },
+    { label: 'Laporan PKH', href: route('admin.reports.index') },
     { label: category, active: true },
   ];
 
@@ -95,79 +100,129 @@ export default function Koordinat({
     incomplete: 0
   };
 
-  // Utility functions untuk validasi koordinat
+  // PERBAIKAN: Enhanced utility functions untuk validasi koordinat
   const isValidCoordinate = (value: any): value is number => {
-    return typeof value === 'number' && !isNaN(value) && isFinite(value);
+    return typeof value === 'number' && !isNaN(value) && isFinite(value) && Math.abs(value) <= 180;
   };
 
   const isValidLokasiString = (value: any): value is string => {
-    return typeof value === 'string' && value.trim().length > 0 && value.includes(',');
+    if (typeof value !== 'string' || value.trim().length === 0) return false;
+    
+    // Check format: latitude,longitude
+    const coordPattern = /^-?[0-9]+\.?[0-9]*,-?[0-9]+\.?[0-9]*$/;
+    return coordPattern.test(value.trim());
   };
 
   const hasValidCoordinates = (item: Keluarga): boolean => {
-    return (
-      (isValidCoordinate(item.latitude) && isValidCoordinate(item.longitude)) ||
-      isValidLokasiString(item.lokasi)
-    );
+    // Check individual lat/lng fields first
+    if (isValidCoordinate(item.latitude) && isValidCoordinate(item.longitude)) {
+      return true;
+    }
+    
+    // Check lokasi string format
+    return isValidLokasiString(item.lokasi);
   };
 
-  const formatCoordinates = (lat?: number | null, lng?: number | null, lokasi?: string | null) => {
+  const parseKoordinatFromLokasi = (lokasi: string): { lat: number; lng: number } | null => {
+    if (!isValidLokasiString(lokasi)) return null;
+    
+    const coords = lokasi.split(',');
+    const lat = parseFloat(coords[0].trim());
+    const lng = parseFloat(coords[1].trim());
+    
+    if (isValidCoordinate(lat) && isValidCoordinate(lng)) {
+      return { lat, lng };
+    }
+    
+    return null;
+  };
+
+  const formatCoordinates = (lat?: number | null, lng?: number | null, lokasi?: string | null): string => {
+    // Priority: individual lat/lng fields
     if (isValidCoordinate(lat) && isValidCoordinate(lng)) {
       return `${lat.toFixed(6)}, ${lng.toFixed(6)}`;
     }
 
+    // Fallback: parse from lokasi string
     if (isValidLokasiString(lokasi)) {
-      return lokasi;
+      const parsed = parseKoordinatFromLokasi(lokasi);
+      if (parsed) {
+        return `${parsed.lat.toFixed(6)}, ${parsed.lng.toFixed(6)}`;
+      }
     }
 
     return 'Belum diatur';
   };
 
   const openGoogleMaps = (lat?: number | null, lng?: number | null, lokasi?: string | null) => {
+    let targetLat: number | null = null;
+    let targetLng: number | null = null;
+
+    // Priority: individual lat/lng fields
     if (isValidCoordinate(lat) && isValidCoordinate(lng)) {
-      window.open(`https://www.google.com/maps?q=${lat},${lng}`, '_blank');
-      return;
+      targetLat = lat;
+      targetLng = lng;
+    } else if (isValidLokasiString(lokasi)) {
+      // Fallback: parse from lokasi string
+      const parsed = parseKoordinatFromLokasi(lokasi);
+      if (parsed) {
+        targetLat = parsed.lat;
+        targetLng = parsed.lng;
+      }
     }
 
-    if (isValidLokasiString(lokasi)) {
-      const coords = lokasi.split(',');
-      if (coords.length === 2) {
-        const parsedLat = parseFloat(coords[0].trim());
-        const parsedLng = parseFloat(coords[1].trim());
-        if (isValidCoordinate(parsedLat) && isValidCoordinate(parsedLng)) {
-          window.open(`https://www.google.com/maps?q=${parsedLat},${parsedLng}`, '_blank');
-        }
-      }
+    if (targetLat !== null && targetLng !== null) {
+      window.open(`https://www.google.com/maps?q=${targetLat},${targetLng}`, '_blank');
     }
   };
 
-  // Early return jika data tidak tersedia
+  // PERBAIKAN: Enhanced loading state
   if (!keluarga) {
     return (
       <AuthenticatedLayout
         user={auth.user}
         breadcrumbs={breadcrumbs}
         header={
-          <div className="flex items-center space-x-3">
-            <div className="w-2 h-8 bg-gradient-to-b from-emerald-400 to-green-500 rounded-full animate-pulse"></div>
-            <h2 className="font-light text-2xl text-gray-900">Laporan {category}</h2>
+          <div className="flex items-center space-x-4">
+            <motion.div 
+              className="w-full"
+              initial={{ opacity: 0, x: -20 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ duration: 0.5 }}
+            >
+              <motion.div
+                className="w-3 h-8 bg-gradient-to-b from-blue-400 via-indigo-500 to-purple-600 rounded-full shadow-lg"
+                animate={{ scale: [1, 1.1, 1] }}
+                transition={{ duration: 2, repeat: Infinity }}
+              />
+              <div className="flex items-center space-x-3">
+                <Navigation className="w-6 h-6 text-indigo-600" />
+            </div>
+            </motion.div>
           </div>
         }
       >
         <Head title={`Laporan ${category}`} />
 
         <div className="space-y-8">
-          <div className="bg-white rounded-2xl border border-gray-100/50 p-8 shadow-sm">
+          <motion.div 
+            className="bg-white/80 backdrop-blur-sm rounded-2xl border border-slate-100/50 p-8 shadow-lg"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6 }}
+          >
             <div className="text-center">
-              <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4 animate-pulse">
-                <svg className="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-              </div>
-              <p className="text-gray-500 text-lg font-medium mb-2">Memuat data laporan koordinat...</p>
-              <p className="text-gray-400 text-sm">Mohon tunggu sebentar</p>
+              <motion.div 
+                className="w-16 h-16 bg-gradient-to-r from-indigo-100 to-purple-100 rounded-full flex items-center justify-center mx-auto mb-4"
+                animate={{ rotate: 360 }}
+                transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
+              >
+                <Navigation className="w-8 h-8 text-indigo-600" />
+              </motion.div>
+              <p className="text-slate-600 text-lg font-medium mb-2">Memuat data laporan koordinat PKH...</p>
+              <p className="text-slate-400 text-sm">Mohon tunggu sebentar</p>
             </div>
-          </div>
+          </motion.div>
         </div>
       </AuthenticatedLayout>
     );
@@ -180,8 +235,11 @@ export default function Koordinat({
   const handleStatusChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const status = e.target.value;
     setStatusFilter(status);
-    router.get(route('reports.show', 'koordinat'), {
-      status
+    
+    // PERBAIKAN: Update route untuk admin reports
+    router.get(route('admin.reports.index'), {
+      status,
+      category: 'koordinat'
     }, {
       preserveState: true,
       replace: true
@@ -206,7 +264,7 @@ export default function Koordinat({
       case 'rentan_miskin':
         return 'bg-cyan-50 text-cyan-700 border border-cyan-200';
       default:
-        return 'bg-gray-50 text-gray-700 border border-gray-200';
+        return 'bg-slate-50 text-slate-700 border border-slate-200';
     }
   };
 
@@ -214,133 +272,189 @@ export default function Koordinat({
   const completePercentage = totalData > 0 ? ((safeStatistics.complete / totalData) * 100).toFixed(1) : '0';
   const incompletePercentage = totalData > 0 ? ((safeStatistics.incomplete / totalData) * 100).toFixed(1) : '0';
 
+  // Animation variants
+  const containerVariants = {
+    hidden: { opacity: 0 },
+    visible: {
+      opacity: 1,
+      transition: {
+        staggerChildren: 0.1
+      }
+    }
+  };
+
+  const itemVariants = {
+    hidden: { y: 20, opacity: 0 },
+    visible: {
+      y: 0,
+      opacity: 1,
+      transition: {
+        type: "spring",
+        stiffness: 100
+      }
+    }
+  };
+
   return (
     <AuthenticatedLayout
       user={auth.user}
       breadcrumbs={breadcrumbs}
       header={
-        <div className="flex items-center space-x-3">
-          <div className="w-2 h-8 bg-gradient-to-b from-emerald-400 to-green-500 rounded-full animate-pulse"></div>
-          <h2 className="font-light text-2xl text-gray-900">Laporan {category}</h2>
-        </div>
+        <motion.div 
+          className="flex items-center space-x-4"
+          initial={{ opacity: 0, x: -20 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ duration: 0.5 }}
+        >
+          <motion.div
+            className="w-3 h-8 bg-gradient-to-b from-blue-400 via-indigo-500 to-purple-600 rounded-full shadow-lg"
+            animate={{ scale: [1, 1.1, 1] }}
+            transition={{ duration: 2, repeat: Infinity }}
+          />
+          <div className="flex items-center space-x-3">
+            <Navigation className="w-6 h-6 text-indigo-600" />
+            <h2 className="font-light text-2xl text-slate-800 tracking-wide">Laporan {category}</h2>
+          </div>
+        </motion.div>
       }
     >
       <Head title={`Laporan ${category}`} />
 
-      <div className="space-y-8">
+      <motion.div 
+        className="space-y-8"
+        variants={containerVariants}
+        initial="hidden"
+        animate="visible"
+      >
         {/* Statistics Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <div className="bg-white rounded-2xl border border-gray-100/50 p-6 hover:shadow-lg transition-all duration-300 transform hover:-translate-y-1">
+        <motion.div className="grid grid-cols-1 md:grid-cols-3 gap-6" variants={itemVariants}>
+          <motion.div 
+            className="bg-white/80 backdrop-blur-sm rounded-2xl border border-slate-100/50 p-6 shadow-lg hover:shadow-xl transition-all duration-300"
+            whileHover={{ y: -5, scale: 1.02 }}
+          >
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-gray-600">Total Keluarga</p>
-                <p className="text-3xl font-light text-gray-900">{totalData.toLocaleString()}</p>
+                <p className="text-sm font-medium text-slate-600">Total Keluarga PKH</p>
+                <p className="text-3xl font-light text-slate-900">{totalData.toLocaleString()}</p>
               </div>
-              <div className="w-12 h-12 bg-gradient-to-r from-gray-100 to-slate-100 rounded-xl flex items-center justify-center">
-                <svg className="w-6 h-6 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 715.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 919.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
-                </svg>
+              <div className="w-12 h-12 bg-gradient-to-r from-slate-100 to-slate-200 rounded-xl flex items-center justify-center">
+                <MapPin className="w-6 h-6 text-slate-600" />
               </div>
             </div>
-          </div>
+          </motion.div>
 
-          <div className="bg-white rounded-2xl border border-gray-100/50 p-6 hover:shadow-lg transition-all duration-300 transform hover:-translate-y-1">
+          <motion.div 
+            className="bg-white/80 backdrop-blur-sm rounded-2xl border border-slate-100/50 p-6 shadow-lg hover:shadow-xl transition-all duration-300"
+            whileHover={{ y: -5, scale: 1.02 }}
+          >
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-green-600">Sudah Ada Koordinat</p>
                 <p className="text-3xl font-light text-green-700">{safeStatistics.complete.toLocaleString()}</p>
-                <p className="text-xs text-gray-500 mt-1">{completePercentage}%</p>
+                <p className="text-xs text-slate-500 mt-1">{completePercentage}%</p>
               </div>
               <div className="w-12 h-12 bg-green-50 rounded-xl flex items-center justify-center">
-                <svg className="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
+                <CheckCircle className="w-6 h-6 text-green-600" />
               </div>
             </div>
-          </div>
+          </motion.div>
 
-          <div className="bg-white rounded-2xl border border-gray-100/50 p-6 hover:shadow-lg transition-all duration-300 transform hover:-translate-y-1">
+          <motion.div 
+            className="bg-white/80 backdrop-blur-sm rounded-2xl border border-slate-100/50 p-6 shadow-lg hover:shadow-xl transition-all duration-300"
+            whileHover={{ y: -5, scale: 1.02 }}
+          >
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-gray-600">Belum Ada Koordinat</p>
-                <p className="text-3xl font-light text-gray-700">{safeStatistics.incomplete.toLocaleString()}</p>
-                <p className="text-xs text-gray-500 mt-1">{incompletePercentage}%</p>
+                <p className="text-sm font-medium text-slate-600">Belum Ada Koordinat</p>
+                <p className="text-3xl font-light text-slate-700">{safeStatistics.incomplete.toLocaleString()}</p>
+                <p className="text-xs text-slate-500 mt-1">{incompletePercentage}%</p>
               </div>
-              <div className="w-12 h-12 bg-gray-50 rounded-xl flex items-center justify-center">
-                <svg className="w-6 h-6 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
+              <div className="w-12 h-12 bg-slate-50 rounded-xl flex items-center justify-center">
+                <AlertCircle className="w-6 h-6 text-slate-600" />
               </div>
             </div>
-          </div>
-        </div>
+          </motion.div>
+        </motion.div>
 
         {/* Progress Bar */}
-        <div className="bg-white rounded-2xl border border-gray-100/50 p-8 shadow-sm hover:shadow-lg transition-all duration-300">
+        <motion.div 
+          className="bg-white/80 backdrop-blur-sm rounded-2xl border border-slate-100/50 p-8 shadow-lg hover:shadow-xl transition-all duration-300"
+          variants={itemVariants}
+        >
           <div className="flex items-center space-x-3 mb-6">
-            <div className="w-2 h-6 bg-gradient-to-b from-emerald-400 to-green-500 rounded-full"></div>
-            <h3 className="text-lg font-medium text-gray-900">Progress Kelengkapan Koordinat</h3>
+            <div className="w-2 h-6 bg-gradient-to-b from-indigo-400 to-purple-500 rounded-full"></div>
+            <h3 className="text-lg font-medium text-slate-900">Progress Kelengkapan Koordinat PKH</h3>
           </div>
 
           <div className="space-y-4">
             <div className="flex items-center justify-between text-sm">
-              <span className="text-gray-600">Sudah Ada Koordinat</span>
+              <span className="text-slate-600">Sudah Ada Koordinat</span>
               <span className="font-medium text-green-600">{completePercentage}%</span>
             </div>
-            <div className="w-full bg-gray-200 rounded-full h-3">
-              <div
-                className="bg-gradient-to-r from-green-500 to-emerald-500 h-3 rounded-full transition-all duration-1000 ease-out"
-                style={{ width: `${completePercentage}%` }}
-              ></div>
+            <div className="w-full bg-slate-200 rounded-full h-3">
+              <motion.div
+                className="bg-gradient-to-r from-green-500 to-emerald-500 h-3 rounded-full"
+                initial={{ width: 0 }}
+                animate={{ width: `${completePercentage}%` }}
+                transition={{ duration: 1, ease: "easeOut" }}
+              />
             </div>
 
             <div className="flex items-center justify-between text-sm">
-              <span className="text-gray-600">Belum Ada Koordinat</span>
-              <span className="font-medium text-gray-600">{incompletePercentage}%</span>
+              <span className="text-slate-600">Belum Ada Koordinat</span>
+              <span className="font-medium text-slate-600">{incompletePercentage}%</span>
             </div>
-            <div className="w-full bg-gray-200 rounded-full h-3">
-              <div
-                className="bg-gradient-to-r from-gray-400 to-gray-500 h-3 rounded-full transition-all duration-1000 ease-out"
-                style={{ width: `${incompletePercentage}%` }}
-              ></div>
+            <div className="w-full bg-slate-200 rounded-full h-3">
+              <motion.div
+                className="bg-gradient-to-r from-slate-400 to-slate-500 h-3 rounded-full"
+                initial={{ width: 0 }}
+                animate={{ width: `${incompletePercentage}%` }}
+                transition={{ duration: 1, ease: "easeOut", delay: 0.2 }}
+              />
             </div>
           </div>
-        </div>
+        </motion.div>
 
         {/* Data Table Section */}
-        <div className="bg-white rounded-2xl border border-gray-100/50 overflow-hidden shadow-sm">
+        <motion.div 
+          className="bg-white/80 backdrop-blur-sm rounded-2xl border border-slate-100/50 overflow-hidden shadow-lg"
+          variants={itemVariants}
+        >
           {/* Header */}
-          <div className="p-8 border-b border-gray-100/50">
+          <div className="p-8 border-b border-slate-100/50 bg-gradient-to-r from-slate-50 to-indigo-50">
             <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
               <div>
-                <h3 className="text-xl font-medium text-gray-900 mb-2">Detail Data Keluarga</h3>
-                <p className="text-sm text-gray-600">
+                <h3 className="text-xl font-medium text-slate-900 mb-2">Detail Data Keluarga PKH</h3>
+                <p className="text-sm text-slate-600">
                   Menampilkan {safeMeta.from || 0} - {safeMeta.to || 0} dari {safeMeta.total || 0} keluarga
                 </p>
               </div>
 
               <div className="flex flex-col sm:flex-row gap-4">
                 {/* Filter */}
-                <select
-                  value={statusFilter}
-                  onChange={handleStatusChange}
-                  className="px-4 py-2.5 border border-gray-200 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500 transition-colors duration-200"
-                >
-                  <option value="all">Semua Status</option>
-                  <option value="complete">Sudah Ada Koordinat</option>
-                  <option value="incomplete">Belum Ada Koordinat</option>
-                </select>
+                <div className="relative">
+                  <Filter className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-slate-400" />
+                  <select
+                    value={statusFilter}
+                    onChange={handleStatusChange}
+                    className="pl-10 pr-4 py-2.5 border border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors duration-200 bg-white/80 backdrop-blur-sm"
+                  >
+                    <option value="all">Semua Status</option>
+                    <option value="complete">Sudah Ada Koordinat</option>
+                    <option value="incomplete">Belum Ada Koordinat</option>
+                  </select>
+                </div>
 
-                {/* Export Button dengan Modal */}
-                <button
+                {/* Export Button */}
+                <motion.button
                   onClick={exportModal.openModal}
-                  className="inline-flex items-center px-6 py-2.5 bg-gradient-to-r from-emerald-500 to-green-500 text-white font-medium rounded-lg hover:from-emerald-600 hover:to-green-600 focus:outline-none focus:ring-4 focus:ring-emerald-200 transition-all duration-200 transform hover:-translate-y-0.5 shadow-lg hover:shadow-xl"
+                  className="inline-flex items-center px-6 py-2.5 bg-gradient-to-r from-indigo-500 to-purple-500 text-white font-medium rounded-lg hover:from-indigo-600 hover:to-purple-600 focus:outline-none focus:ring-4 focus:ring-indigo-200 transition-all duration-200 shadow-lg hover:shadow-xl"
+                  whileHover={{ scale: 1.05, y: -2 }}
+                  whileTap={{ scale: 0.95 }}
                 >
-                  <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                  </svg>
+                  <Download className="w-5 h-5 mr-2" />
                   Export Data
-                </button>
+                </motion.button>
               </div>
             </div>
           </div>
@@ -348,159 +462,168 @@ export default function Koordinat({
           {/* Table */}
           <div className="overflow-x-auto">
             <table className="w-full">
-              <thead className="bg-gray-50/50">
+              <thead className="bg-slate-50/50">
                 <tr>
-                  <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">No. KK</th>
-                  <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Kepala Keluarga</th>
-                  <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Alamat</th>
-                  <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status Ekonomi</th>
-                  <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Koordinat</th>
-                  <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                  <th className="px-6 py-4 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Aksi</th>
+                  <th className="px-6 py-4 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">No. KK</th>
+                  <th className="px-6 py-4 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Nama Keluarga</th>
+                  <th className="px-6 py-4 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Alamat</th>
+                  <th className="px-6 py-4 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Status Ekonomi</th>
+                  <th className="px-6 py-4 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Koordinat</th>
+                  <th className="px-6 py-4 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Status</th>
+                  <th className="px-6 py-4 text-right text-xs font-medium text-slate-500 uppercase tracking-wider">Aksi</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-100">
-                {safeKeluarga.data && safeKeluarga.data.length > 0 ? (
-                  safeKeluarga.data.map((item, index) => (
-                    <tr
-                      key={item.id}
-                      className="hover:bg-gray-50/50 transition-colors duration-200 animate-fadeIn"
-                      style={{ animationDelay: `${index * 50}ms` }}
-                    >
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <span className="text-sm font-mono text-gray-900">{item.no_kk}</span>
-                      </td>
-                      <td className="px-6 py-4">
-                        <div className="text-sm font-medium text-gray-900">{item.nama_kepala_keluarga}</div>
-                      </td>
-                      <td className="px-6 py-4">
-                        <div className="max-w-xs">
-                          <div className="text-sm text-gray-900 truncate">{item.alamat}</div>
-                          {item.kelurahan && (
-                            <div className="text-xs text-gray-500 truncate">
-                              {item.kelurahan}, {item.kecamatan}
-                            </div>
-                          )}
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <span className={`inline-flex px-3 py-1 text-xs font-medium rounded-full ${getStatusColor(item.status_ekonomi)}`}>
-                          {formatStatusEkonomi(item.status_ekonomi)}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4">
-                        <div className="flex items-center space-x-2">
-                          <span className="text-xs font-mono text-gray-600">
-                            {formatCoordinates(item.latitude, item.longitude, item.lokasi)}
+              <tbody className="divide-y divide-slate-100">
+                <AnimatePresence>
+                  {safeKeluarga.data && safeKeluarga.data.length > 0 ? (
+                    safeKeluarga.data.map((item, index) => (
+                      <motion.tr
+                        key={item.id}
+                        className="hover:bg-slate-50/50 transition-colors duration-200"
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: index * 0.05 }}
+                        whileHover={{ backgroundColor: "rgba(248, 250, 252, 0.8)" }}
+                      >
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <span className="text-sm font-mono text-slate-900">{item.no_kk}</span>
+                        </td>
+                        <td className="px-6 py-4">
+                          <div className="text-sm font-medium text-slate-900">{item.nama_keluarga}</div>
+                        </td>
+                        <td className="px-6 py-4">
+                          <div className="max-w-xs">
+                            <div className="text-sm text-slate-900 truncate">{item.alamat}</div>
+                            {item.kelurahan && (
+                              <div className="text-xs text-slate-500 truncate">
+                                {item.kelurahan}, {item.kecamatan}
+                              </div>
+                            )}
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <span className={`inline-flex px-3 py-1 text-xs font-medium rounded-full ${getStatusColor(item.status_ekonomi)}`}>
+                            {formatStatusEkonomi(item.status_ekonomi)}
                           </span>
-                          {hasValidCoordinates(item) && (
-                            <button
-                              onClick={() => openGoogleMaps(item.latitude, item.longitude, item.lokasi)}
-                              className="text-cyan-600 hover:text-cyan-800 transition-colors duration-200 hover:scale-110 transform"
-                              title="Lihat di Google Maps"
+                        </td>
+                        <td className="px-6 py-4">
+                          <div className="flex items-center space-x-2">
+                            <span className="text-xs font-mono text-slate-600 max-w-[120px] truncate">
+                              {formatCoordinates(item.latitude, item.longitude, item.lokasi)}
+                            </span>
+                            {hasValidCoordinates(item) && (
+                              <motion.button
+                                onClick={() => openGoogleMaps(item.latitude, item.longitude, item.lokasi)}
+                                className="text-indigo-600 hover:text-indigo-800 transition-colors duration-200"
+                                title="Lihat di Google Maps"
+                                whileHover={{ scale: 1.2 }}
+                                whileTap={{ scale: 0.9 }}
+                              >
+                                <ExternalLink className="w-4 h-4" />
+                              </motion.button>
+                            )}
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          {hasValidCoordinates(item) ? (
+                            <span className="inline-flex px-3 py-1 text-xs font-medium rounded-full bg-green-50 text-green-700 border border-green-200">
+                              <CheckCircle className="w-3 h-3 mr-1" />
+                              Lengkap
+                            </span>
+                          ) : (
+                            <span className="inline-flex px-3 py-1 text-xs font-medium rounded-full bg-slate-50 text-slate-700 border border-slate-200">
+                              <AlertCircle className="w-3 h-3 mr-1" />
+                              Belum Lengkap
+                            </span>
+                          )}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-right">
+                          <div className="flex justify-end space-x-2">
+                            <Link
+                              href={route('admin.keluarga.show', item.id)}
+                              className="inline-flex items-center px-3 py-1.5 text-xs font-medium text-indigo-700 bg-indigo-50 border border-indigo-200 rounded-lg hover:bg-indigo-100 transition-all duration-200"
                             >
-                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-                              </svg>
-                            </button>
-                          )}
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        {hasValidCoordinates(item) ? (
-                          <span className="inline-flex px-3 py-1 text-xs font-medium rounded-full bg-green-50 text-green-700 border border-green-200">
-                            Lengkap
-                          </span>
-                        ) : (
-                          <span className="inline-flex px-3 py-1 text-xs font-medium rounded-full bg-gray-50 text-gray-700 border border-gray-200">
-                            Belum Lengkap
-                          </span>
-                        )}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-right">
-                        <div className="flex justify-end space-x-2">
-                          <Link
-                            href={route('keluarga.show', item.id)}
-                            className="inline-flex items-center px-3 py-1.5 text-xs font-medium text-cyan-700 bg-cyan-50 border border-cyan-200 rounded-lg hover:bg-cyan-100 transition-all duration-200 transform hover:scale-105"
+                              Detail
+                            </Link>
+                            <Link
+                              href={route('admin.keluarga.edit', item.id)}
+                              className="inline-flex items-center px-3 py-1.5 text-xs font-medium text-amber-700 bg-amber-50 border border-amber-200 rounded-lg hover:bg-amber-100 transition-all duration-200"
+                            >
+                              Edit
+                            </Link>
+                          </div>
+                        </td>
+                      </motion.tr>
+                    ))
+                  ) : (
+                    <motion.tr
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      transition={{ duration: 0.5 }}
+                    >
+                      <td colSpan={7} className="px-6 py-16 text-center">
+                        <div className="flex flex-col items-center">
+                          <motion.div 
+                            className="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mb-4"
+                            animate={{ scale: [1, 1.1, 1] }}
+                            transition={{ duration: 2, repeat: Infinity }}
                           >
-                            Detail
-                          </Link>
-                          <Link
-                            href={route('keluarga.edit', item.id)}
-                            className="inline-flex items-center px-3 py-1.5 text-xs font-medium text-amber-700 bg-amber-50 border border-amber-200 rounded-lg hover:bg-amber-100 transition-all duration-200 transform hover:scale-105"
-                          >
-                            Edit
-                          </Link>
+                            <Navigation className="w-8 h-8 text-slate-400" />
+                          </motion.div>
+                          <p className="text-slate-500 text-lg font-medium mb-2">Tidak ada data keluarga</p>
+                          <p className="text-slate-400 text-sm">Coba ubah filter untuk melihat data lainnya</p>
                         </div>
                       </td>
-                    </tr>
-                  ))
-                ) : (
-                  <tr>
-                    <td colSpan={7} className="px-6 py-16 text-center">
-                      <div className="flex flex-col items-center animate-fadeIn">
-                        <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mb-4 animate-pulse">
-                          <svg className="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 20l-5.447-2.724A1 1 0 713 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
-                          </svg>
-                        </div>
-                        <p className="text-gray-500 text-lg font-medium mb-2">Tidak ada data keluarga</p>
-                        <p className="text-gray-400 text-sm">Coba ubah filter untuk melihat data lainnya</p>
-                      </div>
-                    </td>
-                  </tr>
-                )}
+                    </motion.tr>
+                  )}
+                </AnimatePresence>
               </tbody>
             </table>
           </div>
 
           {/* Pagination */}
           {safeKeluarga.data && safeKeluarga.data.length > 0 && safeKeluarga.links && safeKeluarga.links.length > 3 && (
-            <div className="px-8 py-6 border-t border-gray-100/50 bg-gray-50/30">
+            <motion.div 
+              className="px-8 py-6 border-t border-slate-100/50 bg-slate-50/30"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.3 }}
+            >
               <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
-                <div className="text-sm text-gray-600">
+                <div className="text-sm text-slate-600">
                   Menampilkan <span className="font-medium">{safeMeta.from || 0}</span> sampai{' '}
                   <span className="font-medium">{safeMeta.to || 0}</span> dari{' '}
                   <span className="font-medium">{safeMeta.total || 0}</span> hasil
                 </div>
 
-                <Pagination
-                  links={safeKeluarga.links}
-                  className="animate-fadeIn"
-                />
+                <Pagination links={safeKeluarga.links} />
               </div>
-            </div>
+            </motion.div>
           )}
-        </div>
-      </div>
+        </motion.div>
+      </motion.div>
 
       {/* Export Modal */}
       <ExportModal
-        isOpen={exportModal.isOpen}
-        onClose={exportModal.closeModal}
-        category="koordinat"
-        filters={{ status: statusFilter }}
-        title="Export Laporan Koordinat"
+              isOpen={exportModal.isOpen}
+              onClose={exportModal.closeModal}
+              category="koordinat"
+              filters={{
+                  status: statusFilter,
+                  tahun: filters.tahun || new Date().getFullYear().toString(),
+                  search: '',
+                  status_bantuan: '',
+                  wilayah: '',
+                  bulan: undefined
+              }}
+              title="Export Laporan Data Koordinat PKH"
+              statistics={{
+                total_penerima: totalData,
+                total_distribusi: 0,
+                persentase_distribusi: 0,
+                rata_rata_bantuan: 0
+              }}      
       />
-
-      {/* Custom CSS untuk animasi */}
-      <style>{`
-        @keyframes fadeIn {
-          from {
-            opacity: 0;
-            transform: translateY(10px);
-          }
-          to {
-            opacity: 1;
-            transform: translateY(0);
-          }
-        }
-
-        .animate-fadeIn {
-          animation: fadeIn 0.5s ease-out forwards;
-        }
-      `}</style>
     </AuthenticatedLayout>
   );
 }

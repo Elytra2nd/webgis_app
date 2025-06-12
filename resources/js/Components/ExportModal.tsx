@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Download, FileText, FileSpreadsheet, Settings, Waves, Database, AlertCircle } from 'lucide-react';
-import { router } from '@inertiajs/react';
 
 interface ExportModalProps {
     isOpen: boolean;
@@ -9,6 +8,7 @@ interface ExportModalProps {
     category: string;
     filters: any;
     title: string;
+    statistics?: any; // Optional statistics data for PKH
 }
 
 // Utility functions untuk export CSV
@@ -71,8 +71,8 @@ const formatDataForExport = (data: any[], category: string, filters: any) => {
     switch (category) {
         case 'status-ekonomi':
             return {
-                filename: `laporan-status-ekonomi-${timestamp}.csv`,
-                headers: ['No', 'Nama Keluarga', 'Alamat', 'Status Ekonomi', 'Jumlah Anggota', 'Pendapatan', 'Tanggal Update'],
+                filename: `laporan-status-ekonomi-pkh-${timestamp}.csv`,
+                headers: ['No', 'Nama Keluarga', 'Alamat', 'Status Ekonomi', 'Jumlah Anggota', 'Pendapatan', 'Provinsi', 'Kota', 'Tanggal Update'],
                 data: data.map((item, index) => ({
                     no: index + 1,
                     nama_keluarga: item.nama_keluarga || '',
@@ -80,14 +80,16 @@ const formatDataForExport = (data: any[], category: string, filters: any) => {
                     status_ekonomi: item.status_ekonomi || '',
                     jumlah_anggota: item.jumlah_anggota || 0,
                     pendapatan: item.pendapatan || 0,
+                    provinsi: item.provinsi || '',
+                    kota: item.kota || '',
                     tanggal_update: item.updated_at ? new Date(item.updated_at).toLocaleDateString('id-ID') : ''
                 }))
             };
 
         case 'wilayah':
             return {
-                filename: `laporan-wilayah-${timestamp}.csv`,
-                headers: ['No', 'Nama Keluarga', 'Provinsi', 'Kota/Kabupaten', 'Kecamatan', 'Kelurahan', 'RT/RW', 'Koordinat'],
+                filename: `laporan-wilayah-pkh-${timestamp}.csv`,
+                headers: ['No', 'Nama Keluarga', 'Provinsi', 'Kota/Kabupaten', 'Kecamatan', 'Kelurahan', 'RT/RW', 'Status Ekonomi', 'Koordinat'],
                 data: data.map((item, index) => ({
                     no: index + 1,
                     nama_keluarga: item.nama_keluarga || '',
@@ -96,14 +98,15 @@ const formatDataForExport = (data: any[], category: string, filters: any) => {
                     kecamatan: item.kecamatan || '',
                     kelurahan: item.kelurahan || '',
                     rt_rw: `${item.rt || ''}/${item.rw || ''}`,
+                    status_ekonomi: item.status_ekonomi || '',
                     koordinat: item.lokasi || ''
                 }))
             };
 
         case 'koordinat':
             return {
-                filename: `laporan-koordinat-${timestamp}.csv`,
-                headers: ['No', 'Nama Keluarga', 'Alamat', 'Latitude', 'Longitude', 'Status Koordinat', 'Tanggal Input'],
+                filename: `laporan-koordinat-pkh-${timestamp}.csv`,
+                headers: ['No', 'Nama Keluarga', 'Alamat', 'Latitude', 'Longitude', 'Status Koordinat', 'Provinsi', 'Kota', 'Tanggal Input'],
                 data: data.map((item, index) => {
                     const koordinat = parseKoordinat(item.lokasi);
                     return {
@@ -113,9 +116,63 @@ const formatDataForExport = (data: any[], category: string, filters: any) => {
                         latitude: koordinat.latitude || '',
                         longitude: koordinat.longitude || '',
                         status_koordinat: koordinat.latitude && koordinat.longitude ? 'Lengkap' : 'Belum Lengkap',
+                        provinsi: item.provinsi || '',
+                        kota: item.kota || '',
                         tanggal_input: item.created_at ? new Date(item.created_at).toLocaleDateString('id-ID') : ''
                     };
                 })
+            };
+
+        case 'pkh':
+            return {
+                filename: `laporan-pkh-${timestamp}.csv`,
+                headers: [
+                    'No', 'Nama Keluarga', 'Alamat', 'Provinsi', 'Kota', 'Status Ekonomi', 
+                    'Status Bantuan', 'Nominal Per Bulan', 'Total Nominal Tahun', 
+                    'Persentase Distribusi', 'Sisa Bulan Distribusi', 'Total Disalurkan', 
+                    'Total Gagal', 'Tanggal Penetapan', 'Koordinat'
+                ],
+                data: data.map((item, index) => ({
+                    no: index + 1,
+                    nama_keluarga: item.nama_keluarga || '',
+                    alamat: item.alamat || '',
+                    provinsi: item.provinsi || '',
+                    kota: item.kota || '',
+                    status_ekonomi: item.status_ekonomi || '',
+                    status_bantuan: item.status_bantuan || 'Belum Menerima',
+                    nominal_per_bulan: item.nominal_per_bulan || 0,
+                    total_nominal_tahun: item.total_nominal_tahun || 0,
+                    persentase_distribusi: item.persentase_distribusi || 0,
+                    sisa_bulan_distribusi: item.sisa_bulan_distribusi || 0,
+                    total_disalurkan: item.total_disalurkan || 0,
+                    total_gagal: item.total_gagal || 0,
+                    tanggal_penetapan: item.tanggal_penetapan || '',
+                    koordinat: item.koordinat || ''
+                }))
+            };
+
+        case 'bantuan':
+            return {
+                filename: `laporan-distribusi-bantuan-pkh-${timestamp}.csv`,
+                headers: [
+                    'No', 'Nama Keluarga', 'Alamat', 'Provinsi', 'Kota', 
+                    'Status Bantuan', 'Nominal Per Bulan', 'Tahun Anggaran',
+                    'Bulan Distribusi', 'Status Distribusi', 'Tanggal Distribusi', 'Catatan'
+                ],
+                data: data.map((item, index) => ({
+                    no: index + 1,
+                    nama_keluarga: item.nama_keluarga || '',
+                    alamat: item.alamat || '',
+                    provinsi: item.provinsi || '',
+                    kota: item.kota || '',
+                    status_bantuan: item.status_bantuan || '',
+                    nominal_per_bulan: item.nominal_per_bulan || 0,
+                    tahun_anggaran: item.tahun_anggaran || '',
+                    bulan_distribusi: item.bulan_distribusi || '',
+                    status_distribusi: item.status_distribusi || '',
+                    tanggal_distribusi: item.tanggal_distribusi || '',
+                    catatan: item.catatan || ''
+                }))
             };
 
         default:
@@ -149,72 +206,100 @@ export default function ExportModal({ isOpen, onClose, category, filters, title 
         // CSV specific options
         delimiter: 'comma',
         encoding: 'utf-8',
-        includeHeaders: true
+        includeHeaders: true,
+        // PKH specific options
+        includeDistributionData: true,
+        includeBantuanDetails: true,
+        includeStatistics: true
     });
     const [isExporting, setIsExporting] = useState(false);
     const [exportError, setExportError] = useState('');
+
+    // PERBAIKAN: Validation function
+    const validateExportData = () => {
+        if (!category) {
+            throw new Error('Kategori export tidak valid');
+        }
+        
+        if (!filters || typeof filters !== 'object') {
+            throw new Error('Filter tidak valid');
+        }
+        
+        return true;
+    };
 
     const handleExport = async () => {
         setIsExporting(true);
         setExportError('');
 
         try {
+            validateExportData();
+
             if (exportFormat === 'pdf') {
-                // Handle PDF export - direct download
+                // PERBAIKAN: Handle PDF export with form submission to avoid corruption
                 const form = document.createElement('form');
                 form.method = 'POST';
-                form.action = route('reports.export');
-                form.style.display = 'none';
-
+                form.action = route('admin.reports.export');
+                form.target = '_blank';
+                
                 // Add CSRF token
-                const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
-                if (csrfToken) {
-                    const csrfInput = document.createElement('input');
-                    csrfInput.type = 'hidden';
-                    csrfInput.name = '_token';
-                    csrfInput.value = csrfToken;
-                    form.appendChild(csrfInput);
-                }
-
-                // Add form data
-                const formData = {
+                const csrfInput = document.createElement('input');
+                csrfInput.type = 'hidden';
+                csrfInput.name = '_token';
+                csrfInput.value = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
+                form.appendChild(csrfInput);
+                
+                // Add data
+                Object.entries({
                     category,
                     filters: JSON.stringify(filters),
                     format: exportFormat,
-                    options: JSON.stringify(exportOptions)
-                };
-
-                Object.entries(formData).forEach(([key, value]) => {
+                    options: JSON.stringify(exportOptions),
+                    tahun: filters.tahun || new Date().getFullYear()
+                }).forEach(([key, value]) => {
                     const input = document.createElement('input');
                     input.type = 'hidden';
                     input.name = key;
                     input.value = value;
                     form.appendChild(input);
                 });
-
+                
                 document.body.appendChild(form);
                 form.submit();
                 document.body.removeChild(form);
+                
+                setTimeout(() => onClose(), 1000);
 
             } else {
                 // Handle CSV export
-                const response = await fetch(route('reports.export'), {
+                const response = await fetch(route('admin.reports.export'), {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
+                        'Accept': 'application/json',
                         'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '',
                     },
                     body: JSON.stringify({
                         category,
                         filters,
                         format: exportFormat,
-                        options: exportOptions
+                        options: exportOptions,
+                        tahun: filters.tahun || new Date().getFullYear()
                     })
                 });
 
                 if (!response.ok) {
-                    const errorData = await response.json();
-                    throw new Error(errorData.message || 'Gagal mengambil data untuk export');
+                    const errorText = await response.text();
+                    let errorMessage = 'Gagal mengambil data untuk export';
+                    
+                    try {
+                        const errorData = JSON.parse(errorText);
+                        errorMessage = errorData.message || errorMessage;
+                    } catch (e) {
+                        // If response is not JSON, use default message
+                    }
+                    
+                    throw new Error(errorMessage);
                 }
 
                 const result = await response.json();
@@ -236,21 +321,41 @@ export default function ExportModal({ isOpen, onClose, category, filters, title 
 
                     // Export to CSV
                     exportToCsv(filename, data, exportOptions.includeHeaders ? headers : undefined);
+                    
+                    // Close modal after successful export
+                    setTimeout(() => onClose(), 1000);
                 } else {
                     throw new Error(result.message || 'Gagal mengexport data');
                 }
             }
-
-            // Close modal after successful export
-            setTimeout(() => {
-                onClose();
-            }, 1000);
 
         } catch (error) {
             console.error('Export error:', error);
             setExportError(error instanceof Error ? error.message : 'Terjadi kesalahan saat export');
         } finally {
             setIsExporting(false);
+        }
+    };
+
+    // Get category specific title
+    const getCategoryDisplayName = (cat: string) => {
+        switch (cat) {
+            case 'status-ekonomi':
+                return 'Status Ekonomi PKH';
+            case 'wilayah':
+                return 'Sebaran Wilayah PKH';
+            case 'koordinat':
+                return 'Data Koordinat PKH';
+            case 'pkh':
+                return 'Program Keluarga Harapan';
+            case 'bantuan':
+                return 'Distribusi Bantuan PKH';
+            case 'trend-penerima':
+                return 'Trend Penerima PKH';
+            case 'efektivitas':
+                return 'Efektivitas Program PKH';
+            default:
+                return cat;
         }
     };
 
@@ -360,7 +465,7 @@ export default function ExportModal({ isOpen, onClose, category, filters, title 
                                     </motion.div>
                                     <div>
                                         <h3 className="text-xl font-semibold text-slate-800">{title}</h3>
-                                        <p className="text-sm text-slate-600">Kustomisasi opsi export laporan</p>
+                                        <p className="text-sm text-slate-600">Kustomisasi opsi export laporan PKH</p>
                                     </div>
                                 </div>
                                 <motion.button
@@ -455,7 +560,7 @@ export default function ExportModal({ isOpen, onClose, category, filters, title 
 
                             {/* Export Options */}
                             <div>
-                                <h4 className="text-lg font-medium text-slate-800 mb-4">Opsi Export</h4>
+                                <h4 className="text-lg font-medium text-slate-800 mb-4">Opsi Export PKH</h4>
                                 <div className="space-y-3">
                                     {exportFormat === 'pdf' && (
                                         <motion.label
@@ -469,7 +574,7 @@ export default function ExportModal({ isOpen, onClose, category, filters, title 
                                                 onChange={(e) => setExportOptions({...exportOptions, includeCharts: e.target.checked})}
                                                 className="w-4 h-4 text-teal-600 border-slate-300 rounded focus:ring-teal-500"
                                             />
-                                            <span className="text-slate-700">Sertakan grafik dan visualisasi</span>
+                                            <span className="text-slate-700">Sertakan grafik dan visualisasi PKH</span>
                                         </motion.label>
                                     )}
 
@@ -499,6 +604,53 @@ export default function ExportModal({ isOpen, onClose, category, filters, title 
                                             className="w-4 h-4 text-teal-600 border-slate-300 rounded focus:ring-teal-500"
                                         />
                                         <span className="text-slate-700">Sertakan timestamp export</span>
+                                    </motion.label>
+
+                                    {/* PKH Specific Options */}
+                                    {(category === 'pkh' || category === 'bantuan') && (
+                                        <>
+                                            <motion.label
+                                                className="flex items-center space-x-3 cursor-pointer"
+                                                whileHover={{ x: 5 }}
+                                                transition={{ type: "spring", stiffness: 300 }}
+                                            >
+                                                <input
+                                                    type="checkbox"
+                                                    checked={exportOptions.includeDistributionData}
+                                                    onChange={(e) => setExportOptions({...exportOptions, includeDistributionData: e.target.checked})}
+                                                    className="w-4 h-4 text-teal-600 border-slate-300 rounded focus:ring-teal-500"
+                                                />
+                                                <span className="text-slate-700">Sertakan data distribusi bantuan</span>
+                                            </motion.label>
+
+                                            <motion.label
+                                                className="flex items-center space-x-3 cursor-pointer"
+                                                whileHover={{ x: 5 }}
+                                                transition={{ type: "spring", stiffness: 300 }}
+                                            >
+                                                <input
+                                                    type="checkbox"
+                                                    checked={exportOptions.includeBantuanDetails}
+                                                    onChange={(e) => setExportOptions({...exportOptions, includeBantuanDetails: e.target.checked})}
+                                                    className="w-4 h-4 text-teal-600 border-slate-300 rounded focus:ring-teal-500"
+                                                />
+                                                <span className="text-slate-700">Sertakan detail nominal bantuan</span>
+                                            </motion.label>
+                                        </>
+                                    )}
+
+                                    <motion.label
+                                        className="flex items-center space-x-3 cursor-pointer"
+                                        whileHover={{ x: 5 }}
+                                        transition={{ type: "spring", stiffness: 300 }}
+                                    >
+                                        <input
+                                            type="checkbox"
+                                            checked={exportOptions.includeStatistics}
+                                            onChange={(e) => setExportOptions({...exportOptions, includeStatistics: e.target.checked})}
+                                            className="w-4 h-4 text-teal-600 border-slate-300 rounded focus:ring-teal-500"
+                                        />
+                                        <span className="text-slate-700">Sertakan statistik PKH</span>
                                     </motion.label>
                                 </div>
                             </div>
@@ -606,7 +758,13 @@ export default function ExportModal({ isOpen, onClose, category, filters, title 
                         <div className="relative px-8 py-6 bg-gradient-to-r from-slate-50 to-cyan-50 border-t border-slate-200">
                             <div className="flex items-center justify-between">
                                 <div className="text-sm text-slate-600">
-                                    Export kategori: <span className="font-medium text-slate-800">{category}</span>
+                                    Export kategori: <span className="font-medium text-slate-800">{getCategoryDisplayName(category)}</span>
+                                    {filters.tahun && (
+                                        <span className="ml-2 text-teal-600">• Tahun: {filters.tahun}</span>
+                                    )}
+                                    {filters.bulan && filters.bulan !== 'all' && (
+                                        <span className="ml-2 text-teal-600">• Bulan: {filters.bulan}</span>
+                                    )}
                                 </div>
                                 <div className="flex space-x-3">
                                     <motion.button

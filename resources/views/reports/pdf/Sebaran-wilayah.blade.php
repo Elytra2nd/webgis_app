@@ -58,90 +58,55 @@
             font-size: 11px;
         }
 
-        .filter-info h3 {
-            color: #0e7490;
-            font-size: 14px;
-            margin: 0 0 10px 0;
-            font-weight: 600;
+        .stat-cards {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 18px;
+            margin-bottom: 24px;
         }
 
-        .filter-item {
-            display: inline-block;
-            background: white;
-            border: 1px solid #e2e8f0;
-            border-radius: 6px;
-            padding: 6px 12px;
-            margin: 3px;
-            font-size: 11px;
-            color: #475569;
-        }
-
-        .statistics {
-            margin-bottom: 25px;
+        .stat-card {
+            flex: 1 1 180px;
             background: linear-gradient(120deg, #a7f3d0 0%, #e0f2fe 100%);
-            padding: 20px;
-            border-radius: 10px;
+            border-radius: 14px;
+            padding: 18px 16px;
             border: 1px solid #bae6fd;
-            box-shadow: 0 2px 4px rgba(6, 182, 212, 0.04);
+            text-align: center;
+            min-width: 160px;
         }
 
-        .statistics h3 {
-            margin-top: 0;
-            color: #0e7490;
-            font-size: 16px;
-            font-weight: 600;
-            margin-bottom: 15px;
-        }
-
-        .stat-list {
-            background: white;
-            border-radius: 8px;
-            overflow: hidden;
-            box-shadow: 0 1px 3px rgba(6, 182, 212, 0.1);
-        }
-
-        .stat-row {
-            display: table;
-            width: 100%;
-            border-bottom: 1px solid #bae6fd;
-        }
-
-        .stat-row:last-child {
-            border-bottom: none;
-        }
-
-        .stat-row:nth-child(even) {
-            background-color: #f0fdfa;
-        }
-
-        .stat-cell {
-            display: table-cell;
-            padding: 12px 15px;
+        .stat-label {
             font-size: 11px;
-            vertical-align: middle;
+            color: #0e7490;
+            margin-bottom: 4px;
         }
 
-        .stat-provinsi {
+        .stat-value {
+            font-size: 22px;
+            font-weight: 700;
+            color: #06b6d4;
+            margin-bottom: 2px;
+        }
+
+        .stat-desc {
+            font-size: 10px;
+            color: #64748b;
+        }
+
+        .section-title {
+            font-size: 15px;
             font-weight: 600;
             color: #0e7490;
-            width: 70%;
-        }
-
-        .stat-total {
-            text-align: right;
-            width: 30%;
-            color: #06b6d4;
-            font-weight: 600;
-            background: #e0f2fe;
-            border-radius: 4px;
-            padding: 4px 8px;
+            margin: 32px 0 10px 0;
+            border-left: 4px solid #06b6d4;
+            padding-left: 10px;
         }
 
         table {
             width: 100%;
             border-collapse: collapse;
-            margin-top: 20px;
-            background: white;
+            margin-top: 18px;
+            background: #fff;
             border-radius: 10px;
             overflow: hidden;
             box-shadow: 0 2px 8px rgba(6, 182, 212, 0.04);
@@ -150,7 +115,7 @@
         th,
         td {
             border: 1px solid #bae6fd;
-            padding: 10px 8px;
+            padding: 9px 8px;
             text-align: left;
             font-size: 10px;
         }
@@ -158,18 +123,13 @@
         th {
             background: #e0f2fe;
             color: #0e7490;
-            font-weight: 600;
-            font-size: 11px;
+            font-weight: 700;
             text-transform: uppercase;
             letter-spacing: 0.5px;
         }
 
         tr:nth-child(even) {
-            background-color: #f0fdfa;
-        }
-
-        tr:hover {
-            background-color: #ccfbf1;
+            background: #f0fdfa;
         }
 
         .location-badge {
@@ -212,18 +172,14 @@
         }
 
         .footer {
-            margin-top: 30px;
+            margin-top: 36px;
             text-align: center;
             color: #64748b;
             font-size: 10px;
             background: #f0fdfa;
-            padding: 15px;
-            border-radius: 8px;
+            padding: 16px;
+            border-radius: 12px;
             border: 1px solid #e0f2fe;
-        }
-
-        .footer p {
-            margin: 5px 0;
         }
 
         .footer .total {
@@ -238,44 +194,9 @@
             font-style: italic;
         }
 
-        .no-data {
-            text-align: center;
-            padding: 40px;
-            background: #f8fafc;
-            border-radius: 8px;
-            border: 1px solid #e2e8f0;
-            color: #64748b;
-            font-size: 14px;
-        }
-
-        .page-break {
-            page-break-after: always;
-        }
-
-        .pkh-info {
-            background: linear-gradient(120deg, #dbeafe 0%, #bfdbfe 100%);
-            border: 1px solid #3b82f6;
-            border-radius: 8px;
-            padding: 12px;
-            margin-bottom: 20px;
-            font-size: 11px;
-            color: #1e40af;
-        }
-
-        .pkh-info strong {
-            color: #1d4ed8;
-        }
-
-        .tahun-info {
-            background: #e0f2fe;
+        .highlight {
             color: #0e7490;
-            padding: 8px 12px;
-            border-radius: 6px;
-            font-size: 11px;
-            font-weight: 600;
-            display: inline-block;
-            margin-bottom: 15px;
-            border: 1px solid #06b6d4;
+            font-weight: bold;
         }
 
         .no-kk {
@@ -296,11 +217,6 @@
             border-radius: 3px;
             border: 1px solid #bae6fd;
         }
-
-        .highlight {
-            color: #0e7490;
-            font-weight: bold;
-        }
     </style>
 </head>
 
@@ -314,81 +230,98 @@
         <div class="badge">AQUA MODERN MINIMALIST</div>
     </div>
 
-    {{-- PKH Information --}}
-    <div class="pkh-info">
-        <strong>Informasi PKH:</strong> Laporan ini menampilkan distribusi geografis keluarga penerima Program Keluarga
-        Harapan (PKH)
-        berdasarkan wilayah administratif. Data sebaran wilayah digunakan untuk monitoring dan evaluasi jangkauan
-        program PKH.
-    </div>
-
-    {{-- Tahun Information --}}
-    @if(isset($filters['tahun']) && $filters['tahun'])
-        <div class="tahun-info">
-            📅 Tahun Anggaran PKH: {{ $filters['tahun'] }}
-        </div>
-    @endif
-
-    {{-- Filter Information --}}
-    @if(
-            isset($filters) && is_array($filters) && array_filter($filters, function ($value) {
-                return $value !== 'all' && $value !== null;
-            })
-        )
+    @if(isset($filters) && is_array($filters) && array_filter($filters, function ($v) {
+        return $v !== 'all' && $v !== null; }))
         <div class="filter-info">
-            <h3>Filter yang Diterapkan:</h3>
+            <strong>Filter:</strong>
             @foreach($filters as $key => $value)
                 @if($value !== 'all' && $value !== null)
-                    <span class="filter-item">
-                        <strong>{{ ucfirst(str_replace('_', ' ', $key)) }}:</strong> {{ $value }}
-                    </span>
+                    <span class="highlight">{{ ucfirst(str_replace('_', ' ', $key)) }}:</span> {{ $value }}&nbsp;
                 @endif
             @endforeach
         </div>
     @endif
 
-    {{-- Statistics Section --}}
+    {{-- Statistik Ringkas --}}
     @if(isset($statistics) && count($statistics) > 0)
-        <div class="statistics">
-            <h3>Statistik Sebaran PKH Per Provinsi (Top 10)</h3>
-            <div class="stat-list">
-                @foreach($statistics->take(10) as $index => $stat)
-                    <div class="stat-row">
-                        <div class="stat-cell stat-provinsi">
-                            <strong>{{ $index + 1 }}.</strong> {{ $stat->provinsi ?? '-' }}
-                        </div>
-                        <div class="stat-cell stat-total">{{ number_format($stat->total ?? 0) }} keluarga PKH</div>
-                    </div>
-                @endforeach
+        <div class="stat-cards">
+            <div class="stat-card">
+                <div class="stat-label">Total Provinsi</div>
+                <div class="stat-value">{{ count($statistics) }}</div>
+                <div class="stat-desc">Provinsi dengan penerima PKH</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">Total Penerima</div>
+                <div class="stat-value">{{ $statistics->sum('total') }}</div>
+                <div class="stat-desc">Keluarga menerima PKH</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">Provinsi Terbanyak</div>
+                <div class="stat-value">{{ $statistics->first()->provinsi ?? '-' }}</div>
+                <div class="stat-desc">{{ number_format($statistics->first()->total ?? 0) }} keluarga</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">Rata-rata per Provinsi</div>
+                <div class="stat-value">{{ count($statistics) > 0 ? number_format($statistics->avg('total')) : 0 }}</div>
+                <div class="stat-desc">Keluarga per provinsi</div>
             </div>
         </div>
     @endif
 
-    {{-- Data Table --}}
-    @if((isset($data) && count($data) > 0) || (isset($keluarga) && count($keluarga) > 0))
+    {{-- Statistik Sebaran Per Provinsi --}}
+    @if(isset($statistics) && count($statistics) > 0)
+        <div class="section-title">Statistik Sebaran PKH Per Provinsi (Top 10)</div>
         <table>
             <thead>
                 <tr>
-                    <th style="width: 6%">No</th>
-                    <th style="width: 12%">No. KK</th>
-                    <th style="width: 20%">Nama Keluarga</th>
-                    <th style="width: 25%">Alamat</th>
-                    <th style="width: 12%">Provinsi</th>
-                    <th style="width: 12%">Kota/Kabupaten</th>
-                    <th style="width: 8%">Kecamatan</th>
-                    <th style="width: 5%">Status</th>
+                    <th>Ranking</th>
+                    <th>Provinsi</th>
+                    <th>Total Penerima</th>
+                    <th>Persentase</th>
                 </tr>
             </thead>
             <tbody>
                 @php
-                    $dataToShow = $data ?? $keluarga ?? [];
+                    $totalKeseluruhan = $statistics->sum('total');
                 @endphp
+                @foreach($statistics->take(10) as $index => $stat)
+                    <tr>
+                        <td style="text-align:center;font-weight:bold;">{{ $index + 1 }}</td>
+                        <td><span class="highlight">{{ $stat->provinsi ?? '-' }}</span></td>
+                        <td>{{ number_format($stat->total ?? 0) }}</td>
+                        <td>{{ $totalKeseluruhan > 0 ? number_format(($stat->total / $totalKeseluruhan) * 100, 1) : 0 }}%</td>
+                    </tr>
+                @endforeach
+            </tbody>
+        </table>
+    @endif
+
+    {{-- Data Tabel Detail --}}
+    <div class="section-title">Data Keluarga Penerima PKH per Wilayah</div>
+    <table>
+        <thead>
+            <tr>
+                <th>No</th>
+                <th>No. KK</th>
+                <th>Nama Keluarga</th>
+                <th>Alamat</th>
+                <th>Provinsi</th>
+                <th>Kota/Kabupaten</th>
+                <th>Kecamatan</th>
+                <th>Status</th>
+            </tr>
+        </thead>
+        <tbody>
+            @php
+                $dataToShow = $data ?? $keluarga ?? [];
+            @endphp
+            @if(count($dataToShow) > 0)
                 @foreach($dataToShow as $index => $item)
                     <tr>
                         <td style="text-align: center; font-weight: bold;">{{ $index + 1 }}</td>
                         <td style="text-align: center;">
-                            @if(isset($item->no_kk) && $item->no_kk)
-                                <span class="no-kk">{{ $item->no_kk }}</span>
+                            @if(isset($item['no_kk']) || (is_object($item) && isset($item->no_kk)))
+                                <span class="no-kk">{{ is_array($item) ? $item['no_kk'] : $item->no_kk }}</span>
                             @else
                                 <span class="small-text">-</span>
                             @endif
@@ -462,47 +395,24 @@
                             @endif
                         </td>
                     </tr>
-
-                    {{-- Page break every 25 rows for better printing --}}
-                    @if(($index + 1) % 25 == 0 && $index + 1 < count($dataToShow))
-                            </tbody>
-                        </table>
-                        <div class="page-break"></div>
-                        <table>
-                            <thead>
-                                <tr>
-                                    <th style="width: 6%">No</th>
-                                    <th style="width: 12%">No. KK</th>
-                                    <th style="width: 20%">Nama Keluarga</th>
-                                    <th style="width: 25%">Alamat</th>
-                                    <th style="width: 12%">Provinsi</th>
-                                    <th style="width: 12%">Kota/Kabupaten</th>
-                                    <th style="width: 8%">Kecamatan</th>
-                                    <th style="width: 5%">Status</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                    @endif
                 @endforeach
-            </tbody>
-        </table>
-    @else
-        <div class="no-data">
-            <p style="margin: 0 0 8px 0; font-size: 16px; font-weight: bold;">Tidak ada data keluarga PKH untuk ditampilkan.
-            </p>
-            <p style="margin: 0; color: #94a3b8;">Coba ubah filter atau periksa data di sistem.</p>
-        </div>
-    @endif
+            @else
+                <tr>
+                    <td colspan="8" style="text-align:center;color:#64748b;">Tidak ada data keluarga PKH untuk ditampilkan.
+                    </td>
+                </tr>
+            @endif
+        </tbody>
+    </table>
 
     <div class="footer">
-        <p class="total">Total Data: {{ isset($data) ? count($data) : (isset($keluarga) ? count($keluarga) : 0) }}
-            keluarga penerima PKH</p>
+        <p class="total">Laporan Sebaran Wilayah PKH • Total Data: {{ count($dataToShow) }} keluarga</p>
         @if(isset($statistics) && count($statistics) > 0)
-            <p>Sebaran Wilayah: {{ count($statistics) }} provinsi dengan penerima PKH terdaftar</p>
+            <p>Sebaran: {{ count($statistics) }} provinsi dengan {{ $statistics->sum('total') }} penerima PKH</p>
             <p>Provinsi Terbanyak: {{ $statistics->first()->provinsi ?? '-' }}
                 ({{ number_format($statistics->first()->total ?? 0) }} keluarga)</p>
         @endif
-        <p>Laporan ini digenerate secara otomatis oleh Sistem Informasi PKH</p>
+        <p>Laporan ini digenerate otomatis oleh Sistem Informasi PKH</p>
         <p style="margin-top: 10px; font-size: 9px;">© {{ date('Y') }} - WebGIS Program Keluarga Harapan v2.0</p>
         @if(isset($filters['tahun']) && $filters['tahun'])
             <p style="font-size: 9px; color: #059669;">📅 Data berdasarkan tahun anggaran PKH: {{ $filters['tahun'] }}</p>

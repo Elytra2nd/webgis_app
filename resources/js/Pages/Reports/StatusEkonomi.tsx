@@ -1,41 +1,49 @@
-// resources/js/Pages/Reports/StatusEkonomi.tsx
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Head, Link, router } from '@inertiajs/react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import Pagination from '@/Components/Pagination';
 import ExportModal from '@/Components/ExportModal';
 import { useExportModal } from '@/Hooks/useExportModal';
 import { PageProps } from '@/types';
+import { motion, AnimatePresence } from 'framer-motion';
+import { DollarSign, TrendingDown, TrendingUp, AlertTriangle, Filter, Download, Users } from 'lucide-react';
+
 
 interface Keluarga {
   id: number;
   no_kk: string;
-  nama_kepala_keluarga: string;
+  nama_keluarga: string;
   alamat: string;
   status_ekonomi: string;
+  jumlah_anggota?: number;
+  pendapatan?: number;
   kelurahan?: string;
   kecamatan?: string;
   kota?: string;
   provinsi?: string;
+  created_at: string;
+  updated_at: string;
+}
+
+interface PaginatedKeluarga {
+  data: Keluarga[];
+  links: Array<{
+    url: string | null;
+    label: string;
+    active: boolean;
+  }>;
+  meta: {
+    current_page: number;
+    from: number;
+    last_page: number;
+    per_page: number;
+    to: number;
+    total: number;
+  };
 }
 
 interface StatusEkonomiProps extends PageProps {
-  keluarga?: {
-    data: Keluarga[];
-    links: Array<{
-      url: string | null;
-      label: string;
-      active: boolean;
-    }>;
-    meta: {
-      current_page: number;
-      from: number;
-      last_page: number;
-      per_page: number;
-      to: number;
-      total: number;
-    };
-  };
+  keluarga?: PaginatedKeluarga;
   statistics?: {
     sangat_miskin: number;
     miskin: number;
@@ -43,6 +51,7 @@ interface StatusEkonomiProps extends PageProps {
   };
   filters?: {
     status?: string;
+    tahun?: string;
   };
   category?: string;
 }
@@ -52,53 +61,114 @@ export default function StatusEkonomi({
   keluarga,
   statistics,
   filters = {},
-  category = 'Status Ekonomi'
+  category = 'Status Ekonomi PKH'
 }: StatusEkonomiProps) {
   const [statusFilter, setStatusFilter] = useState(filters.status || 'all');
   const exportModal = useExportModal();
 
-  // Null checks untuk mencegah error
+  // PERBAIKAN: Update breadcrumbs untuk menggunakan route admin yang benar
+  const breadcrumbs = [
+    { label: 'Dashboard', href: route('dashboard') },
+    { label: 'Laporan PKH', href: route('admin.reports.index') },
+    { label: category, active: true },
+  ];
+
+  // Safe data access dengan null checks yang ketat
+  const safeKeluarga = keluarga || {
+    data: [],
+    meta: {
+      current_page: 1,
+      from: 0,
+      last_page: 1,
+      per_page: 15,
+      to: 0,
+      total: 0
+    },
+    links: []
+  };
+
+  const safeMeta = safeKeluarga.meta || {
+    current_page: 1,
+    from: 0,
+    last_page: 1,
+    per_page: 15,
+    to: 0,
+    total: 0
+  };
+
+  const safeStatistics = statistics || {
+    sangat_miskin: 0,
+    miskin: 0,
+    rentan_miskin: 0
+  };
+
+  // PERBAIKAN: Enhanced loading state
   if (!keluarga || !statistics) {
     return (
       <AuthenticatedLayout
         user={auth.user}
+        breadcrumbs={breadcrumbs}
         header={
-          <div className="flex items-center space-x-3">
-            <div className="w-2 h-8 bg-gradient-to-b from-amber-400 to-orange-500 rounded-full animate-pulse"></div>
-            <h2 className="font-light text-2xl text-gray-900">Laporan {category}</h2>
-          </div>
+          <motion.div 
+            className="flex items-center space-x-4"
+            initial={{ opacity: 0, x: -20 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ duration: 0.5 }}
+          >
+            <motion.div
+              className="w-3 h-8 bg-gradient-to-b from-amber-400 to-orange-500 rounded-full shadow-lg"
+              animate={{ scale: [1, 1.1, 1] }}
+              transition={{ duration: 2, repeat: Infinity }}
+            />
+            <div className="flex items-center space-x-3">
+              <DollarSign className="w-6 h-6 text-amber-600" />
+              <h2 className="font-light text-2xl text-slate-800 tracking-wide">Laporan {category}</h2>
+            </div>
+          </motion.div>
         }
       >
         <Head title={`Laporan ${category}`} />
 
         <div className="space-y-8">
-          <div className="bg-white rounded-2xl border border-gray-100/50 p-8 shadow-sm">
+          <motion.div 
+            className="bg-white/80 backdrop-blur-sm rounded-2xl border border-slate-100/50 p-8 shadow-lg"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6 }}
+          >
             <div className="text-center">
-              <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4 animate-pulse">
-                <svg className="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-              </div>
-              <p className="text-gray-500 text-lg font-medium mb-2">Terjadi kesalahan saat memuat data</p>
-              <p className="text-gray-400 text-sm">Silakan refresh halaman atau coba lagi nanti</p>
-              <Link
-                href={route('reports.index')}
-                className="inline-flex items-center mt-4 px-4 py-2 bg-cyan-500 text-white rounded-lg hover:bg-cyan-600 transition-colors duration-200"
+              <motion.div 
+                className="w-16 h-16 bg-gradient-to-r from-amber-100 to-orange-100 rounded-full flex items-center justify-center mx-auto mb-4"
+                animate={{ rotate: 360 }}
+                transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
               >
-                Kembali ke Laporan
-              </Link>
+                <DollarSign className="w-8 h-8 text-amber-600" />
+              </motion.div>
+              <p className="text-slate-600 text-lg font-medium mb-2">Memuat data laporan status ekonomi PKH...</p>
+              <p className="text-slate-400 text-sm">Mohon tunggu sebentar</p>
             </div>
-          </div>
+          </motion.div>
         </div>
       </AuthenticatedLayout>
     );
   }
 
-  const breadcrumbs = [
-    { label: 'Dashboard', href: route('dashboard') },
-    { label: 'Laporan', href: route('reports.index') },
-    { label: category, active: true }
-  ];
+  useEffect(() => {
+    setStatusFilter(filters.status || 'all');
+  }, [filters]);
+
+  const handleFilterChange = (newStatus: string) => {
+    setStatusFilter(newStatus);
+    
+    // PERBAIKAN: Update route untuk admin reports
+    router.get(route('admin.reports.index'), {
+      status: newStatus,
+      category: 'status-ekonomi'
+    }, {
+      preserveState: true,
+      replace: true
+    });
+  };
 
   const formatStatusEkonomi = (status: string) => {
     const statusMap: { [key: string]: string } = {
@@ -106,7 +176,7 @@ export default function StatusEkonomi({
       'miskin': 'Miskin',
       'rentan_miskin': 'Rentan Miskin'
     };
-    return statusMap[status] || status;
+    return statusMap[status] || status.replace('_', ' ');
   };
 
   const getStatusColor = (status: string) => {
@@ -118,139 +188,268 @@ export default function StatusEkonomi({
       case 'rentan_miskin':
         return 'bg-cyan-50 text-cyan-700 border border-cyan-200';
       default:
-        return 'bg-gray-50 text-gray-700 border border-gray-200';
+        return 'bg-slate-50 text-slate-700 border border-slate-200';
     }
   };
 
-  const handleFilterChange = (newStatus: string) => {
-    setStatusFilter(newStatus);
-    router.get(route('reports.show', 'status-ekonomi'), {
-      status: newStatus
-    }, {
-      preserveState: true,
-      replace: true
-    });
+  const getStatusIcon = (status: string) => {
+    switch (status) {
+      case 'sangat_miskin':
+        return <TrendingDown className="w-3 h-3 mr-1" />;
+      case 'miskin':
+        return <AlertTriangle className="w-3 h-3 mr-1" />;
+      case 'rentan_miskin':
+        return <TrendingUp className="w-3 h-3 mr-1" />;
+      default:
+        return null;
+    }
   };
 
-  const totalKeluarga = statistics.sangat_miskin + statistics.miskin + statistics.rentan_miskin;
+  const formatCurrency = (amount: number) => {
+    return new Intl.NumberFormat('id-ID', {
+      style: 'currency',
+      currency: 'IDR',
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0
+    }).format(amount);
+  };
+
+  const totalKeluarga = safeStatistics.sangat_miskin + safeStatistics.miskin + safeStatistics.rentan_miskin;
+
+  // Animation variants
+  const containerVariants = {
+    hidden: { opacity: 0 },
+    visible: {
+      opacity: 1,
+      transition: {
+        staggerChildren: 0.1
+      }
+    }
+  };
+
+  const itemVariants = {
+    hidden: { y: 20, opacity: 0 },
+    visible: {
+      y: 0,
+      opacity: 1,
+      transition: {
+        type: "spring",
+        stiffness: 100
+      }
+    }
+  };
 
   return (
     <AuthenticatedLayout
       user={auth.user}
       breadcrumbs={breadcrumbs}
       header={
-        <div className="flex items-center space-x-3">
-          <div className="w-2 h-8 bg-gradient-to-b from-amber-400 to-orange-500 rounded-full animate-pulse"></div>
-          <h2 className="font-light text-2xl text-gray-900">Laporan {category}</h2>
-        </div>
+        <motion.div 
+          className="flex items-center space-x-4"
+          initial={{ opacity: 0, x: -20 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ duration: 0.5 }}
+        >
+          <motion.div
+            className="w-3 h-8 bg-gradient-to-b from-amber-400 to-orange-500 rounded-full shadow-lg"
+            animate={{ scale: [1, 1.1, 1] }}
+            transition={{ duration: 2, repeat: Infinity }}
+          />
+          <div className="flex items-center space-x-3">
+            <DollarSign className="w-6 h-6 text-amber-600" />
+            <h2 className="font-light text-2xl text-slate-800 tracking-wide">Laporan {category}</h2>
+          </div>
+        </motion.div>
       }
     >
       <Head title={`Laporan ${category}`} />
 
-      <div className="space-y-8">
+      <motion.div 
+        className="space-y-8"
+        variants={containerVariants}
+        initial="hidden"
+        animate="visible"
+      >
         {/* Statistics Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          <div className="bg-white rounded-2xl border border-gray-100/50 p-6 hover:shadow-lg transition-all duration-300 transform hover:-translate-y-1">
+        <motion.div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6" variants={itemVariants}>
+          <motion.div 
+            className="bg-white/80 backdrop-blur-sm rounded-2xl border border-slate-100/50 p-6 shadow-lg hover:shadow-xl transition-all duration-300"
+            whileHover={{ y: -5, scale: 1.02 }}
+          >
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-gray-600">Total Keluarga</p>
-                <p className="text-3xl font-light text-gray-900">{totalKeluarga.toLocaleString()}</p>
+                <p className="text-sm font-medium text-slate-600">Total Keluarga PKH</p>
+                <p className="text-3xl font-light text-slate-900">{totalKeluarga.toLocaleString()}</p>
               </div>
-              <div className="w-12 h-12 bg-gradient-to-r from-gray-100 to-slate-100 rounded-xl flex items-center justify-center">
-                <svg className="w-6 h-6 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 715.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
-                </svg>
+              <div className="w-12 h-12 bg-gradient-to-r from-slate-100 to-slate-200 rounded-xl flex items-center justify-center">
+                <Users className="w-6 h-6 text-slate-600" />
               </div>
             </div>
-          </div>
+          </motion.div>
 
-          <div className="bg-white rounded-2xl border border-gray-100/50 p-6 hover:shadow-lg transition-all duration-300 transform hover:-translate-y-1">
+          <motion.div 
+            className="bg-white/80 backdrop-blur-sm rounded-2xl border border-slate-100/50 p-6 shadow-lg hover:shadow-xl transition-all duration-300"
+            whileHover={{ y: -5, scale: 1.02 }}
+          >
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-red-600">Sangat Miskin</p>
-                <p className="text-3xl font-light text-red-700">{statistics.sangat_miskin.toLocaleString()}</p>
-                <p className="text-xs text-gray-500 mt-1">
-                  {totalKeluarga > 0 ? ((statistics.sangat_miskin / totalKeluarga) * 100).toFixed(1) : 0}%
+                <p className="text-3xl font-light text-red-700">{safeStatistics.sangat_miskin.toLocaleString()}</p>
+                <p className="text-xs text-slate-500 mt-1">
+                  {totalKeluarga > 0 ? ((safeStatistics.sangat_miskin / totalKeluarga) * 100).toFixed(1) : 0}%
                 </p>
               </div>
               <div className="w-12 h-12 bg-red-50 rounded-xl flex items-center justify-center">
-                <svg className="w-6 h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
-                </svg>
+                <TrendingDown className="w-6 h-6 text-red-600" />
               </div>
             </div>
-          </div>
+          </motion.div>
 
-          <div className="bg-white rounded-2xl border border-gray-100/50 p-6 hover:shadow-lg transition-all duration-300 transform hover:-translate-y-1">
+          <motion.div 
+            className="bg-white/80 backdrop-blur-sm rounded-2xl border border-slate-100/50 p-6 shadow-lg hover:shadow-xl transition-all duration-300"
+            whileHover={{ y: -5, scale: 1.02 }}
+          >
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-amber-600">Miskin</p>
-                <p className="text-3xl font-light text-amber-700">{statistics.miskin.toLocaleString()}</p>
-                <p className="text-xs text-gray-500 mt-1">
-                  {totalKeluarga > 0 ? ((statistics.miskin / totalKeluarga) * 100).toFixed(1) : 0}%
+                <p className="text-3xl font-light text-amber-700">{safeStatistics.miskin.toLocaleString()}</p>
+                <p className="text-xs text-slate-500 mt-1">
+                  {totalKeluarga > 0 ? ((safeStatistics.miskin / totalKeluarga) * 100).toFixed(1) : 0}%
                 </p>
               </div>
               <div className="w-12 h-12 bg-amber-50 rounded-xl flex items-center justify-center">
-                <svg className="w-6 h-6 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1" />
-                </svg>
+                <AlertTriangle className="w-6 h-6 text-amber-600" />
               </div>
             </div>
-          </div>
+          </motion.div>
 
-          <div className="bg-white rounded-2xl border border-gray-100/50 p-6 hover:shadow-lg transition-all duration-300 transform hover:-translate-y-1">
+          <motion.div 
+            className="bg-white/80 backdrop-blur-sm rounded-2xl border border-slate-100/50 p-6 shadow-lg hover:shadow-xl transition-all duration-300"
+            whileHover={{ y: -5, scale: 1.02 }}
+          >
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-cyan-600">Rentan Miskin</p>
-                <p className="text-3xl font-light text-cyan-700">{statistics.rentan_miskin.toLocaleString()}</p>
-                <p className="text-xs text-gray-500 mt-1">
-                  {totalKeluarga > 0 ? ((statistics.rentan_miskin / totalKeluarga) * 100).toFixed(1) : 0}%
+                <p className="text-3xl font-light text-cyan-700">{safeStatistics.rentan_miskin.toLocaleString()}</p>
+                <p className="text-xs text-slate-500 mt-1">
+                  {totalKeluarga > 0 ? ((safeStatistics.rentan_miskin / totalKeluarga) * 100).toFixed(1) : 0}%
                 </p>
               </div>
               <div className="w-12 h-12 bg-cyan-50 rounded-xl flex items-center justify-center">
-                <svg className="w-6 h-6 text-cyan-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
+                <TrendingUp className="w-6 h-6 text-cyan-600" />
               </div>
             </div>
-          </div>
-        </div>
+          </motion.div>
+        </motion.div>
 
-        {/* Main Content */}
-        <div className="bg-white rounded-2xl border border-gray-100/50 overflow-hidden shadow-sm">
+        {/* Progress Bar */}
+        <motion.div 
+          className="bg-white/80 backdrop-blur-sm rounded-2xl border border-slate-100/50 p-8 shadow-lg hover:shadow-xl transition-all duration-300"
+          variants={itemVariants}
+        >
+          <div className="flex items-center space-x-3 mb-6">
+            <div className="w-2 h-6 bg-gradient-to-b from-amber-400 to-orange-500 rounded-full"></div>
+            <h3 className="text-lg font-medium text-slate-900">Distribusi Status Ekonomi PKH</h3>
+          </div>
+
+          <div className="space-y-4">
+            <div className="flex items-center justify-between text-sm">
+              <span className="text-slate-600 flex items-center">
+                <TrendingDown className="w-4 h-4 mr-2 text-red-500" />
+                Sangat Miskin
+              </span>
+              <span className="font-medium text-red-600">
+                {totalKeluarga > 0 ? ((safeStatistics.sangat_miskin / totalKeluarga) * 100).toFixed(1) : 0}%
+              </span>
+            </div>
+            <div className="w-full bg-slate-200 rounded-full h-3">
+              <motion.div
+                className="bg-gradient-to-r from-red-500 to-red-600 h-3 rounded-full"
+                initial={{ width: 0 }}
+                animate={{ width: `${totalKeluarga > 0 ? (safeStatistics.sangat_miskin / totalKeluarga) * 100 : 0}%` }}
+                transition={{ duration: 1, ease: "easeOut" }}
+              />
+            </div>
+
+            <div className="flex items-center justify-between text-sm">
+              <span className="text-slate-600 flex items-center">
+                <AlertTriangle className="w-4 h-4 mr-2 text-amber-500" />
+                Miskin
+              </span>
+              <span className="font-medium text-amber-600">
+                {totalKeluarga > 0 ? ((safeStatistics.miskin / totalKeluarga) * 100).toFixed(1) : 0}%
+              </span>
+            </div>
+            <div className="w-full bg-slate-200 rounded-full h-3">
+              <motion.div
+                className="bg-gradient-to-r from-amber-500 to-amber-600 h-3 rounded-full"
+                initial={{ width: 0 }}
+                animate={{ width: `${totalKeluarga > 0 ? (safeStatistics.miskin / totalKeluarga) * 100 : 0}%` }}
+                transition={{ duration: 1, ease: "easeOut", delay: 0.2 }}
+              />
+            </div>
+
+            <div className="flex items-center justify-between text-sm">
+              <span className="text-slate-600 flex items-center">
+                <TrendingUp className="w-4 h-4 mr-2 text-cyan-500" />
+                Rentan Miskin
+              </span>
+              <span className="font-medium text-cyan-600">
+                {totalKeluarga > 0 ? ((safeStatistics.rentan_miskin / totalKeluarga) * 100).toFixed(1) : 0}%
+              </span>
+            </div>
+            <div className="w-full bg-slate-200 rounded-full h-3">
+              <motion.div
+                className="bg-gradient-to-r from-cyan-500 to-cyan-600 h-3 rounded-full"
+                initial={{ width: 0 }}
+                animate={{ width: `${totalKeluarga > 0 ? (safeStatistics.rentan_miskin / totalKeluarga) * 100 : 0}%` }}
+                transition={{ duration: 1, ease: "easeOut", delay: 0.4 }}
+              />
+            </div>
+          </div>
+        </motion.div>
+
+        {/* Data Table Section */}
+        <motion.div 
+          className="bg-white/80 backdrop-blur-sm rounded-2xl border border-slate-100/50 overflow-hidden shadow-lg"
+          variants={itemVariants}
+        >
           {/* Header */}
-          <div className="p-8 border-b border-gray-100/50">
+          <div className="p-8 border-b border-slate-100/50 bg-gradient-to-r from-slate-50 to-amber-50">
             <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
               <div>
-                <h3 className="text-xl font-medium text-gray-900 mb-2">Detail Data Keluarga</h3>
-                <p className="text-sm text-gray-600">
-                  Menampilkan {keluarga.meta?.from || 0} - {keluarga.meta?.to || 0} dari {keluarga.meta?.total || 0} keluarga
+                <h3 className="text-xl font-medium text-slate-900 mb-2">Detail Data Keluarga PKH</h3>
+                <p className="text-sm text-slate-600">
+                  Menampilkan {safeMeta.from || 0} - {safeMeta.to || 0} dari {safeMeta.total || 0} keluarga
                 </p>
               </div>
 
               <div className="flex flex-col sm:flex-row gap-4">
                 {/* Filter */}
-                <select
-                  value={statusFilter}
-                  onChange={(e) => handleFilterChange(e.target.value)}
-                  className="px-4 py-2.5 border border-gray-200 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500 transition-colors duration-200"
-                >
-                  <option value="all">Semua Status</option>
-                  <option value="sangat_miskin">Sangat Miskin</option>
-                  <option value="miskin">Miskin</option>
-                  <option value="rentan_miskin">Rentan Miskin</option>
-                </select>
+                <div className="relative">
+                  <Filter className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-slate-400" />
+                  <select
+                    value={statusFilter}
+                    onChange={(e) => handleFilterChange(e.target.value)}
+                    className="pl-10 pr-4 py-2.5 border border-slate-200 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-amber-500 transition-colors duration-200 bg-white/80 backdrop-blur-sm"
+                  >
+                    <option value="all">Semua Status</option>
+                    <option value="sangat_miskin">Sangat Miskin</option>
+                    <option value="miskin">Miskin</option>
+                    <option value="rentan_miskin">Rentan Miskin</option>
+                  </select>
+                </div>
 
-                {/* Export Button dengan Modal */}
-                <button
+                {/* Export Button */}
+                <motion.button
                   onClick={exportModal.openModal}
-                  className="inline-flex items-center px-6 py-2.5 bg-gradient-to-r from-emerald-500 to-green-500 text-white font-medium rounded-lg hover:from-emerald-600 hover:to-green-600 focus:outline-none focus:ring-4 focus:ring-emerald-200 transition-all duration-200 transform hover:-translate-y-0.5 shadow-lg hover:shadow-xl"
+                  className="inline-flex items-center px-6 py-2.5 bg-gradient-to-r from-amber-500 to-orange-500 text-white font-medium rounded-lg hover:from-amber-600 hover:to-orange-600 focus:outline-none focus:ring-4 focus:ring-amber-200 transition-all duration-200 shadow-lg hover:shadow-xl"
+                  whileHover={{ scale: 1.05, y: -2 }}
+                  whileTap={{ scale: 0.95 }}
                 >
-                  <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                  </svg>
+                  <Download className="w-5 h-5 mr-2" />
                   Export Data
-                </button>
+                </motion.button>
               </div>
             </div>
           </div>
@@ -258,127 +457,145 @@ export default function StatusEkonomi({
           {/* Table */}
           <div className="overflow-x-auto">
             <table className="w-full">
-              <thead className="bg-gray-50/50">
+              <thead className="bg-slate-50/50">
                 <tr>
-                  <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    No. KK
-                  </th>
-                  <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Kepala Keluarga
-                  </th>
-                  <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Alamat
-                  </th>
-                  <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Status Ekonomi
-                  </th>
-                  <th className="px-6 py-4 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Aksi
-                  </th>
+                  <th className="px-6 py-4 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">No. KK</th>
+                  <th className="px-6 py-4 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Nama Keluarga</th>
+                  <th className="px-6 py-4 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Alamat</th>
+                  <th className="px-6 py-4 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Status Ekonomi</th>
+                  <th className="px-6 py-4 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Jumlah Anggota</th>
+                  <th className="px-6 py-4 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Pendapatan</th>
+                  <th className="px-6 py-4 text-right text-xs font-medium text-slate-500 uppercase tracking-wider">Aksi</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-100">
-                {keluarga.data && keluarga.data.length > 0 ? keluarga.data.map((item, index) => (
-                  <tr
-                    key={item.id}
-                    className="hover:bg-gray-50/50 transition-colors duration-200 animate-fadeIn"
-                    style={{ animationDelay: `${index * 50}ms` }}
-                  >
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <span className="text-sm font-mono text-gray-900">{item.no_kk}</span>
-                    </td>
-                    <td className="px-6 py-4">
-                      <div className="text-sm font-medium text-gray-900">{item.nama_kepala_keluarga}</div>
-                    </td>
-                    <td className="px-6 py-4">
-                      <div className="max-w-xs">
-                        <div className="text-sm text-gray-900 truncate">{item.alamat}</div>
-                        {item.kelurahan && (
-                          <div className="text-xs text-gray-500 truncate">
-                            {item.kelurahan}, {item.kecamatan}
-                          </div>
-                        )}
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <span className={`inline-flex px-3 py-1 text-xs font-medium rounded-full ${getStatusColor(item.status_ekonomi)}`}>
-                        {formatStatusEkonomi(item.status_ekonomi)}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-right">
-                      <Link
-                        href={route('keluarga.show', item.id)}
-                        className="inline-flex items-center px-3 py-1.5 text-xs font-medium text-cyan-700 bg-cyan-50 border border-cyan-200 rounded-lg hover:bg-cyan-100 transition-all duration-200 transform hover:scale-105"
+              <tbody className="divide-y divide-slate-100">
+                <AnimatePresence>
+                  {safeKeluarga.data && safeKeluarga.data.length > 0 ? (
+                    safeKeluarga.data.map((item, index) => (
+                      <motion.tr
+                        key={item.id}
+                        className="hover:bg-slate-50/50 transition-colors duration-200"
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: index * 0.05 }}
+                        whileHover={{ backgroundColor: "rgba(248, 250, 252, 0.8)" }}
                       >
-                        Detail
-                      </Link>
-                    </td>
-                  </tr>
-                )) : (
-                  <tr>
-                    <td colSpan={5} className="px-6 py-16 text-center">
-                      <div className="flex flex-col items-center animate-fadeIn">
-                        <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mb-4 animate-pulse">
-                          <svg className="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 715.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 919.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
-                          </svg>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <span className="text-sm font-mono text-slate-900">{item.no_kk}</span>
+                        </td>
+                        <td className="px-6 py-4">
+                          <div className="text-sm font-medium text-slate-900">{item.nama_keluarga}</div>
+                        </td>
+                        <td className="px-6 py-4">
+                          <div className="max-w-xs">
+                            <div className="text-sm text-slate-900 truncate">{item.alamat}</div>
+                            {item.kelurahan && (
+                              <div className="text-xs text-slate-500 truncate">
+                                {item.kelurahan}, {item.kecamatan}
+                              </div>
+                            )}
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <span className={`inline-flex items-center px-3 py-1 text-xs font-medium rounded-full ${getStatusColor(item.status_ekonomi)}`}>
+                            {getStatusIcon(item.status_ekonomi)}
+                            {formatStatusEkonomi(item.status_ekonomi)}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <span className="text-sm text-slate-900">{item.jumlah_anggota || '-'}</span>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <span className="text-sm text-slate-900">
+                            {item.pendapatan ? formatCurrency(item.pendapatan) : '-'}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-right">
+                          <div className="flex justify-end space-x-2">
+                            <Link
+                              href={route('admin.keluarga.show', item.id)}
+                              className="inline-flex items-center px-3 py-1.5 text-xs font-medium text-amber-700 bg-amber-50 border border-amber-200 rounded-lg hover:bg-amber-100 transition-all duration-200"
+                            >
+                              Detail
+                            </Link>
+                            <Link
+                              href={route('admin.keluarga.edit', item.id)}
+                              className="inline-flex items-center px-3 py-1.5 text-xs font-medium text-cyan-700 bg-cyan-50 border border-cyan-200 rounded-lg hover:bg-cyan-100 transition-all duration-200"
+                            >
+                              Edit
+                            </Link>
+                          </div>
+                        </td>
+                      </motion.tr>
+                    ))
+                  ) : (
+                    <motion.tr
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      transition={{ duration: 0.5 }}
+                    >
+                      <td colSpan={7} className="px-6 py-16 text-center">
+                        <div className="flex flex-col items-center">
+                          <motion.div 
+                            className="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mb-4"
+                            animate={{ scale: [1, 1.1, 1] }}
+                            transition={{ duration: 2, repeat: Infinity }}
+                          >
+                            <DollarSign className="w-8 h-8 text-slate-400" />
+                          </motion.div>
+                          <p className="text-slate-500 text-lg font-medium mb-2">Tidak ada data keluarga</p>
+                          <p className="text-slate-400 text-sm">Coba ubah filter untuk melihat data lainnya</p>
                         </div>
-                        <p className="text-gray-500 text-lg font-medium mb-2">Tidak ada data yang sesuai</p>
-                        <p className="text-gray-400 text-sm">Coba ubah filter untuk melihat data lainnya</p>
-                      </div>
-                    </td>
-                  </tr>
-                )}
+                      </td>
+                    </motion.tr>
+                  )}
+                </AnimatePresence>
               </tbody>
             </table>
           </div>
 
           {/* Pagination */}
-          {keluarga.data && keluarga.data.length > 0 && keluarga.links && (
-            <div className="px-8 py-6 border-t border-gray-100/50 bg-gray-50/30">
+          {safeKeluarga.data && safeKeluarga.data.length > 0 && safeKeluarga.links && safeKeluarga.links.length > 3 && (
+            <motion.div 
+              className="px-8 py-6 border-t border-slate-100/50 bg-slate-50/30"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.3 }}
+            >
               <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
-                <div className="text-sm text-gray-600">
-                  Menampilkan <span className="font-medium">{keluarga.meta?.from || 0}</span> sampai{' '}
-                  <span className="font-medium">{keluarga.meta?.to || 0}</span> dari{' '}
-                  <span className="font-medium">{keluarga.meta?.total || 0}</span> hasil
+                <div className="text-sm text-slate-600">
+                  Menampilkan <span className="font-medium">{safeMeta.from || 0}</span> sampai{' '}
+                  <span className="font-medium">{safeMeta.to || 0}</span> dari{' '}
+                  <span className="font-medium">{safeMeta.total || 0}</span> hasil
                 </div>
 
-                <Pagination
-                  links={keluarga.links}
-                  className="animate-fadeIn"
-                />
+                <Pagination links={safeKeluarga.links} />
               </div>
-            </div>
+            </motion.div>
           )}
-        </div>
-      </div>
+        </motion.div>
+      </motion.div>
 
       {/* Export Modal */}
       <ExportModal
-        isOpen={exportModal.isOpen}
-        onClose={exportModal.closeModal}
-        category="status-ekonomi"
-        filters={{ status: statusFilter }}
-        title="Export Laporan Status Ekonomi"
-      />
-
-      {/* Custom CSS untuk animasi */}
-      <style>{`
-        @keyframes fadeIn {
-          from {
-            opacity: 0;
-            transform: translateY(10px);
-          }
-          to {
-            opacity: 1;
-            transform: translateY(0);
-          }
-        }
-
-        .animate-fadeIn {
-          animation: fadeIn 0.5s ease-out forwards;
-        }
-      `}</style>
+              isOpen={exportModal.isOpen}
+              onClose={exportModal.closeModal}
+              category="status-ekonomi"
+              filters={{
+                  search: '',
+                  status: statusFilter,
+                  status_bantuan: '',
+                  tahun: filters.tahun || new Date().getFullYear().toString(),
+                  wilayah: '',
+                  bulan: undefined
+              }}
+              title="Export Laporan Status Ekonomi PKH"
+              statistics={{
+                total_penerima: totalKeluarga,
+                sangat_miskin: safeStatistics.sangat_miskin,
+                miskin: safeStatistics.miskin,
+                rentan_miskin: safeStatistics.rentan_miskin
+              }}      />
     </AuthenticatedLayout>
   );
 }

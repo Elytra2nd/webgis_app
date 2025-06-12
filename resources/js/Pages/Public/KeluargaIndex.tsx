@@ -9,7 +9,7 @@ import { Button } from '@/Components/ui/button';
 import { Badge } from '@/Components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/Components/ui/select";
 import { useToast } from "@/Hooks/use-toast";
-import ExportModal from '@/Components/ExportModal';
+import PublicExportModal from '@/Components/PublicExportModal'; // UPDATED: Menggunakan PublicExportModal
 import { 
     Search, 
     Download, 
@@ -30,7 +30,6 @@ import {
     BarChart3
 } from 'lucide-react';
 
-// Interface untuk data publik PKH (tanpa data sensitif)
 interface KeluargaPublik {
     id: number;
     nama_kepala_keluarga: string; 
@@ -67,6 +66,10 @@ interface StatistikPublikPKH {
             penerima: number;
         };
     };
+    total_penerima: number;
+    total_distribusi: number;
+    persentase_distribusi: number;
+    rata_rata_bantuan: number;
 }
 
 interface Props {
@@ -81,7 +84,6 @@ interface Props {
     };
     tahun_tersedia?: number[];
     wilayah_tersedia?: string[];
-    
 }
 
 const defaultKeluargasData: PaginatedData<KeluargaPublik> = {
@@ -108,7 +110,11 @@ const defaultStatistik: StatistikPublikPKH = {
     total_belum_terima: 0,
     coverage_percentage: 0,
     tahun_aktif: new Date().getFullYear(),
-    per_wilayah: {}
+    per_wilayah: {},
+    total_penerima: 0,
+    total_distribusi: 0,
+    persentase_distribusi: 0,
+    rata_rata_bantuan: 0
 };
 
 export default function KeluargaPublikIndex({
@@ -666,12 +672,14 @@ export default function KeluargaPublikIndex({
                 </footer>
             </div>
 
-            {/* Modal Export */}
-            <ExportModal
+            {/* Modal Export - UPDATED: Menggunakan PublicExportModal */}
+            <PublicExportModal
                 isOpen={showExportModal}
                 onClose={handleCloseExportModal}
                 filters={filters}
                 statistik={statistik}
+                category="public-pkh"
+                title="Export Data PKH Publik"
             />
         </div>
     );
