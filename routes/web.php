@@ -9,9 +9,10 @@ use App\Http\Controllers\LandingPageController;
 use App\Http\Controllers\MapController;
 use App\Http\Controllers\ReportController;
 use App\Http\Controllers\AnggotaKeluargaController;
-use App\Http\Controllers\BantuanController; // Controller untuk PKH
-use App\Http\Controllers\KeluargaController as AdminKeluargaController; // Alias for Admin CRUD Controller
-use App\Http\Controllers\Public\KeluargaController as PublicKeluargaController; // Alias for Public-facing Controller
+use App\Http\Controllers\BantuanController;
+use App\Http\Controllers\KeluargaController as AdminKeluargaController;
+use App\Http\Controllers\Public\KeluargaController as PublicKeluargaController;
+use App\Http\Controllers\Public\MapController as PublicMapController; // Controller baru yang Anda buat
 
 /*
 |--------------------------------------------------------------------------
@@ -30,16 +31,14 @@ Route::get('/', [LandingPageController::class, 'index'])->name('landing');
 Route::get('/keluarga', [PublicKeluargaController::class, 'index'])->name('keluarga.index');
 Route::get('/keluarga/{keluarga}', [PublicKeluargaController::class, 'show'])->name('keluarga.show');
 
-// Public map access untuk melihat sebaran PKH
-Route::get('/map', function() {
-    return Inertia::render('Map/Index', [
-        'public_access' => true,
-        'title' => 'Peta Sebaran Program Keluarga Harapan',
-        'readonly' => true
-    ]);
-})->name('map.public');
+// ROUTE BARU: Public map access menggunakan PublicMapController
+Route::get('/map', [PublicMapController::class, 'index'])->name('map.public');
 
-// Public API untuk data peta (read-only) - sesuai requirements
+// ROUTE BARU: API untuk peta publik
+Route::get('/api/map/data', [PublicMapController::class, 'getMapData'])->name('api.map.public.data');
+Route::get('/api/map/stats', [PublicMapController::class, 'getPublicStats'])->name('api.map.public.stats');
+
+// Public API untuk data peta (read-only) - sesuai requirements - TETAP DIPERTAHANKAN untuk kompatibilitas
 Route::get('/api/keluarga-public', [AdminKeluargaController::class, 'getForMap'])->name('api.keluarga.public');
 
 // Public API untuk statistik umum PKH
