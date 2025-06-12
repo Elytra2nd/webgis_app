@@ -973,11 +973,11 @@ export default function LandingPage({ stats, featured_regions }: LandingPageProp
               <Sparkles className="w-4 h-4 mr-2" />
               Fitur Unggulan
             </Badge>
-            <h2 className="text-3xl md:text-4xl lg:text-5xl font-extralight text-slate-800 mb-6 tracking-wide">Kemudahan Akses Informasi</h2>
+            <h2 className="text-3xl md:text-4xl lg:text-5xl font-semibold text-slate-800 mb-6 tracking-wide">Kemudahan Akses Informasi</h2>
             <p className="text-lg md:text-xl text-slate-600 font-light max-w-3xl mx-auto">Teknologi modern untuk masyarakat digital</p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
             {[
               {
                 icon: Search,
@@ -1041,7 +1041,7 @@ export default function LandingPage({ stats, featured_regions }: LandingPageProp
               <Target className="w-4 h-4 mr-2" />
               Manfaat Utama
             </Badge>
-            <h2 className="text-3xl md:text-4xl lg:text-5xl font-extralight text-slate-800 mb-6 tracking-wide">Mengapa Memilih SiKeluarga?</h2>
+            <h2 className="text-3xl md:text-4xl lg:text-5xl font-semibold text-slate-800 mb-6 tracking-wide">Mengapa Memilih SiKeluarga?</h2>
             <p className="text-lg md:text-xl text-slate-600 font-light max-w-3xl mx-auto">Solusi terdepan untuk pengelolaan data keluarga yang efisien dan terpercaya</p>
           </div>
 
@@ -1112,7 +1112,7 @@ export default function LandingPage({ stats, featured_regions }: LandingPageProp
               <Heart className="w-4 h-4 mr-2" />
               Testimoni Pengguna
             </Badge>
-            <h2 className="text-3xl md:text-4xl lg:text-5xl font-extralight text-slate-800 mb-6 tracking-wide">Apa Kata Mereka?</h2>
+            <h2 className="text-3xl md:text-4xl lg:text-5xl font-semibold text-slate-800 mb-6 tracking-wide">Apa Kata Mereka?</h2>
             <p className="text-lg md:text-xl text-slate-600 font-light max-w-3xl mx-auto">Pengalaman nyata dari pengguna SiKeluarga di seluruh Indonesia</p>
           </div>
 
@@ -1180,7 +1180,7 @@ export default function LandingPage({ stats, featured_regions }: LandingPageProp
                 <Trophy className="w-4 h-4 mr-2" />
                 Wilayah Terpopuler
               </Badge>
-              <h2 className="text-3xl md:text-4xl lg:text-5xl font-extralight text-slate-800 mb-6 tracking-wide">Daerah Terdepan</h2>
+              <h2 className="text-3xl md:text-4xl lg:text-5xl font-semibold text-slate-800 mb-6 tracking-wide">Daerah Terdepan</h2>
               <p className="text-lg md:text-xl text-slate-600 font-light max-w-3xl mx-auto">Wilayah dengan partisipasi tertinggi dalam sistem SiKeluarga</p>
 
               {/* Decorative Wave SVG */}
