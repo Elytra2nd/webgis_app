@@ -28,7 +28,8 @@ import {
   CheckCircle,
   AlertTriangle,
   TrendingDown,
-  Navigation
+  Navigation,
+  HandHeart
 } from 'lucide-react';
 
 interface AnggotaKeluarga {
@@ -73,9 +74,16 @@ interface Keluarga {
   keterangan?: string;
   latitude?: number | string;
   longitude?: number | string;
+  jumlah_anggota?: number;
+  status_verifikasi?: string;
   anggota_keluarga?: AnggotaKeluarga[];
   wilayah?: Wilayah[];
   jarak?: Jarak[];
+  // Tambahan untuk PKH
+  status_bantuan?: 'sudah_terima' | 'belum_terima' | null;
+  tahun_bantuan?: number;
+  nominal_bantuan?: number;
+  bulan_terakhir_distribusi?: number;
 }
 
 interface ShowProps extends PageProps {
@@ -111,7 +119,7 @@ export default function Show({ auth, keluarga }: ShowProps) {
               <p className="text-slate-600 mb-6">Data keluarga yang Anda cari tidak tersedia atau telah dihapus.</p>
               <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
                 <Button asChild className="bg-gradient-to-r from-cyan-500 to-teal-500 hover:from-cyan-600 hover:to-teal-600 text-white">
-                  <Link href={route('keluarga.index')}>
+                  <Link href={route('admin.keluarga.index')}>
                     <ArrowLeft className="w-4 h-4 mr-2" />
                     Kembali ke Daftar
                   </Link>
@@ -154,10 +162,10 @@ export default function Show({ auth, keluarga }: ShowProps) {
     }
   };
 
-  // Breadcrumb
+  // FIX: Breadcrumb dengan route yang benar
   const breadcrumbs = [
     { label: 'Dashboard', href: route('dashboard') },
-    { label: 'Data Keluarga', href: route('keluarga.index') },
+    { label: 'Data Keluarga', href: route('admin.keluarga.index') },
     { label: keluarga.nama_kepala_keluarga || 'Detail', current: true }
   ];
 
@@ -208,6 +216,10 @@ export default function Show({ auth, keluarga }: ShowProps) {
         return 'bg-amber-100 text-amber-800 border border-amber-200';
       case 'rentan_miskin':
         return 'bg-cyan-100 text-cyan-800 border border-cyan-200';
+      case 'kurang_mampu':
+        return 'bg-yellow-100 text-yellow-800 border border-yellow-200';
+      case 'mampu':
+        return 'bg-green-100 text-green-800 border border-green-200';
       default:
         return 'bg-gray-100 text-gray-800 border border-gray-200';
     }
@@ -238,9 +250,33 @@ export default function Show({ auth, keluarga }: ShowProps) {
     const statusMap: { [key: string]: string } = {
       'sangat_miskin': 'Sangat Miskin',
       'miskin': 'Miskin',
-      'rentan_miskin': 'Rentan Miskin'
+      'rentan_miskin': 'Rentan Miskin',
+      'kurang_mampu': 'Kurang Mampu',
+      'mampu': 'Mampu'
     };
     return statusMap[status] || status;
+  };
+
+  const getStatusBantuanColor = (status?: string | null) => {
+    switch (status) {
+      case 'sudah_terima':
+        return 'bg-green-100 text-green-800 border border-green-200';
+      case 'belum_terima':
+        return 'bg-red-100 text-red-800 border border-red-200';
+      default:
+        return 'bg-gray-100 text-gray-800 border border-gray-200';
+    }
+  };
+
+  const formatStatusBantuan = (status?: string | null) => {
+    switch (status) {
+      case 'sudah_terima':
+        return 'Sudah Terima';
+      case 'belum_terima':
+        return 'Belum Terima';
+      default:
+        return 'Tidak Diketahui';
+    }
   };
 
   const hasValidCoordinates = (): boolean => {
@@ -269,11 +305,12 @@ export default function Show({ auth, keluarga }: ShowProps) {
     setDeleteDialogOpen(true);
   };
 
+  // FIX: Handle delete dengan route yang benar
   const handleDeleteConfirm = async () => {
     setIsDeleting(true);
 
     try {
-      await router.delete(route('keluarga.destroy', keluarga.id), {
+      await router.delete(route('admin.keluarga.destroy', keluarga.id), {
         preserveScroll: true,
         onStart: () => {
           toast({
@@ -289,7 +326,7 @@ export default function Show({ auth, keluarga }: ShowProps) {
             variant: "default",
           });
 
-          router.visit(route('keluarga.index'));
+          router.visit(route('admin.keluarga.index'));
         },
         onError: (errors) => {
           console.error('Delete error:', errors);
@@ -348,7 +385,7 @@ export default function Show({ auth, keluarga }: ShowProps) {
             <div className="flex items-center space-x-3">
               <User className="w-8 h-8 text-teal-600" />
               <div>
-                <h1 className="font-semibold text-3xl text-slate-800 tracking-wide">Detail Keluarga</h1>
+                <h1 className="font-semibold text-3xl text-slate-800 tracking-wide">Detail Keluarga PKH</h1>
                 <p className="text-slate-600 mt-1">{keluarga.nama_kepala_keluarga}</p>
               </div>
             </div>
@@ -357,7 +394,7 @@ export default function Show({ auth, keluarga }: ShowProps) {
           <div className="flex space-x-3">
             <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
               <Button asChild variant="outline" className="border-slate-300 hover:bg-slate-50">
-                <Link href={route('keluarga.index')}>
+                <Link href={route('admin.keluarga.index')}>
                   <ArrowLeft className="w-4 h-4 mr-2" />
                   Kembali
                 </Link>
@@ -365,7 +402,8 @@ export default function Show({ auth, keluarga }: ShowProps) {
             </motion.div>
             <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
               <Button asChild className="bg-gradient-to-r from-cyan-500 to-teal-500 hover:from-cyan-600 hover:to-teal-600 text-white shadow-lg hover:shadow-xl transition-all duration-200">
-                <Link href={route('keluarga.edit', keluarga.id)}>
+                {/* FIX: Route yang benar */}
+                <Link href={route('admin.keluarga.edit', keluarga.id)}>
                   <Edit className="w-4 h-4 mr-2" />
                   Edit Data
                 </Link>
@@ -380,7 +418,7 @@ export default function Show({ auth, keluarga }: ShowProps) {
           </div>
         </motion.div>
 
-        {/* Header Card */}
+        {/* Header Card dengan Status PKH */}
         <motion.div variants={itemVariants}>
           <Card className="border-0 shadow-xl bg-white/90 backdrop-blur-md overflow-hidden">
             <CardHeader className="pb-6 bg-gradient-to-r from-cyan-50/50 to-teal-50/50 border-b border-gray-100/50">
@@ -405,7 +443,12 @@ export default function Show({ auth, keluarga }: ShowProps) {
                       <span>{formatStatusEkonomi(keluarga.status_ekonomi)}</span>
                     </Badge>
                     <Badge variant="secondary" className="bg-slate-100 text-slate-800">
-                      {safeAnggotaKeluarga.length} Anggota
+                      {keluarga.jumlah_anggota || safeAnggotaKeluarga.length} Anggota
+                    </Badge>
+                    {/* Badge Status Bantuan PKH */}
+                    <Badge variant="secondary" className={getStatusBantuanColor(keluarga.status_bantuan)}>
+                      <HandHeart className="w-3 h-3 mr-1" />
+                      {formatStatusBantuan(keluarga.status_bantuan)}
                     </Badge>
                   </div>
                 </div>
@@ -447,7 +490,6 @@ export default function Show({ auth, keluarga }: ShowProps) {
                       <p className="text-slate-800 bg-slate-50 p-3 rounded-lg">{keluarga.kelurahan || '—'}</p>
                     </div>
                   </div>
-
                   <div className="space-y-4">
                     <div>
                       <label className="block text-sm font-medium text-slate-600 mb-2">Kecamatan</label>
@@ -493,7 +535,42 @@ export default function Show({ auth, keluarga }: ShowProps) {
               </CardContent>
             </Card>
 
-            {/* Location Info - DIPERBAIKI */}
+            {/* Informasi Bantuan PKH */}
+            {keluarga.status_bantuan === 'sudah_terima' && (
+              <Card className="border-0 shadow-lg bg-white/80 backdrop-blur-sm">
+                <CardHeader className="pb-4">
+                  <CardTitle className="text-lg font-medium text-slate-800 flex items-center space-x-2">
+                    <HandHeart className="w-5 h-5 text-green-600" />
+                    <span>Bantuan PKH</span>
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-medium text-slate-600 mb-2">Status Bantuan</label>
+                    <Badge className="bg-green-100 text-green-800 border border-green-200">
+                      <CheckCircle className="w-3 h-3 mr-1" />
+                      Sudah Menerima
+                    </Badge>
+                  </div>
+                  {keluarga.nominal_bantuan && (
+                    <div>
+                      <label className="block text-sm font-medium text-slate-600 mb-2">Nominal per Bulan</label>
+                      <p className="text-xl font-semibold text-green-600">
+                        {formatCurrency(keluarga.nominal_bantuan)}
+                      </p>
+                    </div>
+                  )}
+                  {keluarga.tahun_bantuan && (
+                    <div>
+                      <label className="block text-sm font-medium text-slate-600 mb-2">Tahun Bantuan</label>
+                      <p className="text-slate-800">{keluarga.tahun_bantuan}</p>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Location Info */}
             <Card className="border-0 shadow-lg bg-white/80 backdrop-blur-sm">
               <CardHeader className="pb-4">
                 <CardTitle className="text-lg font-medium text-slate-800 flex items-center space-x-2">
@@ -728,8 +805,8 @@ export default function Show({ auth, keluarga }: ShowProps) {
         isOpen={deleteDialogOpen}
         onClose={handleDeleteCancel}
         onConfirm={handleDeleteConfirm}
-        title="Hapus Data Keluarga"
-        description="Apakah Anda yakin ingin menghapus data keluarga ini? Semua data anggota keluarga juga akan ikut terhapus. Tindakan ini tidak dapat dibatalkan."
+        title="Hapus Data Keluarga PKH"
+        description="Apakah Anda yakin ingin menghapus data keluarga ini? Semua data anggota keluarga juga akan ikut terhapus. Tindakan ini tidak dapat dibatalkan dan akan mempengaruhi data bantuan terkait."
         itemName={keluarga.nama_kepala_keluarga}
         isDeleting={isDeleting}
       />

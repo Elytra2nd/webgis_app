@@ -33,17 +33,6 @@ import {
   Map
 } from 'lucide-react';
 
-// Import data dari file terpisah
-import {
-  provinsiData,
-  kotaData,
-  getKotaByProvinsi,
-  findProvinsiByNama,
-  type Provinsi,
-  type Kota
-} from '@/data/provinsiKota';
-
-// Interface untuk form data
 type KeluargaFormData = {
     no_kk: string;
     nama_kepala_keluarga: string;
@@ -59,6 +48,7 @@ type KeluargaFormData = {
     longitude: string;
     status_ekonomi: string;
     penghasilan_bulanan: string;
+    jumlah_anggota: string;
     keterangan: string;
 };
 
@@ -78,6 +68,7 @@ interface Keluarga {
   longitude: string;
   status_ekonomi: string;
   penghasilan_bulanan: string;
+  jumlah_anggota: number;
   keterangan: string;
   created_at: string;
   updated_at: string;
@@ -110,12 +101,11 @@ export default function Edit({ auth, keluarga }: EditPageProps) {
     longitude: keluarga?.longitude || '',
     status_ekonomi: keluarga?.status_ekonomi || 'miskin',
     penghasilan_bulanan: keluarga?.penghasilan_bulanan || '',
+    jumlah_anggota: keluarga?.jumlah_anggota?.toString() || '1',
     keterangan: keluarga?.keterangan || ''
   });
 
-  // State untuk dependent dropdown
-  const [selectedProvinsi, setSelectedProvinsi] = useState<Provinsi | null>(null);
-  const [availableKota, setAvailableKota] = useState<Kota[]>([]);
+  // State untuk map dan form
   const [showMapSection, setShowMapSection] = useState<boolean>(false);
   const [currentLocation, setCurrentLocation] = useState<LocationData | null>(null);
   const [showMap, setShowMap] = useState(false);
@@ -146,14 +136,14 @@ export default function Edit({ auth, keluarga }: EditPageProps) {
     }
   };
 
-  // Breadcrumb
+  // FIX: Breadcrumb dengan route yang benar
   const breadcrumbs = [
     { label: 'Dashboard', href: route('dashboard') },
-    { label: 'Data Keluarga', href: route('keluarga.index') },
+    { label: 'Data Keluarga', href: route('admin.keluarga.index') },
     { label: 'Edit Data', current: true }
   ];
 
-  // Set initial location dan provinsi jika ada
+  // Set initial location jika ada
   useEffect(() => {
     if (keluarga?.latitude && keluarga?.longitude) {
       const lat = parseFloat(keluarga.latitude);
@@ -162,45 +152,13 @@ export default function Edit({ auth, keluarga }: EditPageProps) {
         setCurrentLocation({ lat, lng });
       }
     }
-
-    // Set initial provinsi dan kota
-    if (keluarga?.provinsi) {
-      const provinsi = findProvinsiByNama(keluarga.provinsi);
-      setSelectedProvinsi(provinsi || null);
-
-      if (provinsi) {
-        const filteredKota = getKotaByProvinsi(provinsi.id);
-        setAvailableKota(filteredKota);
-      }
-    }
   }, [keluarga]);
 
-  // Handle perubahan provinsi
-  const handleProvinsiChange = (provinsiNama: string) => {
-    setData('provinsi', provinsiNama);
-    setData('kota', ''); // Reset kota
-
-    if (provinsiNama) {
-      const provinsi = findProvinsiByNama(provinsiNama);
-      setSelectedProvinsi(provinsi || null);
-
-      if (provinsi) {
-        const filteredKota = getKotaByProvinsi(provinsi.id);
-        setAvailableKota(filteredKota);
-      } else {
-        setAvailableKota([]);
-      }
-    } else {
-      setSelectedProvinsi(null);
-      setAvailableKota([]);
-    }
-  };
-
-  // Handle submit form
+  // FIX: Handle submit form dengan route yang benar
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
 
-    put(route('keluarga.update', keluarga.id), {
+    put(route('admin.keluarga.update', keluarga.id), {
       onStart: () => {
         toast({
           title: "Memproses Data",
@@ -233,7 +191,7 @@ export default function Edit({ auth, keluarga }: EditPageProps) {
     });
   };
 
-  // Handle koordinat dari peta
+  // FIX: Handle koordinat dari peta dengan route yang benar
   const handleMapPointSaved = (point: LocationData) => {
     if (point && point.lat && point.lng) {
       const updatedData = {
@@ -245,7 +203,7 @@ export default function Edit({ auth, keluarga }: EditPageProps) {
       setData(updatedData);
       setCurrentLocation(point);
 
-      put(route('keluarga.update', keluarga.id), {
+      put(route('admin.keluarga.update', keluarga.id), {
         ...updatedData,
         onSuccess: () => {
           toast({
@@ -287,7 +245,8 @@ export default function Edit({ auth, keluarga }: EditPageProps) {
   const toggleMap = () => {
     setShowMap(!showMap);
     if (!showMap && !currentLocation) {
-      setCurrentLocation({ lat: -2.548926, lng: 118.0148634 });
+      // Koordinat default untuk Kalimantan Barat
+      setCurrentLocation({ lat: -0.789275, lng: 113.921327 });
     }
   };
 
@@ -296,6 +255,7 @@ export default function Edit({ auth, keluarga }: EditPageProps) {
     setShowMapSection(!showMapSection);
   };
 
+  // FIX: Handle back dengan route yang benar
   const handleBackToList = () => {
     if (isDirty) {
       const confirmLeave = window.confirm(
@@ -305,11 +265,12 @@ export default function Edit({ auth, keluarga }: EditPageProps) {
         return;
       }
     }
-    router.visit(route('keluarga.index'));
+    router.visit(route('admin.keluarga.index'));
   };
 
+  // FIX: Handle view detail dengan route yang benar
   const handleViewDetail = () => {
-    router.visit(route('keluarga.show', keluarga.id));
+    router.visit(route('admin.keluarga.show', keluarga.id));
   };
 
   // Reset form to original values
@@ -334,19 +295,9 @@ export default function Edit({ auth, keluarga }: EditPageProps) {
         longitude: keluarga?.longitude || '',
         status_ekonomi: keluarga?.status_ekonomi || 'miskin',
         penghasilan_bulanan: keluarga?.penghasilan_bulanan || '',
+        jumlah_anggota: keluarga?.jumlah_anggota?.toString() || '1',
         keterangan: keluarga?.keterangan || ''
       });
-
-      // Reset provinsi dan kota
-      if (keluarga?.provinsi) {
-        const provinsi = findProvinsiByNama(keluarga.provinsi);
-        setSelectedProvinsi(provinsi || null);
-
-        if (provinsi) {
-          const filteredKota = getKotaByProvinsi(provinsi.id);
-          setAvailableKota(filteredKota);
-        }
-      }
 
       if (keluarga?.latitude && keluarga?.longitude) {
         const lat = parseFloat(keluarga.latitude);
@@ -389,7 +340,7 @@ export default function Edit({ auth, keluarga }: EditPageProps) {
             <div className="flex items-center space-x-3">
               <EditIcon className="w-8 h-8 text-teal-600" />
               <div>
-                <h1 className="font-light text-3xl text-slate-800 tracking-wide">Edit Data Keluarga</h1>
+                <h1 className="font-light text-3xl text-slate-800 tracking-wide">Edit Data Keluarga PKH</h1>
                 <p className="text-slate-600 mt-1">{keluarga?.nama_kepala_keluarga}</p>
               </div>
             </div>
@@ -398,7 +349,8 @@ export default function Edit({ auth, keluarga }: EditPageProps) {
           <div className="flex space-x-3">
             <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
               <Button asChild variant="outline" className="border-slate-300 hover:bg-slate-50">
-                <Link href={route('keluarga.index')}>
+                {/* FIX: Route yang benar */}
+                <Link href={route('admin.keluarga.index')}>
                   <ArrowLeft className="w-4 h-4 mr-2" />
                   Kembali
                 </Link>
@@ -406,7 +358,8 @@ export default function Edit({ auth, keluarga }: EditPageProps) {
             </motion.div>
             <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
               <Button asChild variant="outline" className="border-cyan-200 text-cyan-700 hover:bg-cyan-50">
-                <Link href={route('keluarga.show', keluarga.id)}>
+                {/* FIX: Route yang benar */}
+                <Link href={route('admin.keluarga.show', keluarga.id)}>
                   <Eye className="w-4 h-4 mr-2" />
                   Detail
                 </Link>
@@ -440,7 +393,7 @@ export default function Edit({ auth, keluarga }: EditPageProps) {
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div className="space-y-2">
-                  <h3 className="text-lg font-medium text-slate-800">Informasi Keluarga</h3>
+                  <h3 className="text-lg font-medium text-slate-800">Informasi Keluarga PKH</h3>
                   <p className="text-slate-600 font-mono text-sm">
                     KK: {keluarga?.no_kk} • {keluarga?.nama_kepala_keluarga}
                   </p>
@@ -478,10 +431,10 @@ export default function Edit({ auth, keluarga }: EditPageProps) {
                 </motion.div>
                 <div>
                   <CardTitle className="text-xl font-medium text-slate-800">
-                    Edit Data Keluarga
+                    Edit Data Keluarga PKH
                   </CardTitle>
                   <CardDescription className="mt-2">
-                    Perbarui informasi keluarga dengan akurat
+                    Perbarui informasi keluarga penerima Program Keluarga Harapan
                   </CardDescription>
                 </div>
               </div>
@@ -547,7 +500,7 @@ export default function Edit({ auth, keluarga }: EditPageProps) {
 
                 <Separator />
 
-                {/* Alamat Section dengan Enhanced Dropdown */}
+                {/* Alamat Section */}
                 <motion.div
                   className="space-y-6"
                   initial={{ opacity: 0, x: -20 }}
@@ -560,63 +513,48 @@ export default function Edit({ auth, keluarga }: EditPageProps) {
                   </div>
 
                   <div className="space-y-6">
-                    {/* Provinsi Dropdown */}
-                    <div className="space-y-2">
-                      <Label htmlFor="provinsi" className="text-sm font-medium text-slate-700">
-                        Provinsi *
-                      </Label>
-                      <Select value={data.provinsi} onValueChange={handleProvinsiChange}>
-                        <SelectTrigger className="border-slate-200 focus:border-cyan-500 focus:ring-cyan-500/20">
-                          <SelectValue placeholder="Pilih Provinsi" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {provinsiData.map((provinsi) => (
-                            <SelectItem key={provinsi.id} value={provinsi.nama}>
-                              {provinsi.nama}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      {errors.provinsi && (
-                        <p className="text-sm text-red-600 flex items-center">
-                          <AlertTriangle className="w-4 h-4 mr-1" />
-                          {errors.provinsi}
-                        </p>
-                      )}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      <div className="space-y-2">
+                        <Label htmlFor="provinsi" className="text-sm font-medium text-slate-700">
+                          Provinsi *
+                        </Label>
+                        <Input
+                          id="provinsi"
+                          value={data.provinsi}
+                          onChange={(e) => setData('provinsi', e.target.value)}
+                          placeholder="Kalimantan Barat"
+                          className="border-slate-200 focus:border-cyan-500 focus:ring-cyan-500/20"
+                          required
+                        />
+                        {errors.provinsi && (
+                          <p className="text-sm text-red-600 flex items-center">
+                            <AlertTriangle className="w-4 h-4 mr-1" />
+                            {errors.provinsi}
+                          </p>
+                        )}
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label htmlFor="kota" className="text-sm font-medium text-slate-700">
+                          Kota/Kabupaten *
+                        </Label>
+                        <Input
+                          id="kota"
+                          value={data.kota}
+                          onChange={(e) => setData('kota', e.target.value)}
+                          placeholder="Nama kota/kabupaten"
+                          className="border-slate-200 focus:border-cyan-500 focus:ring-cyan-500/20"
+                          required
+                        />
+                        {errors.kota && (
+                          <p className="text-sm text-red-600 flex items-center">
+                            <AlertTriangle className="w-4 h-4 mr-1" />
+                            {errors.kota}
+                          </p>
+                        )}
+                      </div>
                     </div>
 
-                    {/* Kota/Kabupaten Dropdown */}
-                    <div className="space-y-2">
-                      <Label htmlFor="kota" className="text-sm font-medium text-slate-700">
-                        Kota/Kabupaten *
-                      </Label>
-                      <Select
-                        value={data.kota}
-                        onValueChange={(value) => setData('kota', value)}
-                        disabled={!selectedProvinsi}
-                      >
-                        <SelectTrigger className="border-slate-200 focus:border-cyan-500 focus:ring-cyan-500/20">
-                          <SelectValue placeholder={
-                            selectedProvinsi ? 'Pilih Kota/Kabupaten' : 'Pilih Provinsi Terlebih Dahulu'
-                          } />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {availableKota.map((kota) => (
-                            <SelectItem key={kota.id} value={kota.nama}>
-                              {kota.nama}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      {errors.kota && (
-                        <p className="text-sm text-red-600 flex items-center">
-                          <AlertTriangle className="w-4 h-4 mr-1" />
-                          {errors.kota}
-                        </p>
-                      )}
-                    </div>
-
-                    {/* Rest of address fields */}
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                       <div className="space-y-2">
                         <Label htmlFor="kecamatan" className="text-sm font-medium text-slate-700">
@@ -743,7 +681,7 @@ export default function Edit({ auth, keluarga }: EditPageProps) {
 
                 <Separator />
 
-                {/* Status Ekonomi Section */}
+                {/* Status Ekonomi Section untuk PKH */}
                 <motion.div
                   className="space-y-6"
                   initial={{ opacity: 0, x: -20 }}
@@ -752,10 +690,10 @@ export default function Edit({ auth, keluarga }: EditPageProps) {
                 >
                   <div className="flex items-center space-x-3 mb-4">
                     <DollarSign className="w-5 h-5 text-teal-600" />
-                    <h3 className="text-lg font-semibold text-slate-800">Status Ekonomi</h3>
+                    <h3 className="text-lg font-semibold text-slate-800">Status Ekonomi PKH</h3>
                   </div>
 
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                     <div className="space-y-2">
                       <Label htmlFor="status_ekonomi" className="text-sm font-medium text-slate-700">
                         Status Ekonomi *
@@ -771,6 +709,8 @@ export default function Edit({ auth, keluarga }: EditPageProps) {
                           <SelectItem value="sangat_miskin">Sangat Miskin</SelectItem>
                           <SelectItem value="miskin">Miskin</SelectItem>
                           <SelectItem value="rentan_miskin">Rentan Miskin</SelectItem>
+                          <SelectItem value="kurang_mampu">Kurang Mampu</SelectItem>
+                          <SelectItem value="mampu">Mampu</SelectItem>
                         </SelectContent>
                       </Select>
                       {errors.status_ekonomi && (
@@ -798,6 +738,28 @@ export default function Edit({ auth, keluarga }: EditPageProps) {
                         <p className="text-sm text-red-600 flex items-center">
                           <AlertTriangle className="w-4 h-4 mr-1" />
                           {errors.penghasilan_bulanan}
+                        </p>
+                      )}
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="jumlah_anggota" className="text-sm font-medium text-slate-700">
+                        Jumlah Anggota *
+                      </Label>
+                      <Input
+                        id="jumlah_anggota"
+                        type="number"
+                        value={data.jumlah_anggota}
+                        onChange={(e) => setData('jumlah_anggota', e.target.value)}
+                        placeholder="1"
+                        min="1"
+                        className="border-slate-200 focus:border-cyan-500 focus:ring-cyan-500/20"
+                        required
+                      />
+                      {errors.jumlah_anggota && (
+                        <p className="text-sm text-red-600 flex items-center">
+                          <AlertTriangle className="w-4 h-4 mr-1" />
+                          {errors.jumlah_anggota}
                         </p>
                       )}
                     </div>
@@ -863,7 +825,7 @@ export default function Edit({ auth, keluarga }: EditPageProps) {
                         step="any"
                         value={data.latitude}
                         onChange={(e) => handleCoordinateChange('latitude', e.target.value)}
-                        placeholder="-6.200000"
+                        placeholder="-0.789275"
                         className="border-slate-200 focus:border-cyan-500 focus:ring-cyan-500/20"
                       />
                       {errors.latitude && (
@@ -884,7 +846,7 @@ export default function Edit({ auth, keluarga }: EditPageProps) {
                         step="any"
                         value={data.longitude}
                         onChange={(e) => handleCoordinateChange('longitude', e.target.value)}
-                        placeholder="106.816666"
+                        placeholder="113.921327"
                         className="border-slate-200 focus:border-cyan-500 focus:ring-cyan-500/20"
                       />
                       {errors.longitude && (
@@ -944,8 +906,8 @@ export default function Edit({ auth, keluarga }: EditPageProps) {
                         <MapDrawing
                           onSave={handleMapPointSaved}
                           keluargaId={keluarga.id}
-                          initialLat={currentLocation?.lat || -2.548926}
-                          initialLng={currentLocation?.lng || 118.0148634}
+                          initialLat={currentLocation?.lat || -0.789275}
+                          initialLng={currentLocation?.lng || 113.921327}
                           existingMarker={currentLocation}
                         />
                       </motion.div>
@@ -1020,7 +982,7 @@ export default function Edit({ auth, keluarga }: EditPageProps) {
                     </motion.div>
                     <div>
                       <CardTitle className="text-xl font-medium text-slate-800">
-                        Peta Lokasi Keluarga
+                        Peta Lokasi Keluarga PKH
                       </CardTitle>
                       <CardDescription className="mt-2">
                         Klik pada peta untuk menentukan atau memperbarui koordinat lokasi keluarga
@@ -1034,8 +996,8 @@ export default function Edit({ auth, keluarga }: EditPageProps) {
                     <MapDrawing
                       keluargaId={keluarga.id}
                       onSave={handleMapPointSaved}
-                      initialLat={currentLocation?.lat || -2.548926}
-                      initialLng={currentLocation?.lng || 118.0148634}
+                      initialLat={currentLocation?.lat || -0.789275}
+                      initialLng={currentLocation?.lng || 113.921327}
                       existingMarker={currentLocation}
                     />
                   </div>
