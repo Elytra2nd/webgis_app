@@ -63,7 +63,7 @@ ChartJS.register(
   Legend
 );
 
-
+// Lazy load components
 const StatisticsCards = lazy(() => import('@/Components/Dashboard/StatisticsCards'));
 const RecentFamilies = lazy(() => import('@/Components/Dashboard/RecentFamilies'));
 const RegionalStats = lazy(() => import('@/Components/Dashboard/RegionalStats'));
@@ -75,14 +75,32 @@ interface DashboardStats {
   keluarga_sangat_miskin?: number;
   keluarga_miskin?: number;
   keluarga_rentan_miskin?: number;
+  keluarga_kurang_mampu?: number; // Tambahan dari controller
   anggota_laki?: number;
   anggota_perempuan?: number;
   kepala_keluarga?: number;
   penghasilan_rata_rata?: number;
+  // Data Bantuan PKH
+  total_penerima_bantuan?: number;
+  bantuan_aktif?: number;
+  total_nominal_bantuan?: number;
+  distribusi_bulan_ini?: number;
+  keluarga_belum_terima?: number;
+  additional?: {
+    keluarga_dengan_koordinat?: number;
+    keluarga_terverifikasi?: number;
+    rata_rata_anggota_per_keluarga?: number;
+    coverage_area?: number;
+  };
 }
 
 interface ChartData {
   status_ekonomi?: {
+    labels?: string[];
+    data?: number[];
+    colors?: string[];
+  };
+  bantuan_pkh?: {
     labels?: string[];
     data?: number[];
     colors?: string[];
@@ -92,7 +110,7 @@ interface ChartData {
     data?: number[];
     colors?: string[];
   };
-  trend_bulanan?: Array<{
+  trend_bantuan?: Array<{
     bulan?: string;
     total?: number;
   }>;
@@ -105,6 +123,8 @@ interface KeluargaTerbaru {
   alamat?: string;
   status_ekonomi?: string;
   jumlah_anggota?: number;
+  status_bantuan?: string; // Tambahan dari controller
+  nominal_bantuan?: number; // Tambahan dari controller
   created_at?: string;
 }
 
@@ -185,6 +205,154 @@ const ListSkeleton = () => (
   </Card>
 );
 
+// Komponen PKH Statistics Cards
+const PKHStatisticsCards = ({ stats, formatCurrency }: { stats: Required<DashboardStats>, formatCurrency: (amount: number) => string }) => (
+  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+    {/* Total Penerima Bantuan */}
+    <Card className="border-0 shadow-lg bg-gradient-to-br from-green-50 to-emerald-50 backdrop-blur-sm">
+      <CardContent className="p-6">
+        <div className="flex items-center justify-between">
+          <div className="flex-1">
+            <p className="text-sm font-medium text-green-700 mb-1">Total Penerima</p>
+            <p className="text-2xl font-bold text-green-900 mb-1">{stats.total_penerima_bantuan.toLocaleString()}</p>
+            <p className="text-xs text-green-600">Keluarga penerima PKH</p>
+          </div>
+          <div className="w-12 h-12 bg-green-100 rounded-xl flex items-center justify-center">
+            <UserCheck className="w-6 h-6 text-green-600" />
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+
+    {/* Bantuan Aktif */}
+    <Card className="border-0 shadow-lg bg-gradient-to-br from-blue-50 to-cyan-50 backdrop-blur-sm">
+      <CardContent className="p-6">
+        <div className="flex items-center justify-between">
+          <div className="flex-1">
+            <p className="text-sm font-medium text-blue-700 mb-1">Bantuan Aktif</p>
+            <p className="text-2xl font-bold text-blue-900 mb-1">{stats.bantuan_aktif.toLocaleString()}</p>
+            <p className="text-xs text-blue-600">Status aktif</p>
+          </div>
+          <div className="w-12 h-12 bg-blue-100 rounded-xl flex items-center justify-center">
+            <CheckCircle className="w-6 h-6 text-blue-600" />
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+
+    {/* Total Nominal Bantuan */}
+    <Card className="border-0 shadow-lg bg-gradient-to-br from-amber-50 to-yellow-50 backdrop-blur-sm">
+      <CardContent className="p-6">
+        <div className="flex items-center justify-between">
+          <div className="flex-1">
+            <p className="text-sm font-medium text-amber-700 mb-1">Total Nominal</p>
+            <p className="text-2xl font-bold text-amber-900 mb-1">{formatCurrency(stats.total_nominal_bantuan)}</p>
+            <p className="text-xs text-amber-600">Per bulan</p>
+          </div>
+          <div className="w-12 h-12 bg-amber-100 rounded-xl flex items-center justify-center">
+            <DollarSign className="w-6 h-6 text-amber-600" />
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+
+    {/* Belum Terima Bantuan */}
+    <Card className="border-0 shadow-lg bg-gradient-to-br from-red-50 to-rose-50 backdrop-blur-sm">
+      <CardContent className="p-6">
+        <div className="flex items-center justify-between">
+          <div className="flex-1">
+            <p className="text-sm font-medium text-red-700 mb-1">Belum Terima</p>
+            <p className="text-2xl font-bold text-red-900 mb-1">{stats.keluarga_belum_terima.toLocaleString()}</p>
+            <p className="text-xs text-red-600">Keluarga layak</p>
+          </div>
+          <div className="w-12 h-12 bg-red-100 rounded-xl flex items-center justify-center">
+            <UserX className="w-6 h-6 text-red-600" />
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  </div>
+);
+
+// Komponen Recent Families yang sudah diupdate
+const UpdatedRecentFamilies = ({ families, getStatusColor, formatStatusEkonomi, getBantuanStatusColor, formatBantuanStatus, formatCurrency }: {
+  families: KeluargaTerbaru[],
+  getStatusColor: (status: string | undefined) => string,
+  formatStatusEkonomi: (status: string | undefined) => string,
+  getBantuanStatusColor: (status: string | undefined) => string,
+  formatBantuanStatus: (status: string | undefined) => string,
+  formatCurrency: (amount: number) => string
+}) => (
+  <Card className="border-0 shadow-xl bg-white/90 backdrop-blur-md overflow-hidden">
+    <CardHeader className="pb-4">
+      <div className="flex items-center justify-between">
+        <div>
+          <CardTitle className="text-lg font-medium text-slate-800 flex items-center space-x-2">
+            <Users className="w-5 h-5 text-teal-600" />
+            <span>Keluarga Terbaru</span>
+          </CardTitle>
+          <CardDescription>5 keluarga yang baru didaftarkan</CardDescription>
+        </div>
+        <Button asChild variant="outline" size="sm" className="border-teal-200 text-teal-700 hover:bg-teal-50">
+          <Link href={route('admin.keluarga.index')}>
+            <Eye className="w-4 h-4 mr-2" />
+            Lihat Semua
+          </Link>
+        </Button>
+      </div>
+    </CardHeader>
+    <CardContent className="p-0">
+      <div className="space-y-0">
+        {families.map((keluarga, index) => (
+          <motion.div
+            key={keluarga.id || index}
+            className="p-4 border-b border-slate-100 last:border-b-0 hover:bg-slate-50/50 transition-colors"
+            whileHover={{ x: 4 }}
+            transition={{ type: "spring", stiffness: 300 }}
+          >
+            <div className="flex items-center justify-between">
+              <div className="flex-1">
+                <h4 className="font-medium text-slate-800 mb-1">
+                  {keluarga.nama_kepala_keluarga || 'Nama tidak tersedia'}
+                </h4>
+                <p className="text-sm text-slate-600 mb-1">
+                  KK: {keluarga.no_kk || 'Tidak tersedia'}
+                </p>
+                <p className="text-xs text-slate-500 mb-2">
+                  {keluarga.alamat || 'Alamat tidak tersedia'}
+                </p>
+                <div className="flex items-center space-x-2">
+                  <Badge className={`text-xs px-2 py-1 ${getStatusColor(keluarga.status_ekonomi)}`}>
+                    {formatStatusEkonomi(keluarga.status_ekonomi)}
+                  </Badge>
+                  <Badge className={`text-xs px-2 py-1 ${getBantuanStatusColor(keluarga.status_bantuan)}`}>
+                    {formatBantuanStatus(keluarga.status_bantuan)}
+                  </Badge>
+                </div>
+                {keluarga.nominal_bantuan && keluarga.nominal_bantuan > 0 && (
+                  <p className="text-xs text-green-600 mt-1">
+                    Bantuan: {formatCurrency(keluarga.nominal_bantuan)}/bulan
+                  </p>
+                )}
+              </div>
+              <div className="flex items-center space-x-2">
+                <div className="text-right">
+                  <p className="text-sm font-medium text-slate-800">
+                    {keluarga.jumlah_anggota || 0} orang
+                  </p>
+                  <p className="text-xs text-slate-500">
+                    {keluarga.created_at || 'Tanggal tidak tersedia'}
+                  </p>
+                </div>
+              </div>
+            </div>
+          </motion.div>
+        ))}
+      </div>
+    </CardContent>
+  </Card>
+);
+
 export default function Dashboard({
   auth,
   stats,
@@ -202,24 +370,42 @@ export default function Dashboard({
     keluarga_sangat_miskin: stats?.keluarga_sangat_miskin ?? 0,
     keluarga_miskin: stats?.keluarga_miskin ?? 0,
     keluarga_rentan_miskin: stats?.keluarga_rentan_miskin ?? 0,
+    keluarga_kurang_mampu: stats?.keluarga_kurang_mampu ?? 0,
     anggota_laki: stats?.anggota_laki ?? 0,
     anggota_perempuan: stats?.anggota_perempuan ?? 0,
     kepala_keluarga: stats?.kepala_keluarga ?? 0,
-    penghasilan_rata_rata: stats?.penghasilan_rata_rata ?? 0
+    penghasilan_rata_rata: stats?.penghasilan_rata_rata ?? 0,
+    // Data Bantuan PKH
+    total_penerima_bantuan: stats?.total_penerima_bantuan ?? 0,
+    bantuan_aktif: stats?.bantuan_aktif ?? 0,
+    total_nominal_bantuan: stats?.total_nominal_bantuan ?? 0,
+    distribusi_bulan_ini: stats?.distribusi_bulan_ini ?? 0,
+    keluarga_belum_terima: stats?.keluarga_belum_terima ?? 0,
+    additional: {
+      keluarga_dengan_koordinat: stats?.additional?.keluarga_dengan_koordinat ?? 0,
+      keluarga_terverifikasi: stats?.additional?.keluarga_terverifikasi ?? 0,
+      rata_rata_anggota_per_keluarga: stats?.additional?.rata_rata_anggota_per_keluarga ?? 0,
+      coverage_area: stats?.additional?.coverage_area ?? 0,
+    }
   };
 
   const safeCharts: ChartData = {
     status_ekonomi: charts?.status_ekonomi ? {
-      labels: charts.status_ekonomi.labels ?? ['Sangat Miskin', 'Miskin', 'Rentan Miskin'],
-      data: charts.status_ekonomi.data ?? [0, 0, 0],
-      colors: charts.status_ekonomi.colors ?? ['#ef4444', '#f59e0b', '#06b6d4']
+      labels: charts.status_ekonomi.labels ?? ['Sangat Miskin', 'Miskin', 'Rentan Miskin', 'Kurang Mampu'],
+      data: charts.status_ekonomi.data ?? [0, 0, 0, 0],
+      colors: charts.status_ekonomi.colors ?? ['#dc2626', '#ea580c', '#d97706', '#059669']
+    } : undefined,
+    bantuan_pkh: charts?.bantuan_pkh ? {
+      labels: charts.bantuan_pkh.labels ?? ['Sudah Terima', 'Belum Terima'],
+      data: charts.bantuan_pkh.data ?? [0, 0],
+      colors: charts.bantuan_pkh.colors ?? ['#059669', '#dc2626']
     } : undefined,
     jenis_kelamin: charts?.jenis_kelamin ? {
       labels: charts.jenis_kelamin.labels ?? ['Laki-laki', 'Perempuan'],
       data: charts.jenis_kelamin.data ?? [0, 0],
       colors: charts.jenis_kelamin.colors ?? ['#3b82f6', '#ec4899']
     } : undefined,
-    trend_bulanan: Array.isArray(charts?.trend_bulanan) ? charts.trend_bulanan : []
+    trend_bantuan: Array.isArray(charts?.trend_bantuan) ? charts.trend_bantuan : []
   };
 
   const safeKeluargaTerbaru: KeluargaTerbaru[] = Array.isArray(keluarga_terbaru)
@@ -245,7 +431,7 @@ export default function Dashboard({
       }
     };
 
-    if (safeCharts.status_ekonomi || safeCharts.jenis_kelamin || safeCharts.trend_bulanan?.length) {
+    if (safeCharts.status_ekonomi || safeCharts.bantuan_pkh || safeCharts.jenis_kelamin || safeCharts.trend_bantuan?.length) {
       preloadCharts();
     }
   }, [safeCharts]);
@@ -295,6 +481,21 @@ export default function Dashboard({
         return 'bg-amber-100 text-amber-800 border border-amber-200';
       case 'rentan_miskin':
         return 'bg-cyan-100 text-cyan-800 border border-cyan-200';
+      case 'kurang_mampu':
+        return 'bg-green-100 text-green-800 border border-green-200';
+      default:
+        return 'bg-gray-100 text-gray-800 border border-gray-200';
+    }
+  };
+
+  const getBantuanStatusColor = (status: string | undefined): string => {
+    if (!status) return 'bg-gray-100 text-gray-800 border border-gray-200';
+    
+    switch (status) {
+      case 'sudah_terima':
+        return 'bg-green-100 text-green-800 border border-green-200';
+      case 'belum_terima':
+        return 'bg-red-100 text-red-800 border border-red-200';
       default:
         return 'bg-gray-100 text-gray-800 border border-gray-200';
     }
@@ -306,20 +507,43 @@ export default function Dashboard({
     const statusMap: { [key: string]: string } = {
       'sangat_miskin': 'Sangat Miskin',
       'miskin': 'Miskin',
-      'rentan_miskin': 'Rentan Miskin'
+      'rentan_miskin': 'Rentan Miskin',
+      'kurang_mampu': 'Kurang Mampu'
+    };
+    return statusMap[status] || status;
+  };
+
+  const formatBantuanStatus = (status: string | undefined): string => {
+    if (!status) return 'Tidak Diketahui';
+    
+    const statusMap: { [key: string]: string } = {
+      'sudah_terima': 'Sudah Terima',
+      'belum_terima': 'Belum Terima'
     };
     return statusMap[status] || status;
   };
 
   // Chart data dengan lazy loading
   const statusEkonomiChartData = {
-    labels: safeCharts.status_ekonomi?.labels || ['Sangat Miskin', 'Miskin', 'Rentan Miskin'],
+    labels: safeCharts.status_ekonomi?.labels || ['Sangat Miskin', 'Miskin', 'Rentan Miskin', 'Kurang Mampu'],
     datasets: [
       {
-        data: safeCharts.status_ekonomi?.data || [0, 0, 0],
-        backgroundColor: safeCharts.status_ekonomi?.colors || ['#ef4444', '#f59e0b', '#06b6d4'],
+        data: safeCharts.status_ekonomi?.data || [0, 0, 0, 0],
+        backgroundColor: safeCharts.status_ekonomi?.colors || ['#dc2626', '#ea580c', '#d97706', '#059669'],
         borderWidth: 0,
-        hoverBackgroundColor: (safeCharts.status_ekonomi?.colors || ['#ef4444', '#f59e0b', '#06b6d4']).map(color => color + 'CC'),
+        hoverBackgroundColor: (safeCharts.status_ekonomi?.colors || ['#dc2626', '#ea580c', '#d97706', '#059669']).map(color => color + 'CC'),
+      },
+    ],
+  };
+
+  const bantuanPkhChartData = {
+    labels: safeCharts.bantuan_pkh?.labels || ['Sudah Terima', 'Belum Terima'],
+    datasets: [
+      {
+        data: safeCharts.bantuan_pkh?.data || [0, 0],
+        backgroundColor: safeCharts.bantuan_pkh?.colors || ['#059669', '#dc2626'],
+        borderWidth: 0,
+        hoverBackgroundColor: (safeCharts.bantuan_pkh?.colors || ['#059669', '#dc2626']).map(color => color + 'CC'),
       },
     ],
   };
@@ -336,14 +560,14 @@ export default function Dashboard({
     ],
   };
 
-  const trendBulananChartData = {
-    labels: safeCharts.trend_bulanan?.map(item => item?.bulan || '') || [],
+  const trendBantuanChartData = {
+    labels: safeCharts.trend_bantuan?.map(item => item?.bulan || '') || [],
     datasets: [
       {
-        label: 'Jumlah Keluarga',
-        data: safeCharts.trend_bulanan?.map(item => item?.total || 0) || [],
-        borderColor: '#06b6d4',
-        backgroundColor: '#06b6d4',
+        label: 'Distribusi Bantuan',
+        data: safeCharts.trend_bantuan?.map(item => item?.total || 0) || [],
+        borderColor: '#059669',
+        backgroundColor: '#059669',
         tension: 0.4,
         fill: false,
       },
@@ -444,13 +668,20 @@ export default function Dashboard({
           <div className="flex items-center space-x-3">
             <Activity className="w-8 h-8 text-teal-600" />
             <div>
-              <h1 className="font-semibold text-3xl text-slate-800 tracking-wide">Dashboard</h1>
+              <h1 className="font-semibold text-3xl text-slate-800 tracking-wide">Dashboard PKH</h1>
               <p className="text-slate-600 mt-1">Selamat datang, {auth.user?.name || 'User'}!</p>
             </div>
           </div>
         </motion.div>
 
-        {/* Statistics Cards dengan Lazy Loading */}
+        {/* PKH Statistics Cards */}
+        <motion.div variants={itemVariants}>
+          <Suspense fallback={<StatsSkeleton />}>
+            <PKHStatisticsCards stats={safeStats} formatCurrency={formatCurrency} />
+          </Suspense>
+        </motion.div>
+
+        {/* Original Statistics Cards */}
         <motion.div variants={itemVariants}>
           <Suspense fallback={<StatsSkeleton />}>
             <StatisticsCards stats={safeStats} formatCurrency={formatCurrency} />
@@ -458,8 +689,8 @@ export default function Dashboard({
         </motion.div>
 
         {/* Charts Section dengan Lazy Loading */}
-        {(safeCharts.status_ekonomi || safeCharts.jenis_kelamin || (safeCharts.trend_bulanan && safeCharts.trend_bulanan.length > 0)) && (
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        {(safeCharts.status_ekonomi || safeCharts.bantuan_pkh || safeCharts.jenis_kelamin || (safeCharts.trend_bantuan && safeCharts.trend_bantuan.length > 0)) && (
+          <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-8">
             {/* Status Ekonomi Chart */}
             {safeCharts.status_ekonomi && (
               <motion.div variants={itemVariants}>
@@ -498,6 +729,32 @@ export default function Dashboard({
               </motion.div>
             )}
 
+            {/* Bantuan PKH Chart */}
+            {safeCharts.bantuan_pkh && (
+              <motion.div variants={itemVariants}>
+                <Suspense fallback={<ChartSkeleton />}>
+                  {isChartsLoaded && !chartsError ? (
+                    <Card className="border-0 shadow-xl bg-white/90 backdrop-blur-md overflow-hidden">
+                      <CardHeader className="pb-4">
+                        <CardTitle className="text-lg font-medium text-slate-800 flex items-center space-x-2">
+                          <DollarSign className="w-5 h-5 text-green-600" />
+                          <span>Status Bantuan PKH</span>
+                        </CardTitle>
+                        <CardDescription>Distribusi penerima bantuan PKH</CardDescription>
+                      </CardHeader>
+                      <CardContent>
+                        <div style={{ height: '300px' }}>
+                          <Chart data={bantuanPkhChartData} options={chartOptions} />
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ) : (
+                    <ChartSkeleton />
+                  )}
+                </Suspense>
+              </motion.div>
+            )}
+
             {/* Jenis Kelamin Chart */}
             {safeCharts.jenis_kelamin && (
               <motion.div variants={itemVariants}>
@@ -524,22 +781,22 @@ export default function Dashboard({
               </motion.div>
             )}
 
-            {/* Trend Bulanan Chart */}
-            {safeCharts.trend_bulanan && safeCharts.trend_bulanan.length > 0 && (
+            {/* Trend Bantuan Chart */}
+            {safeCharts.trend_bantuan && safeCharts.trend_bantuan.length > 0 && (
               <motion.div variants={itemVariants}>
                 <Suspense fallback={<ChartSkeleton />}>
                   {isChartsLoaded && !chartsError ? (
                     <Card className="border-0 shadow-xl bg-white/90 backdrop-blur-md overflow-hidden">
                       <CardHeader className="pb-4">
                         <CardTitle className="text-lg font-medium text-slate-800 flex items-center space-x-2">
-                          <BarChart3 className="w-5 h-5 text-teal-600" />
-                          <span>Trend Bulanan</span>
+                          <TrendingUp className="w-5 h-5 text-green-600" />
+                          <span>Trend Distribusi Bantuan</span>
                         </CardTitle>
-                        <CardDescription>Pertumbuhan keluarga 6 bulan terakhir</CardDescription>
+                        <CardDescription>Distribusi bantuan 6 bulan terakhir</CardDescription>
                       </CardHeader>
                       <CardContent>
                         <div style={{ height: '300px' }}>
-                          <LineChart data={trendBulananChartData} options={lineChartOptions} />
+                          <LineChart data={trendBantuanChartData} options={lineChartOptions} />
                         </div>
                       </CardContent>
                     </Card>
@@ -558,10 +815,13 @@ export default function Dashboard({
           {safeKeluargaTerbaru.length > 0 && (
             <motion.div variants={itemVariants}>
               <Suspense fallback={<ListSkeleton />}>
-                <RecentFamilies
+                <UpdatedRecentFamilies
                   families={safeKeluargaTerbaru}
                   getStatusColor={getStatusColor}
                   formatStatusEkonomi={formatStatusEkonomi}
+                  getBantuanStatusColor={getBantuanStatusColor}
+                  formatBantuanStatus={formatBantuanStatus}
+                  formatCurrency={formatCurrency}
                 />
               </Suspense>
             </motion.div>
