@@ -101,8 +101,8 @@ interface NewMarkerData {
 export default function MapIndex({ auth }: PageProps) {
   const [keluarga, setKeluarga] = useState<Keluarga[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
-  const [center] = useState<[number, number]>([-2.5489, 118.0149]);
-  const [zoom] = useState<number>(5);
+  const [center] = useState<[number, number]>([-0.28, 111.47]);
+  const [zoom] = useState<number>(8);
 
   // State untuk menambah marker baru
   const [isAddingMarker, setIsAddingMarker] = useState<boolean>(false);
