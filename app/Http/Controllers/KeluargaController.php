@@ -49,7 +49,7 @@ class KeluargaController extends Controller
                 // Add bantuan status to each keluarga based on selected year
                 $query->addSelect([
                     'status_bantuan' => Bantuan::select(DB::raw("
-                        CASE 
+                        CASE
                             WHEN COUNT(*) > 0 THEN 'sudah_terima'
                             ELSE 'belum_terima'
                         END
@@ -58,20 +58,20 @@ class KeluargaController extends Controller
                     ->where('tahun_anggaran', $tahunBantuan)
                     ->whereIn('status', ['ditetapkan', 'aktif'])
                     ->limit(1),
-                    
+
                     'tahun_bantuan' => DB::raw($tahunBantuan),
-                    
+
                     'nominal_bantuan' => Bantuan::select('nominal_per_bulan')
                         ->whereColumn('keluarga_id', 'keluarga.id')
                         ->where('tahun_anggaran', $tahunBantuan)
                         ->whereIn('status', ['ditetapkan', 'aktif'])
                         ->limit(1),
-                        
+
                     'bulan_terakhir_distribusi' => DB::raw("(
-                        SELECT MAX(db.bulan) 
-                        FROM distribusi_bantuan db 
-                        JOIN bantuan b ON db.bantuan_id = b.id 
-                        WHERE b.keluarga_id = keluarga.id 
+                        SELECT MAX(db.bulan)
+                        FROM distribusi_bantuan db
+                        JOIN bantuan b ON db.bantuan_id = b.id
+                        WHERE b.keluarga_id = keluarga.id
                         AND b.tahun_anggaran = {$tahunBantuan}
                         AND db.status = 'disalurkan'
                     )")
@@ -102,13 +102,13 @@ class KeluargaController extends Controller
             // Sanitize data untuk UTF-8 dan enhance dengan status bantuan
             $keluarga->getCollection()->transform(function ($item) {
                 $sanitized = $this->sanitizeKeluargaForResponse($item);
-                
+
                 // Add PKH specific data
                 $sanitized['status_bantuan'] = $item->status_bantuan ?? 'belum_terima';
                 $sanitized['tahun_bantuan'] = $item->tahun_bantuan ?? null;
                 $sanitized['nominal_bantuan'] = $item->nominal_bantuan ?? null;
                 $sanitized['bulan_terakhir_distribusi'] = $item->bulan_terakhir_distribusi ?? null;
-                
+
                 return $sanitized;
             });
 
@@ -208,7 +208,7 @@ class KeluargaController extends Controller
     {
         try {
             $tahunBantuan = $tahunBantuan ?? now()->year;
-            
+
             $totalCount = Keluarga::count();
 
             // Status ekonomi counts untuk semua kategori
@@ -300,7 +300,7 @@ class KeluargaController extends Controller
      */
     public function create()
     {
-        return Inertia::render('Keluarga/Create');
+        return Inertia::render('Admin/Keluarga/Create');
     }
 
     /**
@@ -359,7 +359,7 @@ class KeluargaController extends Controller
             DB::beginTransaction();
 
             $data = $validator->validated();
-            
+
             // Set default verification status
             $data['status_verifikasi'] = 'belum_verifikasi';
             $data['is_active'] = true;
@@ -368,7 +368,7 @@ class KeluargaController extends Controller
             if (!empty($data['latitude']) && !empty($data['longitude'])) {
                 $lat = (float) $data['latitude'];
                 $lng = (float) $data['longitude'];
-                
+
                 $data['koordinat_updated_at'] = now();
                 $data['lokasi'] = new Point($lat, $lng);
             }
