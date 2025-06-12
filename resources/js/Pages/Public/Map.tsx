@@ -33,7 +33,7 @@ import {
   Compass
 } from 'lucide-react';
 
-// Fix icon issues
+// PERBAIKAN UTAMA: Fix icon issues - PERSIS SAMA DENGAN ADMIN
 import icon from 'leaflet/dist/images/marker-icon.png';
 import iconShadow from 'leaflet/dist/images/marker-shadow.png';
 
@@ -46,7 +46,7 @@ let DefaultIcon = L.icon({
 
 L.Marker.prototype.options.icon = DefaultIcon;
 
-// Komponen untuk memastikan peta di-resize dengan benar
+// Komponen untuk memastikan peta di-resize dengan benar - SAMA DENGAN ADMIN
 const MapResizer = () => {
   const map = useMap();
 
@@ -59,19 +59,18 @@ const MapResizer = () => {
   return null;
 };
 
+// Interface yang PERSIS SAMA dengan admin
 interface Keluarga {
   id: number;
-  nama: string;
-  lokasi: {
-    kota: string;
-    kecamatan: string;
-    kelurahan: string;
-  };
-  coordinates: {
-    lat: number;
-    lng: number;
-  };
-  type: string;
+  no_kk: string;
+  nama_kepala_keluarga: string;
+  alamat: string;
+  status_ekonomi: string;
+  latitude: number;
+  longitude: number;
+  kota?: string;
+  kecamatan?: string;
+  kelurahan?: string;
 }
 
 interface PublicStats {
@@ -101,8 +100,11 @@ export default function PublicMap({
   const [keluarga, setKeluarga] = useState<Keluarga[]>([]);
   const [stats, setStats] = useState<PublicStats | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
-  const [center] = useState<[number, number]>([-0.7893, 113.9213]); // Koordinat Kalimantan Barat
-  const [zoom] = useState<number>(7);
+  const [error, setError] = useState<string | null>(null);
+  
+  // KOORDINAT CENTER YANG SAMA DENGAN ADMIN
+  const [center] = useState<[number, number]>([-2.5489, 118.0149]);
+  const [zoom] = useState<number>(5);
   const [selectedMarker, setSelectedMarker] = useState<Keluarga | null>(null);
 
   // Cursor Tracker Refs
@@ -166,39 +168,103 @@ export default function PublicMap({
   }, []);
 
   useEffect(() => {
-    fetchMapData();
+    fetchKeluarga();
     fetchStats();
+
+    // Set CSRF token seperti di admin
+    const token = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+    if (token) {
+      axios.defaults.headers.common['X-CSRF-TOKEN'] = token;
+    } else {
+      console.error('CSRF token not found');
+    }
   }, []);
 
-  const fetchMapData = async () => {
-    try {
-      setLoading(true);
-      const response = await axios.get('/api/map/data');
-      if (response.data.success) {
-        setKeluarga(response.data.data);
-      }
-    } catch (error) {
-      console.error('Error fetching map data:', error);
-    } finally {
-      setLoading(false);
-    }
+  // FUNGSI FETCH YANG SAMA DENGAN ADMIN
+  const fetchKeluarga = () => {
+    setLoading(true);
+    setError(null);
+    
+    axios.get('/api/keluarga-public')
+      .then(response => {
+        console.log('Raw API Response:', response.data);
+        
+        if (response.data && Array.isArray(response.data)) {
+          // Filter data yang memiliki koordinat valid - SAMA DENGAN ADMIN
+          const validData = response.data.filter((item: Keluarga) => {
+            const hasCoordinates = item.latitude && item.longitude;
+            const validLat = !isNaN(parseFloat(item.latitude.toString()));
+            const validLng = !isNaN(parseFloat(item.longitude.toString()));
+            
+            console.log(`Item ${item.id}: lat=${item.latitude}, lng=${item.longitude}, hasCoordinates=${hasCoordinates}, validLat=${validLat}, validLng=${validLng}`);
+            
+            return hasCoordinates && validLat && validLng;
+          });
+          
+          console.log('Filtered valid data:', validData);
+          console.log('Total valid markers:', validData.length);
+          
+          setKeluarga(validData);
+        } else {
+          console.error('Invalid data format:', response.data);
+          setError('Format data tidak valid');
+        }
+        setLoading(false);
+      })
+      .catch(error => {
+        console.error('Error fetching data:', error);
+        setError('Gagal memuat data peta');
+        setLoading(false);
+      });
   };
 
   const fetchStats = async () => {
     try {
       const response = await axios.get('/api/map/stats');
-      if (response.data.success) {
+      if (response.data && response.data.success) {
         setStats(response.data.data);
       }
     } catch (error) {
       console.error('Error fetching stats:', error);
+      // Buat stats manual dari data keluarga jika API stats gagal
+      if (keluarga.length > 0) {
+        const manualStats = {
+          total_keluarga: keluarga.length,
+          total_wilayah: [...new Set(keluarga.map(k => k.kota).filter(Boolean))].length,
+          sebaran_kota: Object.entries(
+            keluarga.reduce((acc: Record<string, number>, k) => {
+              if (k.kota) {
+                acc[k.kota] = (acc[k.kota] || 0) + 1;
+              }
+              return acc;
+            }, {})
+          ).map(([kota, total]) => ({ kota, total }))
+        };
+        setStats(manualStats);
+      }
     }
   };
 
-  // Custom marker icon untuk peta publik
-  const getPublicMarkerIcon = () => {
+  // FUNGSI MARKER ICON YANG PERSIS SAMA DENGAN ADMIN
+  const getMarkerIcon = (status: string) => {
+    let color = 'blue'; // Default
+
+    switch (status) {
+      case 'sangat_miskin':
+        color = 'red';
+        break;
+      case 'miskin':
+        color = 'orange';
+        break;
+      case 'rentan_miskin':
+        color = 'violet';
+        break;
+      default:
+        color = 'blue';
+    }
+
     return new L.Icon({
-      iconUrl: `https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-cyan.png`,
+      iconUrl: `https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-${color}.png`,
       shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
       iconSize: [25, 41],
       iconAnchor: [12, 41],
@@ -206,6 +272,18 @@ export default function PublicMap({
       shadowSize: [41, 41]
     });
   };
+
+  // Get statistics - SAMA dengan admin
+  const getStats = () => {
+    return {
+      total: keluarga.length,
+      sangat_miskin: keluarga.filter(k => k.status_ekonomi === 'sangat_miskin').length,
+      miskin: keluarga.filter(k => k.status_ekonomi === 'miskin').length,
+      rentan_miskin: keluarga.filter(k => k.status_ekonomi === 'rentan_miskin').length,
+    };
+  };
+
+  const localStats = getStats();
 
   // Animation variants
   const containerVariants = {
@@ -329,203 +407,331 @@ export default function PublicMap({
           </div>
         </motion.div>
 
-        {/* Stats Cards */}
-        {stats && (
+        {/* Error Alert */}
+        {error && (
           <motion.div 
             className="px-4 sm:px-6 lg:px-8"
             variants={itemVariants}
           >
             <div className="max-w-7xl mx-auto">
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-                <motion.div
-                  whileHover={{ scale: 1.02, y: -5 }}
-                  whileTap={{ scale: 0.98 }}
-                >
-                  <Card className="stat-card border-0 shadow-lg bg-white/90">
-                    <CardContent className="p-6 text-center">
-                      <div className="w-12 h-12 bg-cyan-100 rounded-xl flex items-center justify-center mx-auto mb-4">
-                        <Users className="w-6 h-6 text-cyan-600" />
-                      </div>
-                      <h3 className="text-2xl font-bold text-slate-800">{stats.total_keluarga}</h3>
-                      <p className="text-slate-600">Total Keluarga</p>
-                    </CardContent>
-                  </Card>
-                </motion.div>
-                
-                <motion.div
-                  whileHover={{ scale: 1.02, y: -5 }}
-                  whileTap={{ scale: 0.98 }}
-                >
-                  <Card className="stat-card border-0 shadow-lg bg-white/90">
-                    <CardContent className="p-6 text-center">
-                      <div className="w-12 h-12 bg-teal-100 rounded-xl flex items-center justify-center mx-auto mb-4">
-                        <MapPin className="w-6 h-6 text-teal-600" />
-                      </div>
-                      <h3 className="text-2xl font-bold text-slate-800">{stats.total_wilayah}</h3>
-                      <p className="text-slate-600">Wilayah Terdaftar</p>
-                    </CardContent>
-                  </Card>
-                </motion.div>
-                
-                <motion.div
-                  whileHover={{ scale: 1.02, y: -5 }}
-                  whileTap={{ scale: 0.98 }}
-                >
-                  <Card className="stat-card border-0 shadow-lg bg-white/90">
-                    <CardContent className="p-6 text-center">
-                      <div className="w-12 h-12 bg-blue-100 rounded-xl flex items-center justify-center mx-auto mb-4">
-                        <Eye className="w-6 h-6 text-blue-600" />
-                      </div>
-                      <h3 className="text-2xl font-bold text-slate-800">{keluarga.length}</h3>
-                      <p className="text-slate-600">Data Tersedia</p>
-                    </CardContent>
-                  </Card>
-                </motion.div>
-
-                <motion.div
-                  whileHover={{ scale: 1.02, y: -5 }}
-                  whileTap={{ scale: 0.98 }}
-                >
-                  <Card className="stat-card border-0 shadow-lg bg-white/90">
-                    <CardContent className="p-6 text-center">
-                      <div className="w-12 h-12 bg-emerald-100 rounded-xl flex items-center justify-center mx-auto mb-4">
-                        <Globe className="w-6 h-6 text-emerald-600" />
-                      </div>
-                      <h3 className="text-2xl font-bold text-slate-800">Publik</h3>
-                      <p className="text-slate-600">Akses Terbuka</p>
-                    </CardContent>
-                  </Card>
-                </motion.div>
-              </div>
+              <Alert className="border-red-200 bg-red-50">
+                <AlertTriangle className="h-4 w-4 text-red-600" />
+                <AlertDescription className="text-red-800">
+                  {error}. Silakan refresh halaman atau hubungi administrator.
+                </AlertDescription>
+              </Alert>
             </div>
           </motion.div>
         )}
 
-        {/* Main Map Container */}
+        {/* Statistics Cards yang sama dengan admin */}
         <motion.div 
           className="px-4 sm:px-6 lg:px-8"
           variants={itemVariants}
         >
           <div className="max-w-7xl mx-auto">
-            <Card className="border-0 shadow-xl bg-white/90">
-              <CardContent className="p-0">
-                {/* Map Header */}
-                <div className="p-6 border-b border-slate-200">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center space-x-3">
-                      <div className="w-10 h-10 bg-gradient-to-br from-cyan-500 to-teal-500 rounded-xl flex items-center justify-center">
-                        <Layers className="w-5 h-5 text-white" />
-                      </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+              <motion.div
+                whileHover={{ scale: 1.02, y: -5 }}
+                whileTap={{ scale: 0.98 }}
+              >
+                <Card className="stat-card border-0 shadow-lg bg-white/80 backdrop-blur-sm hover:shadow-xl transition-all duration-300">
+                  <CardContent className="p-6">
+                    <div className="flex items-center justify-between">
                       <div>
-                        <h2 className="text-xl font-semibold text-slate-800">Peta Interaktif</h2>
-                        <p className="text-slate-600 text-sm">Klik pada marker untuk melihat detail</p>
+                        <p className="text-sm font-semibold text-slate-600 mb-1">Total Marker</p>
+                        <motion.p
+                          className="text-3xl font-semibold text-slate-900"
+                          initial={{ scale: 0 }}
+                          animate={{ scale: 1 }}
+                          transition={{ type: "spring", stiffness: 200, delay: 0.2 }}
+                        >
+                          {localStats.total}
+                        </motion.p>
                       </div>
+                      <motion.div
+                        className="w-12 h-12 bg-gradient-to-r from-cyan-100 to-teal-100 rounded-xl flex items-center justify-center"
+                        whileHover={{ rotate: 10 }}
+                        transition={{ type: "spring", stiffness: 300 }}
+                      >
+                        <MapPin className="w-6 h-6 text-cyan-600" />
+                      </motion.div>
                     </div>
-                    <Badge variant="secondary" className="bg-green-100 text-green-800">
-                      <Info className="w-3 h-3 mr-1" />
-                      Mode Publik
-                    </Badge>
+                  </CardContent>
+                </Card>
+              </motion.div>
+
+              <motion.div
+                whileHover={{ scale: 1.02, y: -5 }}
+                whileTap={{ scale: 0.98 }}
+              >
+                <Card className="stat-card border-0 shadow-lg bg-white/80 backdrop-blur-sm hover:shadow-xl transition-all duration-300">
+                  <CardContent className="p-6">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-sm font-semibold text-red-600 mb-1">Sangat Miskin</p>
+                        <motion.p
+                          className="text-3xl font-semibold text-red-700"
+                          initial={{ scale: 0 }}
+                          animate={{ scale: 1 }}
+                          transition={{ type: "spring", stiffness: 200, delay: 0.3 }}
+                        >
+                          {localStats.sangat_miskin}
+                        </motion.p>
+                      </div>
+                      <motion.div
+                        className="w-12 h-12 bg-red-50 rounded-xl flex items-center justify-center"
+                        whileHover={{ rotate: 10 }}
+                        transition={{ type: "spring", stiffness: 300 }}
+                      >
+                        <AlertTriangle className="w-6 h-6 text-red-500" />
+                      </motion.div>
+                    </div>
+                  </CardContent>
+                </Card>
+              </motion.div>
+
+              <motion.div
+                whileHover={{ scale: 1.02, y: -5 }}
+                whileTap={{ scale: 0.98 }}
+              >
+                <Card className="stat-card border-0 shadow-lg bg-white/80 backdrop-blur-sm hover:shadow-xl transition-all duration-300">
+                  <CardContent className="p-6">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-sm font-semibold text-amber-600 mb-1">Miskin</p>
+                        <motion.p
+                          className="text-3xl font-semibold text-amber-700"
+                          initial={{ scale: 0 }}
+                          animate={{ scale: 1 }}
+                          transition={{ type: "spring", stiffness: 200, delay: 0.4 }}
+                        >
+                          {localStats.miskin}
+                        </motion.p>
+                      </div>
+                      <motion.div
+                        className="w-12 h-12 bg-amber-50 rounded-xl flex items-center justify-center"
+                        whileHover={{ rotate: 10 }}
+                        transition={{ type: "spring", stiffness: 300 }}
+                      >
+                        <TrendingDown className="w-6 h-6 text-orange-500" />
+                      </motion.div>
+                    </div>
+                  </CardContent>
+                </Card>
+              </motion.div>
+
+              <motion.div
+                whileHover={{ scale: 1.02, y: -5 }}
+                whileTap={{ scale: 0.98 }}
+              >
+                <Card className="stat-card border-0 shadow-lg bg-white/80 backdrop-blur-sm hover:shadow-xl transition-all duration-300">
+                  <CardContent className="p-6">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-sm font-semibold text-violet-600 mb-1">Rentan Miskin</p>
+                        <motion.p
+                          className="text-3xl font-semibold text-violet-700"
+                          initial={{ scale: 0 }}
+                          animate={{ scale: 1 }}
+                          transition={{ type: "spring", stiffness: 200, delay: 0.5 }}
+                        >
+                          {localStats.rentan_miskin}
+                        </motion.p>
+                      </div>
+                      <motion.div
+                        className="w-12 h-12 bg-violet-50 rounded-xl flex items-center justify-center"
+                        whileHover={{ rotate: 10 }}
+                        transition={{ type: "spring", stiffness: 300 }}
+                      >
+                        <Users className="w-6 h-6 text-violet-500" />
+                      </motion.div>
+                    </div>
+                  </CardContent>
+                </Card>
+              </motion.div>
+            </div>
+          </div>
+        </motion.div>
+
+        {/* Main Map Container yang sama dengan admin */}
+        <motion.div 
+          className="px-4 sm:px-6 lg:px-8"
+          variants={itemVariants}
+        >
+          <div className="max-w-7xl mx-auto">
+            <Card className="border-0 shadow-xl bg-white/90 backdrop-blur-md overflow-hidden">
+              {/* Header */}
+              <CardHeader className="pb-6 bg-gradient-to-r from-cyan-50/50 to-teal-50/50 border-b border-gray-100/50">
+                <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
+                  <div>
+                    <CardTitle className="text-xl font-medium text-slate-800 flex items-center space-x-2">
+                      <Waves className="w-5 h-5 text-teal-600" />
+                      <span>Peta Interaktif Sebaran Penduduk (Publik)</span>
+                    </CardTitle>
+                    <CardDescription className="mt-2">
+                      {keluarga.length > 0 
+                        ? `Menampilkan ${keluarga.length} lokasi keluarga dengan koordinat valid`
+                        : 'Klik pada marker untuk melihat detail keluarga'
+                      }
+                    </CardDescription>
                   </div>
 
-                  {/* Legend */}
-                  <div className="mt-6 flex flex-wrap gap-6">
-                    <div className="flex items-center">
-                      <div className="w-4 h-4 bg-cyan-500 rounded-full mr-2"></div>
-                      <span className="text-sm text-slate-600">Lokasi Keluarga Terdaftar</span>
-                    </div>
-                    <div className="flex items-center">
-                      <div className="w-4 h-4 bg-slate-300 rounded-full mr-2"></div>
-                      <span className="text-sm text-slate-600">Data Tidak Tersedia</span>
-                    </div>
-                  </div>
+                  <Badge variant="secondary" className="bg-green-100 text-green-800">
+                    <Info className="w-3 h-3 mr-1" />
+                    Mode Publik
+                  </Badge>
                 </div>
 
-                {/* Map Area */}
-                <div className="relative">
-                  <AnimatePresence>
-                    {loading && (
-                      <motion.div
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        exit={{ opacity: 0 }}
-                        className="absolute inset-0 bg-gradient-to-br from-cyan-50/80 to-teal-50/80 backdrop-blur-sm flex items-center justify-center z-10"
-                      >
-                        <div className="flex flex-col items-center">
-                          <motion.div
-                            animate={{ rotate: 360 }}
-                            transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
-                            className="w-8 h-8 border-4 border-cyan-200 border-t-cyan-500 rounded-full mb-4"
-                          />
-                          <p className="text-slate-600 font-medium">Memuat peta...</p>
-                        </div>
-                      </motion.div>
-                    )}
-                  </AnimatePresence>
-
-                  <div className="w-full h-96 md:h-[500px] lg:h-[600px] rounded-b-lg">
-                    <MapContainer
-                      center={center}
-                      zoom={zoom}
-                      style={{ height: '100%', width: '100%' }}
-                      className="rounded-b-lg"
+                {/* Legend - sama dengan admin */}
+                <div className="mt-6 flex flex-wrap gap-6">
+                  {[
+                    { color: 'bg-red-500', label: 'Sangat Miskin' },
+                    { color: 'bg-orange-500', label: 'Miskin' },
+                    { color: 'bg-violet-500', label: 'Rentan Miskin' },
+                    { color: 'bg-blue-500', label: 'Lainnya' }
+                  ].map((item, index) => (
+                    <motion.div
+                      key={item.label}
+                      className="flex items-center"
+                      initial={{ opacity: 0, x: -10 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      transition={{ delay: index * 0.1 }}
                     >
-                      <MapResizer />
+                      <div className={`w-4 h-4 ${item.color} rounded-full mr-2 shadow-sm`}></div>
+                      <span className="text-sm font-medium text-slate-700">{item.label}</span>
+                    </motion.div>
+                  ))}
+                </div>
+              </CardHeader>
 
-                      <TileLayer
-                        url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-                        attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-                      />
+              {/* Map Area */}
+              <div className="relative">
+                <AnimatePresence>
+                  {loading && (
+                    <motion.div
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      exit={{ opacity: 0 }}
+                      className="absolute inset-0 bg-gradient-to-br from-cyan-50/80 to-teal-50/80 backdrop-blur-sm flex items-center justify-center z-10"
+                    >
+                      <div className="flex flex-col items-center">
+                        <motion.div
+                          animate={{ rotate: 360 }}
+                          transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+                          className="w-8 h-8 border-4 border-cyan-200 border-t-cyan-500 rounded-full mb-4"
+                        />
+                        <p className="text-slate-600 font-medium">Memuat peta...</p>
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
 
-                      {/* Marker keluarga */}
-                      {!loading && keluarga.map(item => (
-                        item.coordinates.lat && item.coordinates.lng ? (
-                          <Marker
-                            key={item.id}
-                            position={[item.coordinates.lat, item.coordinates.lng]}
-                            icon={getPublicMarkerIcon()}
-                            eventHandlers={{
-                              click: () => setSelectedMarker(item)
-                            }}
-                          >
-                            <Popup className="custom-popup">
-                              <div className="p-3">
-                                <h3 className="font-semibold text-slate-900 mb-3">{item.nama}</h3>
-                                <div className="space-y-2 text-sm">
+                <div className="h-[600px] lg:h-[700px] relative">
+                  <MapContainer
+                    center={center}
+                    zoom={zoom}
+                    style={{ height: '100%', width: '100%' }}
+                    className="rounded-b-2xl"
+                  >
+                    <MapResizer />
+
+                    <TileLayer
+                      url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                      attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+                    />
+
+                    {/* MARKER RENDERING YANG DIPERBAIKI - SAMA DENGAN ADMIN */}
+                    {!loading && keluarga.length > 0 && keluarga.map(item => {
+                      // Validasi koordinat yang ketat
+                      if (!item.latitude || !item.longitude) {
+                        console.warn(`Missing coordinates for item ${item.id}:`, item);
+                        return null;
+                      }
+
+                      const lat = parseFloat(item.latitude.toString());
+                      const lng = parseFloat(item.longitude.toString());
+
+                      if (isNaN(lat) || isNaN(lng)) {
+                        console.warn(`Invalid coordinates for item ${item.id}: lat=${lat}, lng=${lng}`);
+                        return null;
+                      }
+
+                      console.log(`Rendering marker for ${item.nama_kepala_keluarga} at [${lat}, ${lng}] with status ${item.status_ekonomi}`);
+
+                      return (
+                        <Marker
+                          key={`marker-${item.id}`}
+                          position={[lat, lng]}
+                          icon={getMarkerIcon(item.status_ekonomi)}
+                        >
+                          <Popup className="custom-popup">
+                            <div className="p-3">
+                              <h3 className="font-semibold text-slate-900 mb-3">{item.nama_kepala_keluarga}</h3>
+                              <div className="space-y-2 text-sm">
+                                <div className="flex items-center justify-between">
+                                  <span className="font-medium text-slate-600">No. KK:</span>
+                                  <span className="text-slate-800">{item.no_kk}</span>
+                                </div>
+                                <div className="flex items-start justify-between">
+                                  <span className="font-medium text-slate-600">Alamat:</span>
+                                  <span className="text-slate-800 text-right max-w-[150px]">{item.alamat}</span>
+                                </div>
+                                {item.kota && (
                                   <div className="flex items-center justify-between">
                                     <span className="font-medium text-slate-600">Kota:</span>
-                                    <span className="text-slate-800">{item.lokasi.kota}</span>
+                                    <span className="text-slate-800">{item.kota}</span>
                                   </div>
-                                  <div className="flex items-center justify-between">
-                                    <span className="font-medium text-slate-600">Kecamatan:</span>
-                                    <span className="text-slate-800">{item.lokasi.kecamatan}</span>
-                                  </div>
-                                  <div className="flex items-center justify-between">
-                                    <span className="font-medium text-slate-600">Kelurahan:</span>
-                                    <span className="text-slate-800">{item.lokasi.kelurahan}</span>
-                                  </div>
-                                  <div className="flex items-center justify-between">
-                                    <span className="font-medium text-slate-600">Koordinat:</span>
-                                    <span className="text-slate-800 text-xs">
-                                      {item.coordinates.lat.toFixed(4)}, {item.coordinates.lng.toFixed(4)}
-                                    </span>
-                                  </div>
-                                </div>
-                                <Separator className="my-3" />
-                                <div className="flex items-center justify-center">
-                                  <Badge variant="secondary" className="bg-cyan-100 text-cyan-700">
-                                    <Sparkles className="w-3 h-3 mr-1" />
-                                    Data Publik
+                                )}
+                                <div className="flex items-center justify-between">
+                                  <span className="font-medium text-slate-600">Status:</span>
+                                  <Badge
+                                    variant="secondary"
+                                    className={`text-xs ${
+                                      item.status_ekonomi === 'sangat_miskin' ? 'bg-red-100 text-red-700 hover:bg-red-200' :
+                                      item.status_ekonomi === 'miskin' ? 'bg-amber-100 text-amber-700 hover:bg-amber-200' :
+                                      item.status_ekonomi === 'rentan_miskin' ? 'bg-violet-100 text-violet-700 hover:bg-violet-200' :
+                                      'bg-blue-100 text-blue-700 hover:bg-blue-200'
+                                    }`}
+                                  >
+                                    {item.status_ekonomi?.replace('_', ' ') || 'Tidak diketahui'}
                                   </Badge>
                                 </div>
+                                <div className="flex items-center justify-between">
+                                  <span className="font-medium text-slate-600">Koordinat:</span>
+                                  <span className="text-slate-800 text-xs">
+                                    {lat.toFixed(4)}, {lng.toFixed(4)}
+                                  </span>
+                                </div>
                               </div>
-                            </Popup>
-                          </Marker>
-                        ) : null
-                      ))}
-                    </MapContainer>
-                  </div>
+                              <Separator className="my-3" />
+                              <div className="flex items-center justify-center">
+                                <Badge variant="secondary" className="bg-cyan-100 text-cyan-700">
+                                  <Sparkles className="w-3 h-3 mr-1" />
+                                  Data Publik
+                                </Badge>
+                              </div>
+                            </div>
+                          </Popup>
+                        </Marker>
+                      );
+                    })}
+
+                    {/* Pesan jika tidak ada data */}
+                    {!loading && keluarga.length === 0 && (
+                      <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-[1000] bg-white/90 backdrop-blur-sm p-6 rounded-lg shadow-lg">
+                        <div className="text-center">
+                          <MapPin className="w-12 h-12 text-slate-400 mx-auto mb-3" />
+                          <h3 className="text-lg font-semibold text-slate-700 mb-2">Tidak Ada Data</h3>
+                          <p className="text-slate-600 text-sm">
+                            Belum ada data keluarga dengan koordinat yang tersedia untuk ditampilkan.
+                          </p>
+                        </div>
+                      </div>
+                    )}
+                  </MapContainer>
                 </div>
-              </CardContent>
+              </div>
             </Card>
           </div>
         </motion.div>
@@ -621,6 +827,35 @@ export default function PublicMap({
           </div>
         </motion.div>
       </motion.div>
+
+      {/* Custom CSS yang sama dengan admin */}
+      <style>{`
+        .custom-popup .leaflet-popup-content-wrapper {
+          border-radius: 16px;
+          box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+          background: linear-gradient(135deg, rgba(255, 255, 255, 0.95) 0%, rgba(240, 253, 250, 0.95) 100%);
+          backdrop-filter: blur(10px);
+          border: 1px solid rgba(6, 182, 212, 0.1);
+        }
+        .custom-popup .leaflet-popup-content {
+          margin: 0;
+          font-family: inherit;
+        }
+        .custom-popup .leaflet-popup-tip {
+          background: linear-gradient(135deg, rgba(255, 255, 255, 0.95) 0%, rgba(240, 253, 250, 0.95) 100%);
+          border: 1px solid rgba(6, 182, 212, 0.1);
+          border-top: none;
+          border-right: none;
+        }
+        .leaflet-popup-close-button {
+          color: #0891b2 !important;
+          font-size: 18px !important;
+          font-weight: bold !important;
+        }
+        .leaflet-popup-close-button:hover {
+          color: #0e7490 !important;
+        }
+      `}</style>
     </div>
   );
 }
