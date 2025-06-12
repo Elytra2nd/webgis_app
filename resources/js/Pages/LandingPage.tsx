@@ -937,13 +937,6 @@ export default function LandingPage({ stats, featured_regions }: LandingPageProp
                 bg: 'bg-purple-100'
               },
               {
-                icon: Calendar,
-                label: 'Data Terupdate',
-                value: 'Hari ini',
-                color: 'text-orange-600',
-                bg: 'bg-orange-100'
-              },
-              {
                 icon: FileText,
                 label: 'Laporan Aktif',
                 value: '24',
