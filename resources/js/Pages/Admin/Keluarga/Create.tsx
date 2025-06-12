@@ -27,20 +27,11 @@ import {
   DollarSign,
   FileText,
   Waves,
-  Navigation
+  Navigation,
+  RotateCcw
 } from 'lucide-react';
 
-// Import data dari file terpisah
-import {
-  provinsiData,
-  kotaData,
-  getKotaByProvinsi,
-  findProvinsiByNama,
-  type Provinsi,
-  type Kota
-} from '@/data/provinsiKota';
-
-// Interface untuk form data
+// Interface untuk form data - Updated sesuai controller
 type KeluargaFormData = {
     no_kk: string;
     nama_kepala_keluarga: string;
@@ -56,6 +47,7 @@ type KeluargaFormData = {
     longitude: string;
     status_ekonomi: string;
     penghasilan_bulanan: string;
+    jumlah_anggota: string;
     keterangan: string;
 };
 
@@ -80,18 +72,18 @@ export default function Create({ auth }: PageProps) {
         kode_pos: '',
         latitude: '',
         longitude: '',
-        status_ekonomi: 'miskin',
+        status_ekonomi: 'sangat_miskin', // Default ke sangat miskin untuk PKH
         penghasilan_bulanan: '',
+        jumlah_anggota: '1',
         keterangan: ''
     });
 
-    // State untuk dependent dropdown
-    const [selectedProvinsi, setSelectedProvinsi] = useState<Provinsi | null>(null);
-    const [availableKota, setAvailableKota] = useState<Kota[]>([]);
+    // State untuk form dan peta
     const [keluargaId, setKeluargaId] = useState<number | null>(null);
     const [isFormSaved, setIsFormSaved] = useState<boolean>(false);
     const [showMapSection, setShowMapSection] = useState<boolean>(false);
     const [currentLocation, setCurrentLocation] = useState<LocationData | null>(null);
+    const [showMap, setShowMap] = useState(false);
 
     // Animation variants
     const containerVariants = {
@@ -118,43 +110,22 @@ export default function Create({ auth }: PageProps) {
         }
     };
 
-    // Breadcrumb
+    // Breadcrumb - Updated route
     const breadcrumbs = [
         { label: 'Dashboard', href: route('dashboard') },
-        { label: 'Data Keluarga', href: route('keluarga.index') },
+        { label: 'Data Keluarga', href: route('admin.keluarga.index') },
         { label: 'Tambah Data', current: true }
     ];
 
-    // Handle perubahan provinsi
-    const handleProvinsiChange = (provinsiNama: string) => {
-        setData('provinsi', provinsiNama);
-        setData('kota', ''); // Reset kota
-
-        if (provinsiNama) {
-            const provinsi = findProvinsiByNama(provinsiNama);
-            setSelectedProvinsi(provinsi || null);
-
-            if (provinsi) {
-                const filteredKota = getKotaByProvinsi(provinsi.id);
-                setAvailableKota(filteredKota);
-            } else {
-                setAvailableKota([]);
-            }
-        } else {
-            setSelectedProvinsi(null);
-            setAvailableKota([]);
-        }
-    };
-
-    // Handle submit form
+    // Handle submit form - Updated route
     const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
 
-        post(route('keluarga.store'), {
+        post(route('admin.keluarga.store'), {
             onStart: () => {
                 toast({
                     title: "Memproses Data",
-                    description: "Sedang menyimpan data keluarga...",
+                    description: "Sedang menyimpan data keluarga PKH...",
                     variant: "default",
                 });
             },
@@ -162,6 +133,7 @@ export default function Create({ auth }: PageProps) {
                 try {
                     let id = null;
 
+                    // Extract ID dari berbagai kemungkinan response structure
                     if (response.props && response.props.keluarga && response.props.keluarga.id) {
                         id = response.props.keluarga.id;
                     } else if (response.keluarga && response.keluarga.id) {
@@ -177,10 +149,11 @@ export default function Create({ auth }: PageProps) {
 
                         toast({
                             title: "Data Berhasil Disimpan! 🎉",
-                            description: `Data keluarga ${data.nama_kepala_keluarga} telah berhasil disimpan.`,
+                            description: `Data keluarga PKH ${data.nama_kepala_keluarga} telah berhasil disimpan.`,
                             variant: "default",
                         });
 
+                        // Scroll ke section peta
                         setTimeout(() => {
                             const mapSection = document.getElementById('map-section');
                             if (mapSection) {
@@ -191,7 +164,7 @@ export default function Create({ auth }: PageProps) {
                         setIsFormSaved(true);
                         toast({
                             title: "Data Berhasil Disimpan! 🎉",
-                            description: "Data keluarga telah berhasil disimpan.",
+                            description: "Data keluarga PKH telah berhasil disimpan.",
                             variant: "default",
                         });
                     }
@@ -200,7 +173,7 @@ export default function Create({ auth }: PageProps) {
                     setIsFormSaved(true);
                     toast({
                         title: "Data Berhasil Disimpan! 🎉",
-                        description: "Data keluarga telah berhasil disimpan.",
+                        description: "Data keluarga PKH telah berhasil disimpan.",
                         variant: "default",
                     });
                 }
@@ -217,7 +190,7 @@ export default function Create({ auth }: PageProps) {
         });
     };
 
-    // Handle koordinat dari peta
+    // Handle koordinat dari peta - Updated route
     const handleMapPointSaved = (point: LocationData) => {
         if (point && point.lat && point.lng) {
             setData(prev => ({
@@ -235,12 +208,12 @@ export default function Create({ auth }: PageProps) {
                     longitude: point.lng.toString()
                 };
 
-                put(route('keluarga.update', keluargaId), {
+                put(route('admin.keluarga.update', keluargaId), {
                     ...updateData,
                     onSuccess: () => {
                         toast({
                             title: "Koordinat Berhasil Disimpan! 📍",
-                            description: "Lokasi keluarga telah berhasil ditentukan pada peta.",
+                            description: "Lokasi keluarga PKH telah berhasil ditentukan pada peta.",
                             variant: "default",
                         });
                     },
@@ -257,6 +230,32 @@ export default function Create({ auth }: PageProps) {
         }
     };
 
+    // Handle perubahan input koordinat manual
+    const handleCoordinateChange = (field: 'latitude' | 'longitude', value: string) => {
+        setData(field, value);
+
+        if (field === 'latitude' && data.longitude && !isNaN(parseFloat(value))) {
+            setCurrentLocation({
+                lat: parseFloat(value),
+                lng: parseFloat(data.longitude)
+            });
+        } else if (field === 'longitude' && data.latitude && !isNaN(parseFloat(value))) {
+            setCurrentLocation({
+                lat: parseFloat(data.latitude),
+                lng: parseFloat(value)
+            });
+        }
+    };
+
+    // Toggle tampilan peta
+    const toggleMap = () => {
+        setShowMap(!showMap);
+        if (!showMap && !currentLocation) {
+            // Koordinat default untuk Kalimantan Barat
+            setCurrentLocation({ lat: -0.789275, lng: 113.921327 });
+        }
+    };
+
     const handleStartOver = () => {
         reset();
         setKeluargaId(null);
@@ -264,18 +263,16 @@ export default function Create({ auth }: PageProps) {
         setShowMapSection(false);
         setCurrentLocation(null);
         clearErrors();
-        setSelectedProvinsi(null);
-        setAvailableKota([]);
         window.scrollTo({ top: 0, behavior: 'smooth' });
     };
 
     const handleFinish = () => {
-        router.visit(route('keluarga.index'));
+        router.visit(route('admin.keluarga.index'));
     };
 
     return (
         <AuthenticatedLayout user={auth.user} breadcrumbs={breadcrumbs}>
-            <Head title="Tambah Data Keluarga" />
+            <Head title="Tambah Data Keluarga PKH" />
 
             <motion.div
                 className="space-y-8"
@@ -300,8 +297,8 @@ export default function Create({ auth }: PageProps) {
                         <div className="flex items-center space-x-3">
                             <Plus className="w-8 h-8 text-teal-600" />
                             <div>
-                                <h1 className="font-semibold text-3xl text-slate-800 tracking-wide">Tambah Data Keluarga</h1>
-                                <p className="text-slate-600 mt-1">Lengkapi informasi keluarga dengan akurat</p>
+                                <h1 className="font-semibold text-3xl text-slate-800 tracking-wide">Tambah Data Keluarga PKH</h1>
+                                <p className="text-slate-600 mt-1">Lengkapi informasi keluarga penerima Program Keluarga Harapan</p>
                             </div>
                         </div>
                     </div>
@@ -309,7 +306,7 @@ export default function Create({ auth }: PageProps) {
                     <div className="flex space-x-3">
                         <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
                             <Button asChild variant="outline" className="border-slate-300 hover:bg-slate-50">
-                                <Link href={route('keluarga.index')}>
+                                <Link href={route('admin.keluarga.index')}>
                                     <ArrowLeft className="w-4 h-4 mr-2" />
                                     Kembali
                                 </Link>
@@ -334,7 +331,7 @@ export default function Create({ auth }: PageProps) {
                                         )}
                                     </div>
                                     <div>
-                                        <p className="font-medium text-slate-900">Data Keluarga</p>
+                                        <p className="font-medium text-slate-900">Data Keluarga PKH</p>
                                         <p className="text-sm text-slate-500">
                                             {isFormSaved ? 'Tersimpan' : 'Isi informasi keluarga'}
                                         </p>
@@ -375,10 +372,10 @@ export default function Create({ auth }: PageProps) {
                                 </motion.div>
                                 <div>
                                     <CardTitle className="text-xl font-medium text-slate-800">
-                                        Form Data Keluarga
+                                        Form Data Keluarga PKH
                                     </CardTitle>
                                     <CardDescription className="mt-2">
-                                        Masukkan informasi lengkap keluarga baru
+                                        Masukkan informasi lengkap keluarga penerima Program Keluarga Harapan
                                     </CardDescription>
                                 </div>
                             </div>
@@ -446,7 +443,7 @@ export default function Create({ auth }: PageProps) {
 
                                 <Separator />
 
-                                {/* Alamat Section dengan Enhanced Dropdown */}
+                                {/* Alamat Section */}
                                 <motion.div
                                     className="space-y-6"
                                     initial={{ opacity: 0, x: -20 }}
@@ -459,63 +456,50 @@ export default function Create({ auth }: PageProps) {
                                     </div>
 
                                     <div className="space-y-6">
-                                        {/* Provinsi Dropdown */}
-                                        <div className="space-y-2">
-                                            <Label htmlFor="provinsi" className="text-sm font-medium text-slate-700">
-                                                Provinsi *
-                                            </Label>
-                                            <Select value={data.provinsi} onValueChange={handleProvinsiChange} disabled={isFormSaved}>
-                                                <SelectTrigger className="border-slate-200 focus:border-cyan-500 focus:ring-cyan-500/20">
-                                                    <SelectValue placeholder="Pilih Provinsi" />
-                                                </SelectTrigger>
-                                                <SelectContent>
-                                                    {provinsiData.map((provinsi) => (
-                                                        <SelectItem key={provinsi.id} value={provinsi.nama}>
-                                                            {provinsi.nama}
-                                                        </SelectItem>
-                                                    ))}
-                                                </SelectContent>
-                                            </Select>
-                                            {errors.provinsi && (
-                                                <p className="text-sm text-red-600 flex items-center">
-                                                    <AlertTriangle className="w-4 h-4 mr-1" />
-                                                    {errors.provinsi}
-                                                </p>
-                                            )}
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                            <div className="space-y-2">
+                                                <Label htmlFor="provinsi" className="text-sm font-medium text-slate-700">
+                                                    Provinsi *
+                                                </Label>
+                                                <Input
+                                                    id="provinsi"
+                                                    value={data.provinsi}
+                                                    onChange={(e) => setData('provinsi', e.target.value)}
+                                                    placeholder="Kalimantan Barat"
+                                                    className="border-slate-200 focus:border-cyan-500 focus:ring-cyan-500/20"
+                                                    required
+                                                    disabled={isFormSaved}
+                                                />
+                                                {errors.provinsi && (
+                                                    <p className="text-sm text-red-600 flex items-center">
+                                                        <AlertTriangle className="w-4 h-4 mr-1" />
+                                                        {errors.provinsi}
+                                                    </p>
+                                                )}
+                                            </div>
+
+                                            <div className="space-y-2">
+                                                <Label htmlFor="kota" className="text-sm font-medium text-slate-700">
+                                                    Kota/Kabupaten *
+                                                </Label>
+                                                <Input
+                                                    id="kota"
+                                                    value={data.kota}
+                                                    onChange={(e) => setData('kota', e.target.value)}
+                                                    placeholder="Nama kota/kabupaten"
+                                                    className="border-slate-200 focus:border-cyan-500 focus:ring-cyan-500/20"
+                                                    required
+                                                    disabled={isFormSaved}
+                                                />
+                                                {errors.kota && (
+                                                    <p className="text-sm text-red-600 flex items-center">
+                                                        <AlertTriangle className="w-4 h-4 mr-1" />
+                                                        {errors.kota}
+                                                    </p>
+                                                )}
+                                            </div>
                                         </div>
 
-                                        {/* Kota/Kabupaten Dropdown */}
-                                        <div className="space-y-2">
-                                            <Label htmlFor="kota" className="text-sm font-medium text-slate-700">
-                                                Kota/Kabupaten *
-                                            </Label>
-                                            <Select
-                                                value={data.kota}
-                                                onValueChange={(value) => setData('kota', value)}
-                                                disabled={isFormSaved || !selectedProvinsi}
-                                            >
-                                                <SelectTrigger className="border-slate-200 focus:border-cyan-500 focus:ring-cyan-500/20">
-                                                    <SelectValue placeholder={
-                                                        selectedProvinsi ? 'Pilih Kota/Kabupaten' : 'Pilih Provinsi Terlebih Dahulu'
-                                                    } />
-                                                </SelectTrigger>
-                                                <SelectContent>
-                                                    {availableKota.map((kota) => (
-                                                        <SelectItem key={kota.id} value={kota.nama}>
-                                                            {kota.nama}
-                                                        </SelectItem>
-                                                    ))}
-                                                </SelectContent>
-                                            </Select>
-                                            {errors.kota && (
-                                                <p className="text-sm text-red-600 flex items-center">
-                                                    <AlertTriangle className="w-4 h-4 mr-1" />
-                                                    {errors.kota}
-                                                </p>
-                                            )}
-                                        </div>
-
-                                        {/* Rest of address fields */}
                                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                             <div className="space-y-2">
                                                 <Label htmlFor="kecamatan" className="text-sm font-medium text-slate-700">
@@ -582,7 +566,7 @@ export default function Create({ auth }: PageProps) {
                                             )}
                                         </div>
 
-                                        <div className="grid grid-cols-2 gap-6">
+                                        <div className="grid grid-cols-3 gap-6">
                                             <div className="space-y-2">
                                                 <Label htmlFor="rt" className="text-sm font-medium text-slate-700">
                                                     RT
@@ -622,13 +606,33 @@ export default function Create({ auth }: PageProps) {
                                                     </p>
                                                 )}
                                             </div>
+
+                                            <div className="space-y-2">
+                                                <Label htmlFor="kode_pos" className="text-sm font-medium text-slate-700">
+                                                    Kode Pos
+                                                </Label>
+                                                <Input
+                                                    id="kode_pos"
+                                                    value={data.kode_pos}
+                                                    onChange={(e) => setData('kode_pos', e.target.value)}
+                                                    placeholder="12345"
+                                                    className="border-slate-200 focus:border-cyan-500 focus:ring-cyan-500/20"
+                                                    disabled={isFormSaved}
+                                                />
+                                                {errors.kode_pos && (
+                                                    <p className="text-sm text-red-600 flex items-center">
+                                                        <AlertTriangle className="w-4 h-4 mr-1" />
+                                                        {errors.kode_pos}
+                                                    </p>
+                                                )}
+                                            </div>
                                         </div>
                                     </div>
                                 </motion.div>
 
                                 <Separator />
 
-                                {/* Status Ekonomi Section */}
+                                {/* Status Ekonomi Section untuk PKH */}
                                 <motion.div
                                     className="space-y-6"
                                     initial={{ opacity: 0, x: -20 }}
@@ -637,10 +641,10 @@ export default function Create({ auth }: PageProps) {
                                 >
                                     <div className="flex items-center space-x-3 mb-4">
                                         <DollarSign className="w-5 h-5 text-teal-600" />
-                                        <h3 className="text-lg font-semibold text-slate-800">Status Ekonomi</h3>
+                                        <h3 className="text-lg font-semibold text-slate-800">Status Ekonomi PKH</h3>
                                     </div>
 
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                                         <div className="space-y-2">
                                             <Label htmlFor="status_ekonomi" className="text-sm font-medium text-slate-700">
                                                 Status Ekonomi *
@@ -657,6 +661,8 @@ export default function Create({ auth }: PageProps) {
                                                     <SelectItem value="sangat_miskin">Sangat Miskin</SelectItem>
                                                     <SelectItem value="miskin">Miskin</SelectItem>
                                                     <SelectItem value="rentan_miskin">Rentan Miskin</SelectItem>
+                                                    <SelectItem value="kurang_mampu">Kurang Mampu</SelectItem>
+                                                    <SelectItem value="mampu">Mampu</SelectItem>
                                                 </SelectContent>
                                             </Select>
                                             {errors.status_ekonomi && (
@@ -665,6 +671,9 @@ export default function Create({ auth }: PageProps) {
                                                     {errors.status_ekonomi}
                                                 </p>
                                             )}
+                                            <p className="text-xs text-slate-500">
+                                                <strong>Catatan PKH:</strong> Hanya status "Sangat Miskin", "Miskin", dan "Rentan Miskin" yang layak menerima bantuan PKH.
+                                            </p>
                                         </div>
 
                                         <div className="space-y-2">
@@ -685,6 +694,29 @@ export default function Create({ auth }: PageProps) {
                                                 <p className="text-sm text-red-600 flex items-center">
                                                     <AlertTriangle className="w-4 h-4 mr-1" />
                                                     {errors.penghasilan_bulanan}
+                                                </p>
+                                            )}
+                                        </div>
+
+                                        <div className="space-y-2">
+                                            <Label htmlFor="jumlah_anggota" className="text-sm font-medium text-slate-700">
+                                                Jumlah Anggota *
+                                            </Label>
+                                            <Input
+                                                id="jumlah_anggota"
+                                                type="number"
+                                                value={data.jumlah_anggota}
+                                                onChange={(e) => setData('jumlah_anggota', e.target.value)}
+                                                placeholder="1"
+                                                min="1"
+                                                className="border-slate-200 focus:border-cyan-500 focus:ring-cyan-500/20"
+                                                required
+                                                disabled={isFormSaved}
+                                            />
+                                            {errors.jumlah_anggota && (
+                                                <p className="text-sm text-red-600 flex items-center">
+                                                    <AlertTriangle className="w-4 h-4 mr-1" />
+                                                    {errors.jumlah_anggota}
                                                 </p>
                                             )}
                                         </div>
@@ -712,18 +744,146 @@ export default function Create({ auth }: PageProps) {
                                     </div>
                                 </motion.div>
 
+                                <Separator />
+
+                                {/* Lokasi Section */}
+                                <motion.div
+                                    className="space-y-6"
+                                    initial={{ opacity: 0, x: -20 }}
+                                    animate={{ opacity: 1, x: 0 }}
+                                    transition={{ delay: 0.4 }}
+                                >
+                                    <div className="flex items-center justify-between mb-4">
+                                        <div className="flex items-center space-x-3">
+                                            <Navigation className="w-5 h-5 text-teal-600" />
+                                            <h3 className="text-lg font-semibold text-slate-800">Lokasi Geografis (Opsional)</h3>
+                                        </div>
+                                        <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
+                                            <Button
+                                                type="button"
+                                                onClick={toggleMap}
+                                                variant="outline"
+                                                className="border-violet-200 text-violet-700 hover:bg-violet-50"
+                                                disabled={isFormSaved}
+                                            >
+                                                <MapPin className="w-4 h-4 mr-2" />
+                                                {showMap ? 'Sembunyikan' : 'Tampilkan'} Peta
+                                            </Button>
+                                        </motion.div>
+                                    </div>
+
+                                    {/* Koordinat Manual */}
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                        <div className="space-y-2">
+                                            <Label htmlFor="latitude" className="text-sm font-medium text-slate-700">
+                                                Latitude
+                                            </Label>
+                                            <Input
+                                                id="latitude"
+                                                type="number"
+                                                step="any"
+                                                value={data.latitude}
+                                                onChange={(e) => handleCoordinateChange('latitude', e.target.value)}
+                                                placeholder="-0.789275"
+                                                className="border-slate-200 focus:border-cyan-500 focus:ring-cyan-500/20"
+                                                disabled={isFormSaved}
+                                            />
+                                            {errors.latitude && (
+                                                <p className="text-sm text-red-600 flex items-center">
+                                                    <AlertTriangle className="w-4 h-4 mr-1" />
+                                                    {errors.latitude}
+                                                </p>
+                                            )}
+                                        </div>
+
+                                        <div className="space-y-2">
+                                            <Label htmlFor="longitude" className="text-sm font-medium text-slate-700">
+                                                Longitude
+                                            </Label>
+                                            <Input
+                                                id="longitude"
+                                                type="number"
+                                                step="any"
+                                                value={data.longitude}
+                                                onChange={(e) => handleCoordinateChange('longitude', e.target.value)}
+                                                placeholder="113.921327"
+                                                className="border-slate-200 focus:border-cyan-500 focus:ring-cyan-500/20"
+                                                disabled={isFormSaved}
+                                            />
+                                            {errors.longitude && (
+                                                <p className="text-sm text-red-600 flex items-center">
+                                                    <AlertTriangle className="w-4 h-4 mr-1" />
+                                                    {errors.longitude}
+                                                </p>
+                                            )}
+                                        </div>
+                                    </div>
+
+                                    {/* Status Koordinat */}
+                                    <div className="p-4 bg-slate-50 rounded-lg border border-slate-200">
+                                        <div className="flex items-center justify-between">
+                                            <div>
+                                                <p className="text-sm font-medium text-slate-700">Status Koordinat:</p>
+                                                {data.latitude && data.longitude ? (
+                                                    <p className="text-sm text-emerald-600 flex items-center mt-1">
+                                                        <CheckCircle className="w-4 h-4 mr-2" />
+                                                        Tersedia - Lat: {data.latitude}, Lng: {data.longitude}
+                                                    </p>
+                                                ) : (
+                                                    <p className="text-sm text-amber-600 flex items-center mt-1">
+                                                        <AlertTriangle className="w-4 h-4 mr-2" />
+                                                        Belum ditentukan - Koordinat dapat ditambahkan setelah data tersimpan
+                                                    </p>
+                                                )}
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    {/* Peta Inline */}
+                                    <AnimatePresence>
+                                        {showMap && !isFormSaved && (
+                                            <motion.div
+                                                initial={{ opacity: 0, height: 0 }}
+                                                animate={{ opacity: 1, height: 'auto' }}
+                                                exit={{ opacity: 0, height: 0 }}
+                                                transition={{ duration: 0.3 }}
+                                                className="border border-violet-200 rounded-lg overflow-hidden"
+                                                style={{ height: '400px' }}
+                                            >
+                                                <MapDrawing
+                                                    onSave={handleMapPointSaved}
+                                                    keluargaId={keluargaId}
+                                                    initialLat={currentLocation?.lat || -0.789275}
+                                                    initialLng={currentLocation?.lng || 113.921327}
+                                                    existingMarker={currentLocation}
+                                                />
+                                            </motion.div>
+                                        )}
+                                    </AnimatePresence>
+                                </motion.div>
+
                                 {/* Submit Button */}
                                 {!isFormSaved && (
                                     <motion.div
-                                        className="flex items-center justify-end pt-6 border-t border-slate-200"
+                                        className="flex items-center justify-between pt-6 border-t border-slate-200"
                                         initial={{ opacity: 0, y: 20 }}
                                         animate={{ opacity: 1, y: 0 }}
-                                        transition={{ delay: 0.4 }}
+                                        transition={{ delay: 0.5 }}
                                     >
-                                        <motion.div
-                                            whileHover={{ scale: 1.02 }}
-                                            whileTap={{ scale: 0.98 }}
-                                        >
+                                        <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
+                                            <Button
+                                                type="button"
+                                                onClick={() => reset()}
+                                                variant="outline"
+                                                className="border-slate-300 hover:bg-slate-50"
+                                                disabled={processing}
+                                            >
+                                                <RotateCcw className="w-4 h-4 mr-2" />
+                                                Reset Form
+                                            </Button>
+                                        </motion.div>
+
+                                        <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
                                             <Button
                                                 type="submit"
                                                 disabled={processing}
@@ -737,7 +897,7 @@ export default function Create({ auth }: PageProps) {
                                                 ) : (
                                                     <>
                                                         <Save className="w-4 h-4 mr-2" />
-                                                        Simpan Data Keluarga
+                                                        Simpan Data Keluarga PKH
                                                     </>
                                                 )}
                                             </Button>
@@ -774,7 +934,7 @@ export default function Create({ auth }: PageProps) {
                                                 Tentukan Lokasi pada Peta
                                             </CardTitle>
                                             <CardDescription className="mt-2">
-                                                Klik pada peta untuk menentukan koordinat lokasi keluarga
+                                                Klik pada peta untuk menentukan koordinat lokasi keluarga PKH
                                             </CardDescription>
                                         </div>
                                     </div>
@@ -782,7 +942,15 @@ export default function Create({ auth }: PageProps) {
 
                                 <CardContent className="p-8">
                                     <div className="border border-slate-200 rounded-xl overflow-hidden shadow-inner" style={{ height: '500px' }}>
-                                        <MapDrawing keluargaId={keluargaId} onSave={handleMapPointSaved} />
+                                        {typeof keluargaId === 'number' && (
+                                            <MapDrawing 
+                                                keluargaId={keluargaId} 
+                                                onSave={handleMapPointSaved}
+                                                initialLat={currentLocation?.lat || -0.789275}
+                                                initialLng={currentLocation?.lng || 113.921327}
+                                                existingMarker={currentLocation}
+                                            />
+                                        )}
                                     </div>
 
                                     <div className="flex items-center justify-between mt-6">
@@ -825,7 +993,7 @@ export default function Create({ auth }: PageProps) {
                             <Alert className="border-green-200 bg-green-50">
                                 <CheckCircle className="h-4 w-4 text-green-600" />
                                 <AlertDescription className="text-green-700">
-                                    Data keluarga berhasil disimpan! {data.latitude && data.longitude ? 'Koordinat sudah ditentukan.' : 'Silakan tentukan koordinat lokasi pada peta di atas jika diperlukan.'}
+                                    Data keluarga PKH berhasil disimpan! {data.latitude && data.longitude ? 'Koordinat sudah ditentukan.' : 'Silakan tentukan koordinat lokasi pada peta di atas jika diperlukan.'}
                                 </AlertDescription>
                             </Alert>
                         </motion.div>

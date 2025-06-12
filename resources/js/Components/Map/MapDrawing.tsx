@@ -12,7 +12,7 @@ L.Icon.Default.mergeOptions({
 });
 
 interface MapDrawingProps {
-  keluargaId: number;
+  keluargaId: number | null;
   onSave: (point: { lat: number; lng: number }) => void;
   initialLat?: number;
   initialLng?: number;
@@ -20,7 +20,7 @@ interface MapDrawingProps {
 }
 
 export default function MapDrawing({
-  keluargaId,
+  keluargaId = null,
   onSave,
   initialLat = -2.548926,
   initialLng = 118.0148634,
