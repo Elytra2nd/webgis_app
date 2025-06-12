@@ -38,6 +38,8 @@ Route::get('/map', [PublicMapController::class, 'index'])->name('map.public');
 Route::get('/api/map/data', [PublicMapController::class, 'getMapData'])->name('api.map.public.data');
 Route::get('/api/map/stats', [PublicMapController::class, 'getPublicStats'])->name('api.map.public.stats');
 
+Route::get('/keluarga/export/public', [PublicKeluargaController::class, 'exportPublic'])->name('keluarga.export.public');
+
 // Public API untuk data peta (read-only) - sesuai requirements - TETAP DIPERTAHANKAN untuk kompatibilitas
 Route::get('/api/keluarga-public', [AdminKeluargaController::class, 'getForMap'])->name('api.keluarga.public');
 
