@@ -157,11 +157,11 @@ export default function Authenticated({ user, children, breadcrumbs }: Authentic
                         <nav className="px-3 py-4 space-y-2">
                             {/* Menu utama */}
                             <SidebarLink href={route('dashboard')} active={route().current('dashboard')} icon={<HiOutlineHome />} collapsed={sidebarCollapsed}>Dashboard</SidebarLink>
-                            
+
                             {/* Data Keluarga */}
                             <SidebarLink href={route('admin.keluarga.index')} active={route().current('admin.keluarga.*')} icon={<HiOutlineUsers />} collapsed={sidebarCollapsed}>Data Keluarga</SidebarLink>
                             <SidebarLink href={route('anggota-keluarga.index')} active={route().current('anggota-keluarga.*')} icon={<HiOutlineUserGroup />} collapsed={sidebarCollapsed}>Anggota Keluarga</SidebarLink>
-                            
+
                             {/* Divider untuk Bantuan PKH */}
                             {!sidebarCollapsed && (
                                 <div className="px-3 py-2">
@@ -169,12 +169,12 @@ export default function Authenticated({ user, children, breadcrumbs }: Authentic
                                     <div className="mt-1 border-t border-slate-200"></div>
                                 </div>
                             )}
-                            
+
                             {/* Menu Bantuan PKH */}
                             <SidebarLink href={route('admin.bantuan.index')} active={route().current('admin.bantuan.index')} icon={<HiOutlineHeart />} collapsed={sidebarCollapsed}>Bantuan PKH</SidebarLink>
                             <SidebarLink href={route('admin.bantuan.belum-menerima')} active={route().current('admin.bantuan.belum-menerima')} icon={<HiOutlineUsers />} collapsed={sidebarCollapsed}>KK Belum Terima</SidebarLink>
                             <SidebarLink href={route('admin.bantuan.peta')} active={route().current('admin.bantuan.peta')} icon={<HiOutlineMap />} collapsed={sidebarCollapsed}>Peta Sebaran</SidebarLink>
-                            
+
                             {/* Divider untuk menu lainnya */}
                             {!sidebarCollapsed && (
                                 <div className="px-3 py-2">
@@ -182,10 +182,10 @@ export default function Authenticated({ user, children, breadcrumbs }: Authentic
                                     <div className="mt-1 border-t border-slate-200"></div>
                                 </div>
                             )}
-                            
+
                             {/* Menu sistem lainnya */}
                             <SidebarLink href={route('admin.map')} active={route().current('admin.map')} icon={<HiOutlineMap />} collapsed={sidebarCollapsed}>Peta Umum</SidebarLink>
-                            <SidebarLink href={route('admin.reports.index')} active={route().current('admin.reports.*')} icon={<HiOutlineDocumentReport />} collapsed={sidebarCollapsed}>Laporan</SidebarLink>
+                            <SidebarLink href={route('admin.reports.index')} active={route().current('admin.reports.index')} icon={<HiOutlineDocumentReport />} collapsed={sidebarCollapsed}>Laporan</SidebarLink>
                             <SidebarLink href={route('admin.settings')} active={route().current('admin.settings')} icon={<HiOutlineCog />} collapsed={sidebarCollapsed}>Pengaturan</SidebarLink>
                         </nav>
                     </div>
