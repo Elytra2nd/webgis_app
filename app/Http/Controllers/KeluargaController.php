@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Keluarga;
+use App\Models\Bantuan;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Illuminate\Support\Facades\Redirect;
@@ -11,6 +12,7 @@ use Illuminate\Validation\Rule;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Http\JsonResponse;
+use MatanYadaev\EloquentSpatial\Objects\Point;
 
 class KeluargaController extends Controller
 {
@@ -20,7 +22,7 @@ class KeluargaController extends Controller
     public function index(Request $request)
     {
         try {
-            $query = Keluarga::query();
+            $query = Keluarga::with(['bantuanAktif', 'verifikator']);
 
             // Search functionality dengan UTF-8 safe
             if ($request->has('search') && !empty($request->search)) {
@@ -41,18 +43,80 @@ class KeluargaController extends Controller
                 $query->where('status_ekonomi', $request->status);
             }
 
+            // Filter by social assistance year (PKH requirement)
+            $tahunBantuan = $request->input('tahun_bantuan', now()->year);
+            if (!empty($tahunBantuan)) {
+                // Add bantuan status to each keluarga based on selected year
+                $query->addSelect([
+                    'status_bantuan' => Bantuan::select(DB::raw("
+                        CASE 
+                            WHEN COUNT(*) > 0 THEN 'sudah_terima'
+                            ELSE 'belum_terima'
+                        END
+                    "))
+                    ->whereColumn('keluarga_id', 'keluarga.id')
+                    ->where('tahun_anggaran', $tahunBantuan)
+                    ->whereIn('status', ['ditetapkan', 'aktif'])
+                    ->limit(1),
+                    
+                    'tahun_bantuan' => DB::raw($tahunBantuan),
+                    
+                    'nominal_bantuan' => Bantuan::select('nominal_per_bulan')
+                        ->whereColumn('keluarga_id', 'keluarga.id')
+                        ->where('tahun_anggaran', $tahunBantuan)
+                        ->whereIn('status', ['ditetapkan', 'aktif'])
+                        ->limit(1),
+                        
+                    'bulan_terakhir_distribusi' => DB::raw("(
+                        SELECT MAX(db.bulan) 
+                        FROM distribusi_bantuan db 
+                        JOIN bantuan b ON db.bantuan_id = b.id 
+                        WHERE b.keluarga_id = keluarga.id 
+                        AND b.tahun_anggaran = {$tahunBantuan}
+                        AND db.status = 'disalurkan'
+                    )")
+                ]);
+            }
+
+            // Filter by social assistance status (PKH requirement)
+            if ($request->has('status_bantuan') && $request->status_bantuan !== 'all' && !empty($request->status_bantuan)) {
+                $statusBantuan = $request->status_bantuan;
+                if ($statusBantuan === 'sudah_terima') {
+                    $query->whereHas('bantuan', function ($q) use ($tahunBantuan) {
+                        $q->where('tahun_anggaran', $tahunBantuan)
+                          ->whereIn('status', ['ditetapkan', 'aktif']);
+                    });
+                } elseif ($statusBantuan === 'belum_terima') {
+                    $query->whereDoesntHave('bantuan', function ($q) use ($tahunBantuan) {
+                        $q->where('tahun_anggaran', $tahunBantuan)
+                          ->whereIn('status', ['ditetapkan', 'aktif']);
+                    });
+                }
+            }
+
             // Get paginated results dengan UTF-8 handling
             $keluarga = $query->orderBy('created_at', 'desc')
-                             ->paginate(10)
+                             ->paginate(15)
                              ->withQueryString();
 
-            // Sanitize data untuk UTF-8
+            // Sanitize data untuk UTF-8 dan enhance dengan status bantuan
             $keluarga->getCollection()->transform(function ($item) {
-                return $this->sanitizeKeluargaForResponse($item);
+                $sanitized = $this->sanitizeKeluargaForResponse($item);
+                
+                // Add PKH specific data
+                $sanitized['status_bantuan'] = $item->status_bantuan ?? 'belum_terima';
+                $sanitized['tahun_bantuan'] = $item->tahun_bantuan ?? null;
+                $sanitized['nominal_bantuan'] = $item->nominal_bantuan ?? null;
+                $sanitized['bulan_terakhir_distribusi'] = $item->bulan_terakhir_distribusi ?? null;
+                
+                return $sanitized;
             });
 
-            // Get statistics
-            $stats = $this->getKeluargaStatistics();
+            // Get enhanced statistics for PKH
+            $stats = $this->getKeluargaStatisticsForPKH($tahunBantuan);
+
+            // Get available years for filter
+            $tahunTersedia = $this->getAvailableYears();
 
             $responseData = [
                 'keluarga' => [
@@ -61,41 +125,49 @@ class KeluargaController extends Controller
                         'current_page' => $keluarga->currentPage() ?? 1,
                         'from' => $keluarga->firstItem() ?? 0,
                         'last_page' => $keluarga->lastPage() ?? 1,
-                        'per_page' => $keluarga->perPage() ?? 10,
+                        'per_page' => $keluarga->perPage() ?? 15,
                         'to' => $keluarga->lastItem() ?? 0,
                         'total' => $keluarga->total() ?? 0,
                     ],
                     'links' => $keluarga->linkCollection()->toArray() ?? []
                 ],
-                'filters' => $request->only(['search', 'status']) ?? [],
-                'stats' => $stats
+                'filters' => $request->only(['search', 'status', 'tahun_bantuan', 'status_bantuan']) ?? [],
+                'stats' => $stats,
+                'tahun_tersedia' => $tahunTersedia,
+                'tahun_aktif' => now()->year
             ];
 
-            return Inertia::render('Keluarga/Index', $responseData);
+            return Inertia::render('Admin/Keluarga/Index', $responseData);
 
         } catch (\Exception $e) {
             Log::error('Error in KeluargaController@index: ' . $e->getMessage());
 
-            return Inertia::render('Keluarga/Index', [
+            return Inertia::render('Admin/Keluarga/Index', [
                 'keluarga' => [
                     'data' => [],
                     'meta' => [
                         'current_page' => 1,
                         'from' => 0,
                         'last_page' => 1,
-                        'per_page' => 10,
+                        'per_page' => 15,
                         'to' => 0,
                         'total' => 0,
                     ],
                     'links' => []
                 ],
-                'filters' => $request->only(['search', 'status']) ?? [],
+                'filters' => $request->only(['search', 'status', 'tahun_bantuan', 'status_bantuan']) ?? [],
                 'stats' => [
                     'total' => 0,
                     'sangat_miskin' => 0,
                     'miskin' => 0,
                     'rentan_miskin' => 0,
+                    'sudah_terima_bantuan' => 0,
+                    'belum_terima_bantuan' => 0,
+                    'layak_bantuan' => 0,
+                    'total_penerima_tahun_ini' => 0
                 ],
+                'tahun_tersedia' => range(2020, now()->year + 1),
+                'tahun_aktif' => now()->year,
                 'error' => 'Terjadi kesalahan saat memuat data. Silakan coba lagi.'
             ]);
         }
@@ -132,6 +204,95 @@ class KeluargaController extends Controller
         }
     }
 
+    private function getKeluargaStatisticsForPKH($tahunBantuan = null)
+    {
+        try {
+            $tahunBantuan = $tahunBantuan ?? now()->year;
+            
+            $totalCount = Keluarga::count();
+
+            // Status ekonomi counts
+            $statusCounts = Keluarga::select('status_ekonomi', DB::raw('count(*) as count'))
+                ->groupBy('status_ekonomi')
+                ->pluck('count', 'status_ekonomi')
+                ->toArray();
+
+            // PKH specific statistics
+            $sudahTerima = Keluarga::whereHas('bantuan', function ($q) use ($tahunBantuan) {
+                $q->where('tahun_anggaran', $tahunBantuan)
+                  ->whereIn('status', ['ditetapkan', 'aktif']);
+            })->count();
+
+            $belumTerima = Keluarga::whereDoesntHave('bantuan', function ($q) use ($tahunBantuan) {
+                $q->where('tahun_anggaran', $tahunBantuan)
+                  ->whereIn('status', ['ditetapkan', 'aktif']);
+            })->whereIn('status_ekonomi', ['sangat_miskin', 'miskin', 'rentan_miskin', 'kurang_mampu'])
+              ->where('status_verifikasi', 'terverifikasi')
+              ->count();
+
+            $layakBantuan = Keluarga::whereIn('status_ekonomi', ['sangat_miskin', 'miskin', 'rentan_miskin', 'kurang_mampu'])
+                ->where('status_verifikasi', 'terverifikasi')
+                ->count();
+
+            $totalPenerimaTahunIni = Bantuan::where('tahun_anggaran', $tahunBantuan)
+                ->whereIn('status', ['ditetapkan', 'aktif'])
+                ->count();
+
+            return [
+                'total' => $totalCount,
+                'sangat_miskin' => $statusCounts['sangat_miskin'] ?? 0,
+                'miskin' => $statusCounts['miskin'] ?? 0,
+                'rentan_miskin' => $statusCounts['rentan_miskin'] ?? 0,
+                'kurang_mampu' => $statusCounts['kurang_mampu'] ?? 0,
+                'mampu' => $statusCounts['mampu'] ?? 0,
+                'sudah_terima_bantuan' => $sudahTerima,
+                'belum_terima_bantuan' => $belumTerima,
+                'layak_bantuan' => $layakBantuan,
+                'total_penerima_tahun_ini' => $totalPenerimaTahunIni
+            ];
+        } catch (\Exception $e) {
+            Log::error('Error getting PKH statistics: ' . $e->getMessage());
+
+            return [
+                'total' => 0,
+                'sangat_miskin' => 0,
+                'miskin' => 0,
+                'rentan_miskin' => 0,
+                'kurang_mampu' => 0,
+                'mampu' => 0,
+                'sudah_terima_bantuan' => 0,
+                'belum_terima_bantuan' => 0,
+                'layak_bantuan' => 0,
+                'total_penerima_tahuan_ini' => 0
+            ];
+        }
+    }
+
+    private function getAvailableYears()
+    {
+        try {
+            $years = Bantuan::select('tahun_anggaran')
+                ->distinct()
+                ->orderBy('tahun_anggaran', 'desc')
+                ->pluck('tahun_anggaran')
+                ->toArray();
+
+            // Add current year if not in list
+            if (!in_array(now()->year, $years)) {
+                $years[] = now()->year;
+            }
+
+            // Add previous and next years for flexibility
+            $years[] = now()->year - 1;
+            $years[] = now()->year + 1;
+
+            return array_unique(array_filter($years));
+        } catch (\Exception $e) {
+            Log::error('Error getting available years: ' . $e->getMessage());
+            return range(2020, now()->year + 1);
+        }
+    }
+
     /**
      * Show the form for creating a new resource.
      */
@@ -145,14 +306,12 @@ class KeluargaController extends Controller
      */
     public function store(Request $request)
     {
-        // Log untuk debugging dengan UTF-8 safe
         Log::info('Store request received:', [
             'method' => $request->method(),
             'content_type' => $request->header('Content-Type'),
             'all_data' => $this->sanitizeDataForLogging($request->except(['_token']))
         ]);
 
-        // Sanitize input data untuk UTF-8
         $inputData = $this->sanitizeUtf8Data($request->all());
 
         $validator = Validator::make($inputData, [
@@ -166,15 +325,15 @@ class KeluargaController extends Controller
             'kota' => 'required|string|max:255',
             'provinsi' => 'required|string|max:255',
             'kode_pos' => 'nullable|string|max:5',
-            'status_ekonomi' => 'required|in:sangat_miskin,miskin,rentan_miskin',
+            'status_ekonomi' => 'required|in:sangat_miskin,miskin,rentan_miskin,kurang_mampu,mampu',
             'penghasilan_bulanan' => 'nullable|numeric|min:0',
+            'jumlah_anggota' => 'required|integer|min:1',
             'keterangan' => 'nullable|string',
             'latitude' => 'nullable|numeric|between:-90,90',
             'longitude' => 'nullable|numeric|between:-180,180',
         ], [
             'no_kk.required' => 'Nomor KK wajib diisi.',
             'no_kk.unique' => 'Nomor KK sudah terdaftar.',
-            'no_kk.max' => 'Nomor KK maksimal 16 karakter.',
             'nama_kepala_keluarga.required' => 'Nama kepala keluarga wajib diisi.',
             'alamat.required' => 'Alamat wajib diisi.',
             'kelurahan.required' => 'Kelurahan wajib diisi.',
@@ -182,16 +341,11 @@ class KeluargaController extends Controller
             'kota.required' => 'Kota/Kabupaten wajib diisi.',
             'provinsi.required' => 'Provinsi wajib diisi.',
             'status_ekonomi.required' => 'Status ekonomi wajib dipilih.',
-            'status_ekonomi.in' => 'Status ekonomi tidak valid.',
-            'penghasilan_bulanan.numeric' => 'Penghasilan bulanan harus berupa angka.',
-            'penghasilan_bulanan.min' => 'Penghasilan bulanan tidak boleh negatif.',
-            'latitude.between' => 'Latitude harus antara -90 dan 90.',
-            'longitude.between' => 'Longitude harus antara -180 dan 180.',
+            'jumlah_anggota.required' => 'Jumlah anggota keluarga wajib diisi.',
+            'jumlah_anggota.min' => 'Jumlah anggota keluarga minimal 1.',
         ]);
 
         if ($validator->fails()) {
-            Log::warning('Store validation failed:', $validator->errors()->toArray());
-
             return Redirect::back()
                 ->withErrors($validator)
                 ->withInput();
@@ -201,43 +355,80 @@ class KeluargaController extends Controller
             DB::beginTransaction();
 
             $data = $validator->validated();
+            
+            // Set default verification status
+            $data['status_verifikasi'] = 'belum_verifikasi';
+            $data['is_active'] = true;
 
-            // Handle coordinate data
+            // Handle coordinate data with spatial point - FIX: Use proper Point class
             if (!empty($data['latitude']) && !empty($data['longitude'])) {
-                // Update kolom lokasi POINT menggunakan raw SQL
                 $lat = (float) $data['latitude'];
                 $lng = (float) $data['longitude'];
-
-                $keluarga = Keluarga::create($data);
-
-                // Update POINT setelah create
-                DB::statement(
-                    "UPDATE keluarga SET lokasi = POINT(?, ?) WHERE id = ?",
-                    [$lng, $lat, $keluarga->id]
-                );
-            } else {
-                $keluarga = Keluarga::create($data);
+                
+                $data['koordinat_updated_at'] = now();
+                $data['lokasi'] = new Point($lat, $lng); // FIX: Now Point is properly imported
             }
+
+            $keluarga = Keluarga::create($data);
 
             DB::commit();
 
             Log::info('Keluarga created successfully:', ['id' => $keluarga->id]);
 
-            return Redirect::route('keluarga.index')
-                ->with('success', 'Data keluarga berhasil ditambahkan.')
+            return Redirect::route('admin.keluarga.index')
+                ->with('success', 'Data keluarga berhasil ditambahkan ke sistem PKH.')
                 ->with('keluarga_id', $keluarga->id);
 
         } catch (\Exception $e) {
             DB::rollBack();
-            Log::error('Error storing keluarga: ' . $e->getMessage(), [
-                'trace' => $e->getTraceAsString()
-            ]);
+            Log::error('Error storing keluarga: ' . $e->getMessage());
 
             return Redirect::back()
                 ->withErrors(['error' => 'Terjadi kesalahan saat menyimpan data: ' . $e->getMessage()])
                 ->withInput();
         }
     }
+
+    public function updateCoordinates(Request $request, Keluarga $keluarga)
+    {
+        $validator = Validator::make($request->all(), [
+            'latitude' => 'required|numeric|between:-90,90',
+            'longitude' => 'required|numeric|between:-180,180',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'success' => false,
+                'errors' => $validator->errors()
+            ], 422);
+        }
+
+        try {
+            $lat = (float) $request->latitude;
+            $lng = (float) $request->longitude;
+
+            $keluarga->updateCoordinates($lat, $lng);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Koordinat berhasil diperbarui',
+                'data' => [
+                    'latitude' => $lat,
+                    'longitude' => $lng,
+                    'updated_at' => $keluarga->koordinat_updated_at
+                ]
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('Error updating coordinates: ' . $e->getMessage());
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Terjadi kesalahan saat memperbarui koordinat'
+            ], 500);
+        }
+    }
+
 
     /**
      * Store a newly created resource from map - NEW METHOD
@@ -813,4 +1004,5 @@ class KeluargaController extends Controller
             ], 500, [], JSON_UNESCAPED_UNICODE);
         }
     }
+
 }

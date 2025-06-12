@@ -26,7 +26,15 @@ import {
   TrendingDown,
   AlertTriangle,
   CheckCircle,
-  X
+  X,
+  Calendar,
+  HandHeart,
+  Map,
+  Clock,
+  DollarSign,
+  UserCheck,
+  UserX,
+  Target
 } from 'lucide-react';
 
 interface Keluarga {
@@ -49,6 +57,13 @@ interface Keluarga {
   lokasi?: string | null;
   created_at?: string;
   updated_at?: string;
+  // Tambahan untuk bantuan PKH
+  status_bantuan?: 'sudah_terima' | 'belum_terima' | null;
+  tahun_bantuan?: number;
+  nominal_bantuan?: number;
+  bulan_terakhir_distribusi?: number;
+  status_verifikasi?: 'terverifikasi' | 'belum_verifikasi' | 'ditolak';
+  jumlah_anggota?: number;
 }
 
 interface PaginatedKeluarga {
@@ -73,19 +88,74 @@ interface IndexProps extends PageProps {
   filters?: {
     search?: string;
     status?: string;
+    tahun_bantuan?: string;
+    status_bantuan?: string;
   };
   stats?: {
     total: number;
     sangat_miskin: number;
     miskin: number;
     rentan_miskin: number;
+    kurang_mampu: number;
+    mampu: number;
+    // Statistik bantuan PKH
+    sudah_terima_bantuan: number;
+    belum_terima_bantuan: number;
+    layak_bantuan: number;
+    total_penerima_tahun_ini: number;
   };
+  tahun_tersedia?: number[];
+  tahun_aktif?: number;
+  error?: string;
 }
 
-export default function Index({ auth, keluarga, filters = {}, stats }: IndexProps) {
-  const [searchTerm, setSearchTerm] = useState(filters.search || '');
-  const [statusFilter, setStatusFilter] = useState(filters.status || 'all');
-  const [filteredData, setFilteredData] = useState<Keluarga[]>(keluarga?.data || []);
+export default function Index({ 
+  auth, 
+  keluarga, 
+  filters = {}, 
+  stats, 
+  tahun_tersedia = [], 
+  tahun_aktif,
+  error 
+}: IndexProps) {
+  // Safe defaults untuk mencegah undefined errors
+  const safeKeluarga = keluarga || { 
+    data: [], 
+    links: [], 
+    meta: { 
+      current_page: 1, 
+      from: 0, 
+      last_page: 1, 
+      per_page: 15, 
+      to: 0, 
+      total: 0 
+    } 
+  };
+
+  const safeStats = stats || {
+    total: 0,
+    sangat_miskin: 0,
+    miskin: 0,
+    rentan_miskin: 0,
+    kurang_mampu: 0,
+    mampu: 0,
+    sudah_terima_bantuan: 0,
+    belum_terima_bantuan: 0,
+    layak_bantuan: 0,
+    total_penerima_tahun_ini: 0
+  };
+
+  const safeFilters = filters || {};
+  const safeTahunTersedia = Array.isArray(tahun_tersedia) ? tahun_tersedia : [];
+  const currentYear = new Date().getFullYear();
+  const safeTahunAktif = tahun_aktif || currentYear;
+
+  const [searchTerm, setSearchTerm] = useState(safeFilters.search || '');
+  const [statusFilter, setStatusFilter] = useState(safeFilters.status || 'all');
+  const [tahunBantuanFilter, setTahunBantuanFilter] = useState(
+    safeFilters.tahun_bantuan || safeTahunAktif.toString()
+  );
+  const [statusBantuanFilter, setStatusBantuanFilter] = useState(safeFilters.status_bantuan || 'all');
   const [isFiltering, setIsFiltering] = useState(false);
 
   // Delete states
@@ -178,51 +248,36 @@ export default function Index({ auth, keluarga, filters = {}, stats }: IndexProp
 
   // Filter function dengan animasi
   const applyFilters = () => {
-    if (!keluarga?.data) return;
+    if (!safeKeluarga?.data) return;
 
     setIsFiltering(true);
 
-    let filtered = keluarga.data;
+    // Kirim request ke server dengan filter
+    const filterParams = {
+      search: searchTerm || '',
+      status: statusFilter !== 'all' ? statusFilter : '',
+      tahun_bantuan: tahunBantuanFilter || safeTahunAktif.toString(),
+      status_bantuan: statusBantuanFilter !== 'all' ? statusBantuanFilter : '',
+    };
 
-    // Apply search filter
-    if (searchTerm) {
-      filtered = filtered.filter(item =>
-        item.nama_kepala_keluarga.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        item.no_kk.includes(searchTerm) ||
-        item.alamat.toLowerCase().includes(searchTerm.toLowerCase())
-      );
-    }
-
-    // Apply status filter
-    if (statusFilter !== 'all') {
-      filtered = filtered.filter(item => item.status_ekonomi === statusFilter);
-    }
-
-    // Simulate loading untuk animasi
-    setTimeout(() => {
-      setFilteredData(filtered);
-      setIsFiltering(false);
-
-      // Show toast notification
-      const activeFilters = [];
-      if (searchTerm) activeFilters.push(`pencarian: "${searchTerm}"`);
-      if (statusFilter !== 'all') activeFilters.push(`status: ${formatStatusEkonomi(statusFilter)}`);
-
-      if (activeFilters.length > 0) {
-        toast({
-          title: "Filter Diterapkan",
-          description: `Menampilkan ${filtered.length} hasil dengan filter: ${activeFilters.join(', ')}`,
-          variant: "default",
-        });
-      }
-    }, 300);
+    router.get(route('admin.keluarga.index'), filterParams, {
+      preserveState: true,
+      preserveScroll: true,
+      onFinish: () => setIsFiltering(false)
+    });
   };
 
   // Clear all filters
   const clearFilters = () => {
     setSearchTerm('');
     setStatusFilter('all');
-    setFilteredData(keluarga?.data || []);
+    setTahunBantuanFilter(safeTahunAktif.toString());
+    setStatusBantuanFilter('all');
+
+    router.get(route('admin.keluarga.index'), {}, {
+      preserveState: true,
+      preserveScroll: true
+    });
 
     toast({
       title: "Filter Dibersihkan",
@@ -231,10 +286,10 @@ export default function Index({ auth, keluarga, filters = {}, stats }: IndexProp
     });
   };
 
-  // Apply filters when any filter changes
-  useEffect(() => {
+  // Apply filters when filter button is clicked
+  const handleFilterClick = () => {
     applyFilters();
-  }, [searchTerm, statusFilter, keluarga?.data]);
+  };
 
   // Handle delete
   const handleDeleteClick = (item: Keluarga) => {
@@ -248,7 +303,7 @@ export default function Index({ auth, keluarga, filters = {}, stats }: IndexProp
     setIsDeleting(true);
 
     try {
-      await router.delete(route('keluarga.destroy', selectedKeluarga.id), {
+      await router.delete(route('admin.keluarga.destroy', selectedKeluarga.id), {
         preserveScroll: true,
         onStart: () => {
           toast({
@@ -258,15 +313,11 @@ export default function Index({ auth, keluarga, filters = {}, stats }: IndexProp
           });
         },
         onSuccess: () => {
-          // Update filtered data
-          setFilteredData(prev => prev.filter(item => item.id !== selectedKeluarga.id));
-
           toast({
             title: "Data Berhasil Dihapus! 🗑️",
             description: `Data keluarga ${selectedKeluarga.nama_kepala_keluarga} telah berhasil dihapus.`,
             variant: "default",
           });
-
           handleDeleteCancel();
         },
         onError: (errors) => {
@@ -299,7 +350,7 @@ export default function Index({ auth, keluarga, filters = {}, stats }: IndexProp
   };
 
   // Early return jika data tidak tersedia
-  if (!keluarga || !keluarga.data || !keluarga.meta) {
+  if (!safeKeluarga || !safeKeluarga.data || !safeKeluarga.meta) {
     return (
       <AuthenticatedLayout user={auth.user} breadcrumbs={breadcrumbs}>
         <Head title="Data Keluarga" />
@@ -339,7 +390,9 @@ export default function Index({ auth, keluarga, filters = {}, stats }: IndexProp
     const statusMap: { [key: string]: string } = {
       'sangat_miskin': 'Sangat Miskin',
       'miskin': 'Miskin',
-      'rentan_miskin': 'Rentan Miskin'
+      'rentan_miskin': 'Rentan Miskin',
+      'kurang_mampu': 'Kurang Mampu',
+      'mampu': 'Mampu'
     };
     return statusMap[status] || status;
   };
@@ -349,11 +402,38 @@ export default function Index({ auth, keluarga, filters = {}, stats }: IndexProp
       case 'sangat_miskin':
         return 'bg-red-100 text-red-800 border border-red-200';
       case 'miskin':
-        return 'bg-amber-100 text-amber-800 border border-amber-200';
+        return 'bg-red-100 text-red-800 border border-red-200';
       case 'rentan_miskin':
-        return 'bg-cyan-100 text-cyan-800 border border-cyan-200';
+        return 'bg-amber-100 text-amber-800 border border-amber-200';
+      case 'kurang_mampu':
+        return 'bg-yellow-100 text-yellow-800 border border-yellow-200';
+      case 'mampu':
+        return 'bg-green-100 text-green-800 border border-green-200';
       default:
         return 'bg-gray-100 text-gray-800 border border-gray-200';
+    }
+  };
+
+  // Fungsi untuk status bantuan
+  const getStatusBantuanColor = (status?: string | null) => {
+    switch (status) {
+      case 'sudah_terima':
+        return 'bg-green-100 text-green-800 border border-green-200';
+      case 'belum_terima':
+        return 'bg-red-100 text-red-800 border border-red-200';
+      default:
+        return 'bg-gray-100 text-gray-800 border border-gray-200';
+    }
+  };
+
+  const formatStatusBantuan = (status?: string | null) => {
+    switch (status) {
+      case 'sudah_terima':
+        return 'Sudah Terima';
+      case 'belum_terima':
+        return 'Belum Terima';
+      default:
+        return 'Tidak Diketahui';
     }
   };
 
@@ -401,25 +481,19 @@ export default function Index({ auth, keluarga, filters = {}, stats }: IndexProp
     return hasLatLng || hasLokasi;
   };
 
-  // Safe statistics calculation
-  const getStatusStats = () => {
-    if (stats) return stats;
-
-    const safeData = filteredData || [];
-    return {
-      total: safeData.length,
-      sangat_miskin: safeData.filter(k => k?.status_ekonomi === 'sangat_miskin').length,
-      miskin: safeData.filter(k => k?.status_ekonomi === 'miskin').length,
-      rentan_miskin: safeData.filter(k => k?.status_ekonomi === 'rentan_miskin').length,
-    };
-  };
-
-  const statsData = getStatusStats();
-  const hasActiveFilters = searchTerm || statusFilter !== 'all';
+  const hasActiveFilters = searchTerm || statusFilter !== 'all' || statusBantuanFilter !== 'all' || tahunBantuanFilter !== safeTahunAktif.toString();
 
   return (
     <AuthenticatedLayout user={auth.user} breadcrumbs={breadcrumbs}>
-      <Head title="Data Keluarga" />
+      <Head title="Data Keluarga - Program Keluarga Harapan" />
+
+      {/* Error Alert */}
+      {error && (
+        <Alert variant="destructive" className="mb-6">
+          <AlertTriangle className="h-4 w-4" />
+          <AlertDescription>{error}</AlertDescription>
+        </Alert>
+      )}
 
       <motion.div
         className="space-y-8"
@@ -429,33 +503,56 @@ export default function Index({ auth, keluarga, filters = {}, stats }: IndexProp
       >
         {/* Header dengan animasi wave */}
         <motion.div
-          className="flex items-center space-x-4 mb-8"
+          className="flex items-center justify-between mb-8"
           variants={itemVariants}
         >
-          <motion.div
-            className="relative"
-            variants={waveVariants}
-            animate="animate"
-          >
-            <div className="w-3 h-10 bg-gradient-to-b from-cyan-400 via-teal-500 to-blue-600 rounded-full shadow-lg"></div>
-            <div className="absolute -top-1 -left-1 w-5 h-12 bg-gradient-to-b from-cyan-300/30 via-teal-400/30 to-blue-500/30 rounded-full blur-sm"></div>
-          </motion.div>
-          <div className="flex items-center space-x-3">
-            <Home className="w-8 h-8 text-teal-600" />
-            <h1 className="font-semibold text-3xl text-slate-800 tracking-wide">Data Keluarga</h1>
+          <div className="flex items-center space-x-4">
+            <motion.div
+              className="relative"
+              variants={waveVariants}
+              animate="animate"
+            >
+              <div className="w-3 h-10 bg-gradient-to-b from-cyan-400 via-teal-500 to-blue-600 rounded-full shadow-lg"></div>
+              <div className="absolute -top-1 -left-1 w-5 h-12 bg-gradient-to-b from-cyan-300/30 via-teal-400/30 to-blue-500/30 rounded-full blur-sm"></div>
+            </motion.div>
+            <div className="flex items-center space-x-3">
+              <Home className="w-8 h-8 text-teal-600" />
+              <div>
+                <h1 className="font-semibold text-3xl text-slate-800 tracking-wide">Data Keluarga PKH</h1>
+                <p className="text-slate-600 text-sm">Program Keluarga Harapan - Tahun {tahunBantuanFilter}</p>
+              </div>
+            </div>
+          </div>
+          
+          {/* Quick Actions */}
+          <div className="flex gap-3">
+            <Button asChild variant="outline" className="border-cyan-200 text-cyan-700 hover:bg-cyan-50">
+              <Link href={route('admin.bantuan.belum-menerima', { tahun: tahunBantuanFilter })}>
+                <UserX className="mr-2 h-4 w-4" />
+                KK Belum Terima
+              </Link>
+            </Button>
+            <Button asChild variant="outline" className="border-teal-200 text-teal-700 hover:bg-teal-50">
+              <Link href={route('admin.bantuan.peta', { tahun: tahunBantuanFilter })}>
+                <Map className="mr-2 h-4 w-4" />
+                Lihat Peta
+              </Link>
+            </Button>
           </div>
         </motion.div>
 
-        {/* Statistics Cards */}
+        {/* Enhanced Statistics Cards untuk PKH */}
         <motion.div
-          className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6"
+          className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 xl:grid-cols-6 gap-6"
           variants={itemVariants}
         >
           {[
-            { label: 'Total Keluarga', value: statsData.total, icon: Users, color: 'font-semibold text-cyan-600', bg: 'bg-cyan-50' },
-            { label: 'Sangat Miskin', value: statsData.sangat_miskin, icon: AlertTriangle, color: 'font-semibold text-red-600', bg: 'bg-red-50' },
-            { label: 'Miskin', value: statsData.miskin, icon: TrendingDown, color: 'font-semibold text-amber-600', bg: 'bg-amber-50' },
-            { label: 'Rentan Miskin', value: statsData.rentan_miskin, icon: CheckCircle, color: 'font-semibold text-cyan-600', bg: 'bg-cyan-50' }
+            { label: 'Total Keluarga', value: safeStats.total, icon: Users, color: 'font-semibold text-cyan-600', bg: 'bg-cyan-50' },
+            { label: 'Layak Bantuan', value: safeStats.layak_bantuan, icon: Target, color: 'font-semibold text-blue-600', bg: 'bg-blue-50' },
+            { label: 'Sudah Terima', value: safeStats.sudah_terima_bantuan, icon: UserCheck, color: 'font-semibold text-green-600', bg: 'bg-green-50' },
+            { label: 'Belum Terima', value: safeStats.belum_terima_bantuan, icon: UserX, color: 'font-semibold text-red-600', bg: 'bg-red-50' },
+            { label: 'Sangat Miskin', value: safeStats.sangat_miskin, icon: AlertTriangle, color: 'font-semibold text-red-600', bg: 'bg-red-50' },
+            { label: 'Rentan Miskin', value: safeStats.rentan_miskin, icon: CheckCircle, color: 'font-semibold text-amber-600', bg: 'bg-amber-50' }
           ].map((stat, index) => (
             <motion.div
               key={stat.label}
@@ -467,26 +564,26 @@ export default function Index({ auth, keluarga, filters = {}, stats }: IndexProp
               whileTap={{ scale: 0.98 }}
             >
               <Card className="border-0 shadow-lg bg-white/80 backdrop-blur-sm hover:shadow-xl transition-all duration-300">
-                <CardContent className="p-6">
+                <CardContent className="p-4">
                   <div className="flex items-center justify-between">
                     <div>
-                      <p className="text-sm font-medium text-slate-600 mb-1">{stat.label}</p>
+                      <p className="text-xs font-medium text-slate-600 mb-1">{stat.label}</p>
                       <motion.p
-                        className={`text-3xl font-light ${stat.color}`}
+                        className={`text-2xl font-light ${stat.color}`}
                         key={stat.value}
                         initial={{ scale: 0.8, opacity: 0 }}
                         animate={{ scale: 1, opacity: 1 }}
                         transition={{ type: "spring", stiffness: 200 }}
                       >
-                        {stat.value.toLocaleString()}
+                        {stat.value.toLocaleString('id-ID')}
                       </motion.p>
                     </div>
                     <motion.div
-                      className={`w-12 h-12 ${stat.bg} rounded-xl flex items-center justify-center`}
+                      className={`w-10 h-10 ${stat.bg} rounded-xl flex items-center justify-center`}
                       whileHover={{ rotate: 10 }}
                       transition={{ type: "spring", stiffness: 300 }}
                     >
-                      <stat.icon className={`w-6 h-6 ${stat.color}`} />
+                      <stat.icon className={`w-5 h-5 ${stat.color}`} />
                     </motion.div>
                   </div>
                 </CardContent>
@@ -504,10 +601,10 @@ export default function Index({ auth, keluarga, filters = {}, stats }: IndexProp
                 <div>
                   <CardTitle className="text-xl font-medium text-slate-800 flex items-center space-x-2">
                     <Waves className="w-5 h-5 text-teal-600" />
-                    <span>Daftar Keluarga</span>
+                    <span>Daftar Keluarga Penerima PKH</span>
                   </CardTitle>
                   <CardDescription className="mt-2">
-                    Menampilkan {keluarga.meta?.from || 0} - {keluarga.meta?.to || 0} dari {keluarga.meta?.total || 0} keluarga terdaftar
+                    Menampilkan {safeKeluarga.meta?.from || 0} - {safeKeluarga.meta?.to || 0} dari {safeKeluarga.meta?.total || 0} keluarga terdaftar
                   </CardDescription>
                 </div>
 
@@ -527,9 +624,9 @@ export default function Index({ auth, keluarga, filters = {}, stats }: IndexProp
                 </motion.div>
               </div>
 
-              {/* Filters */}
+              {/* Enhanced Filters untuk PKH */}
               <div className="mt-6 space-y-4">
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+                <div className="grid grid-cols-1 lg:grid-cols-5 gap-4">
                   <motion.div
                     className="relative"
                     initial={{ opacity: 0, x: -20 }}
@@ -552,18 +649,79 @@ export default function Index({ auth, keluarga, filters = {}, stats }: IndexProp
                   >
                     <Select value={statusFilter} onValueChange={setStatusFilter}>
                       <SelectTrigger className="border-slate-200 focus:border-cyan-500 focus:ring-cyan-500/20 h-10">
-                        <SelectValue placeholder="Filter Status" />
+                        <SelectValue placeholder="Status Ekonomi" />
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="all">Semua Status</SelectItem>
                         <SelectItem value="sangat_miskin">Sangat Miskin</SelectItem>
                         <SelectItem value="miskin">Miskin</SelectItem>
                         <SelectItem value="rentan_miskin">Rentan Miskin</SelectItem>
+                        <SelectItem value="kurang_mampu">Kurang Mampu</SelectItem>
+                        <SelectItem value="mampu">Mampu</SelectItem>
                       </SelectContent>
                     </Select>
                   </motion.div>
 
-                  <div></div>
+                  <motion.div
+                    initial={{ opacity: 0, x: -20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: 0.4 }}
+                  >
+                    <Select value={tahunBantuanFilter} onValueChange={setTahunBantuanFilter}>
+                      <SelectTrigger className="border-slate-200 focus:border-cyan-500 focus:ring-cyan-500/20 h-10">
+                        <Calendar className="h-4 w-4 mr-2" />
+                        <SelectValue placeholder="Tahun Bantuan" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {safeTahunTersedia.length > 0 ? safeTahunTersedia.map(tahun => (
+                          <SelectItem key={tahun} value={tahun.toString()}>
+                            {tahun} {tahun === safeTahunAktif && '(Aktif)'}
+                          </SelectItem>
+                        )) : (
+                          <SelectItem value={currentYear.toString()}>
+                            {currentYear} (Default)
+                          </SelectItem>
+                        )}
+                      </SelectContent>
+                    </Select>
+                  </motion.div>
+
+                  <motion.div
+                    initial={{ opacity: 0, x: -20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: 0.5 }}
+                  >
+                    <Select value={statusBantuanFilter} onValueChange={setStatusBantuanFilter}>
+                      <SelectTrigger className="border-slate-200 focus:border-cyan-500 focus:ring-cyan-500/20 h-10">
+                        <HandHeart className="h-4 w-4 mr-2" />
+                        <SelectValue placeholder="Status Bantuan" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">Semua Status</SelectItem>
+                        <SelectItem value="sudah_terima">Sudah Terima</SelectItem>
+                        <SelectItem value="belum_terima">Belum Terima</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </motion.div>
+
+                  <motion.div
+                    initial={{ opacity: 0, x: -20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: 0.6 }}
+                  >
+                    <Button 
+                      onClick={handleFilterClick}
+                      className="w-full bg-gradient-to-r from-cyan-500 to-teal-500 hover:from-cyan-600 hover:to-teal-600 text-white h-10"
+                      disabled={isFiltering}
+                    >
+                      {isFiltering ? (
+                        <Clock className="w-4 h-4 mr-2 animate-spin" />
+                      ) : (
+                        <Filter className="w-4 h-4 mr-2" />
+                      )}
+                      Filter
+                    </Button>
+                  </motion.div>
                 </div>
 
                 {/* Active Filters Display */}
@@ -589,6 +747,14 @@ export default function Index({ auth, keluarga, filters = {}, stats }: IndexProp
                             {formatStatusEkonomi(statusFilter)}
                           </Badge>
                         )}
+                        {statusBantuanFilter !== 'all' && (
+                          <Badge variant="secondary" className="bg-cyan-100 text-cyan-800">
+                            {formatStatusBantuan(statusBantuanFilter)}
+                          </Badge>
+                        )}
+                        <Badge variant="secondary" className="bg-cyan-100 text-cyan-800">
+                          Tahun: {tahunBantuanFilter}
+                        </Badge>
                       </div>
                       <motion.button
                         onClick={clearFilters}
@@ -604,7 +770,7 @@ export default function Index({ auth, keluarga, filters = {}, stats }: IndexProp
               </div>
             </CardHeader>
 
-            {/* Table */}
+            {/* Enhanced Table untuk PKH */}
             <CardContent className="p-0">
               <div className="overflow-x-auto">
                 <table className="w-full">
@@ -614,6 +780,7 @@ export default function Index({ auth, keluarga, filters = {}, stats }: IndexProp
                       <th className="px-6 py-4 text-left text-sm font-semibold text-slate-700">Kepala Keluarga</th>
                       <th className="px-6 py-4 text-left text-sm font-semibold text-slate-700">Alamat</th>
                       <th className="px-6 py-4 text-left text-sm font-semibold text-slate-700">Status Ekonomi</th>
+                      <th className="px-6 py-4 text-left text-sm font-semibold text-slate-700">Status Bantuan</th>
                       <th className="px-6 py-4 text-left text-sm font-semibold text-slate-700">Koordinat</th>
                       <th className="px-6 py-4 text-center text-sm font-semibold text-slate-700">Aksi</th>
                     </tr>
@@ -626,15 +793,15 @@ export default function Index({ auth, keluarga, filters = {}, stats }: IndexProp
                           animate={{ opacity: 1 }}
                           exit={{ opacity: 0 }}
                         >
-                          <td colSpan={6} className="text-center py-16">
+                          <td colSpan={7} className="text-center py-16">
                             <div className="flex flex-col items-center justify-center space-y-4">
                               <div className="w-8 h-8 border-4 border-cyan-200 border-t-cyan-500 rounded-full animate-spin"></div>
                               <p className="text-slate-500 font-medium">Memfilter data...</p>
                             </div>
                           </td>
                         </motion.tr>
-                      ) : filteredData.length > 0 ? (
-                        filteredData.map((item, index) => (
+                      ) : safeKeluarga.data.length > 0 ? (
+                        safeKeluarga.data.map((item, index) => (
                           <motion.tr
                             key={item.id}
                             className="border-b border-slate-100 hover:bg-gradient-to-r hover:from-cyan-50/30 hover:to-teal-50/30 transition-all duration-300"
@@ -673,6 +840,19 @@ export default function Index({ auth, keluarga, filters = {}, stats }: IndexProp
                               <Badge variant="secondary" className={`text-xs ${getStatusColor(item.status_ekonomi)}`}>
                                 {formatStatusEkonomi(item.status_ekonomi)}
                               </Badge>
+                            </td>
+                            <td className="px-6 py-4">
+                              <div className="space-y-1">
+                                <Badge variant="secondary" className={`text-xs ${getStatusBantuanColor(item.status_bantuan)}`}>
+                                  {formatStatusBantuan(item.status_bantuan)}
+                                </Badge>
+                                {item.status_bantuan === 'sudah_terima' && item.nominal_bantuan && (
+                                  <div className="text-xs text-slate-600 flex items-center">
+                                    <DollarSign className="w-3 h-3 mr-1" />
+                                    Rp {item.nominal_bantuan.toLocaleString('id-ID')}/bulan
+                                  </div>
+                                )}
+                              </div>
                             </td>
                             <td className="px-6 py-4">
                               <div className="flex items-center space-x-2">
@@ -728,7 +908,7 @@ export default function Index({ auth, keluarga, filters = {}, stats }: IndexProp
                           animate={{ opacity: 1 }}
                           exit={{ opacity: 0 }}
                         >
-                          <td colSpan={6} className="text-center py-16">
+                          <td colSpan={7} className="text-center py-16">
                             <motion.div
                               className="flex flex-col items-center justify-center space-y-4"
                               initial={{ scale: 0.9, opacity: 0 }}
@@ -740,11 +920,11 @@ export default function Index({ auth, keluarga, filters = {}, stats }: IndexProp
                                 whileHover={{ scale: 1.1, rotate: 5 }}
                                 transition={{ type: "spring", stiffness: 300 }}
                               >
-                                <Home className="w-10 h-10 text-cyan-400" />
+                                <HandHeart className="w-10 h-10 text-cyan-400" />
                               </motion.div>
                               <div className="text-center">
                                 <p className="text-slate-500 font-medium text-lg">
-                                  {hasActiveFilters ? 'Tidak ada data yang sesuai dengan filter' : 'Belum ada data keluarga'}
+                                  {hasActiveFilters ? 'Tidak ada data yang sesuai dengan filter' : 'Belum ada data keluarga PKH'}
                                 </p>
                                 <p className="text-slate-400 text-sm mt-1">
                                   {hasActiveFilters ? 'Coba ubah kriteria pencarian Anda' : 'Klik tombol "Tambah Keluarga" untuk menambahkan data baru'}
@@ -761,15 +941,15 @@ export default function Index({ auth, keluarga, filters = {}, stats }: IndexProp
             </CardContent>
 
             {/* Pagination */}
-            {filteredData.length > 0 && keluarga.links && (
+            {safeKeluarga.data.length > 0 && safeKeluarga.links && (
               <div className="px-6 py-4 bg-gradient-to-r from-slate-50/50 to-cyan-50/50 border-t border-gray-100/50">
                 <div className="flex items-center justify-between">
                   <div className="text-sm text-slate-600">
-                    Menampilkan {filteredData.length} dari {keluarga.meta?.total || 0} keluarga
+                    Menampilkan {safeKeluarga.meta?.from || 0} - {safeKeluarga.meta?.to || 0} dari {safeKeluarga.meta?.total || 0} keluarga
                     {hasActiveFilters && <span className="text-cyan-600 font-medium"> (difilter)</span>}
                   </div>
                   <nav className="flex items-center space-x-2">
-                    {keluarga.links.map((link, i) => {
+                    {safeKeluarga.links.map((link, i) => {
                       if (link.label.includes('Previous')) {
                         return (
                           <motion.div key={i} whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
@@ -822,7 +1002,7 @@ export default function Index({ auth, keluarga, filters = {}, stats }: IndexProp
         onClose={handleDeleteCancel}
         onConfirm={handleDeleteConfirm}
         title="Hapus Data Keluarga"
-        description="Apakah Anda yakin ingin menghapus data keluarga ini? Tindakan ini tidak dapat dibatalkan."
+        description="Apakah Anda yakin ingin menghapus data keluarga ini? Tindakan ini tidak dapat dibatalkan dan akan mempengaruhi data bantuan terkait."
         itemName={selectedKeluarga?.nama_kepala_keluarga}
         isDeleting={isDeleting}
       />

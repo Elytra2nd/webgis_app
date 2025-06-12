@@ -1525,7 +1525,7 @@ export default function LandingPage({ stats, featured_regions }: LandingPageProp
       <ul className="space-y-2 text-slate-400">
         <li>Email: info@sikeluarga.id</li>
         <li>Telepon: (021) 1234-5678</li>
-        <li>Alamat: Jakarta, Indonesia</li>
+        <li>Alamat: Pontianak, Indonesia</li>
       </ul>
     </div>
   </div>

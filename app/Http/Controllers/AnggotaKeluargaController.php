@@ -36,7 +36,7 @@ class AnggotaKeluargaController extends Controller
                 ]
             ]);
 
-        return Inertia::render('AnggotaKeluarga/Index', [
+        return Inertia::render('Admin/AnggotaKeluarga/Index', [
             'anggotaKeluarga' => $anggotaKeluarga
         ]);
     }
@@ -49,7 +49,7 @@ class AnggotaKeluargaController extends Controller
         $keluarga = Keluarga::select('id', 'no_kk', 'nama_kepala_keluarga')->get();
         $selectedKeluargaId = $request->get('keluarga_id');
 
-        return Inertia::render('AnggotaKeluarga/Create', [
+        return Inertia::render('Admin/AnggotaKeluarga/Create', [
             'keluarga' => $keluarga,
             'selectedKeluargaId' => $selectedKeluargaId
         ]);
@@ -88,7 +88,7 @@ class AnggotaKeluargaController extends Controller
         // Load relasi keluarga
         $anggotaKeluarga->load('keluarga');
 
-        return Inertia::render('AnggotaKeluarga/Show', [
+        return Inertia::render('Admin/AnggotaKeluarga/Show', [
             'anggotaKeluarga' => $anggotaKeluarga
         ]);
     }
@@ -104,7 +104,7 @@ class AnggotaKeluargaController extends Controller
         // Ambil semua data keluarga untuk dropdown
         $keluarga = Keluarga::select('id', 'no_kk', 'nama_kepala_keluarga')->get();
 
-        return Inertia::render('AnggotaKeluarga/Edit', [
+        return Inertia::render('Admin/AnggotaKeluarga/Edit', [
             'anggotaKeluarga' => $anggotaKeluarga, // Perbaikan: ubah dari 'anggota' ke 'anggotaKeluarga'
             'keluarga' => $keluarga
         ]);
