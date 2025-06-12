@@ -12,7 +12,7 @@ use App\Http\Controllers\AnggotaKeluargaController;
 use App\Http\Controllers\BantuanController;
 use App\Http\Controllers\KeluargaController as AdminKeluargaController;
 use App\Http\Controllers\Public\KeluargaController as PublicKeluargaController;
-use App\Http\Controllers\Public\MapController as PublicMapController; // Controller baru yang Anda buat
+use App\Http\Controllers\Public\MapController as PublicMapController;
 
 /*
 |--------------------------------------------------------------------------
@@ -26,6 +26,10 @@ use App\Http\Controllers\Public\MapController as PublicMapController; // Control
 
 // Landing page route
 Route::get('/', [LandingPageController::class, 'index'])->name('landing');
+
+// TAMBAHAN BARU: API untuk landing page stats real-time
+Route::get('/api/landing/stats', [LandingPageController::class, 'getStats'])->name('api.landing.stats');
+Route::get('/api/landing/regions', [LandingPageController::class, 'getFeaturedRegions'])->name('api.landing.regions');
 
 // Public routes untuk Data Keluarga PKH
 Route::get('/keluarga', [PublicKeluargaController::class, 'index'])->name('keluarga.index');
@@ -230,6 +234,9 @@ Route::middleware('auth')->group(function () {
         Route::get('/wilayah/kota/{provinsi}', [AdminKeluargaController::class, 'getKota'])->name('api.wilayah.kota');
         Route::get('/wilayah/kecamatan/{kota}', [AdminKeluargaController::class, 'getKecamatan'])->name('api.wilayah.kecamatan');
         Route::get('/wilayah/kelurahan/{kecamatan}', [AdminKeluargaController::class, 'getKelurahan'])->name('api.wilayah.kelurahan');
+        
+        // TAMBAHAN BARU: Clear cache untuk admin (untuk landing page stats)
+        Route::post('/landing/clear-cache', [LandingPageController::class, 'clearCache'])->name('api.landing.clear-cache');
     });
 
     // Rute khusus untuk monitoring PKH - sesuai requirements monitoring Dinas Sosial
