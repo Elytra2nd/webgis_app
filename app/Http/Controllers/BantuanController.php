@@ -12,6 +12,7 @@ use Inertia\Inertia;
 use Inertia\Response;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Http\JsonResponse;
 use Carbon\Carbon;
@@ -72,6 +73,99 @@ class BantuanController extends Controller
                 'tahun_tersedia' => range(2020, now()->year + 1),
                 'error' => 'Terjadi kesalahan saat memuat data bantuan.'
             ]);
+        }
+    }
+
+    /**
+     * FIX: Tambahkan method show untuk menampilkan detail bantuan
+     */
+    public function show(Bantuan $bantuan): Response
+    {
+        try {
+            // Load relasi yang diperlukan untuk detail bantuan PKH
+            $bantuan->load([
+                'keluarga' => function($query) {
+                    $query->with(['anggota_keluarga']);
+                },
+                'distribusi' => function($query) {
+                    $query->orderBy('bulan');
+                }
+            ]);
+
+            // Hitung persentase distribusi
+            $totalDistribusi = $bantuan->distribusi->count();
+            $distribusiSelesai = $bantuan->distribusi->where('status', 'disalurkan')->count();
+            $persentaseDistribusi = $totalDistribusi > 0 ? ($distribusiSelesai / $totalDistribusi) * 100 : 0;
+
+            // Data tambahan untuk PKH
+            $statistikDistribusi = [
+                'total_bulan' => $totalDistribusi,
+                'sudah_disalurkan' => $distribusiSelesai,
+                'belum_disalurkan' => $bantuan->distribusi->where('status', 'belum_disalurkan')->count(),
+                'gagal' => $bantuan->distribusi->where('status', 'gagal')->count(),
+                'persentase' => round($persentaseDistribusi, 2),
+                'total_nominal_tahun' => $bantuan->nominal_per_bulan * 12,
+                'nominal_terdistribusi' => $bantuan->nominal_per_bulan * $distribusiSelesai
+            ];
+
+            return Inertia::render('Admin/Bantuan/Show', [
+                'bantuan' => $bantuan,
+                'statistik_distribusi' => $statistikDistribusi,
+                'title' => "Detail Bantuan PKH - {$bantuan->keluarga->nama_kepala_keluarga}"
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('Error in BantuanController@show: ' . $e->getMessage(), [
+                'bantuan_id' => $bantuan->id ?? 'unknown'
+            ]);
+            
+            return Inertia::render('Admin/Bantuan/Show', [
+                'error' => 'Terjadi kesalahan saat memuat detail bantuan.',
+                'bantuan' => null,
+                'statistik_distribusi' => null,
+                'title' => "Detail Bantuan PKH"
+            ]);
+        }
+    }
+
+    /**
+     * FIX: Tambahkan method edit untuk form edit bantuan
+     */
+    public function edit(Bantuan $bantuan): Response|RedirectResponse
+    {
+        try {
+            // Load data keluarga untuk konteks
+            $bantuan->load('keluarga');
+
+            // Data untuk form edit
+            $statusOptions = [
+                'ditetapkan' => 'Ditetapkan',
+                'aktif' => 'Aktif',
+                'selesai' => 'Selesai',
+                'dibatalkan' => 'Dibatalkan'
+            ];
+
+            // Validasi apakah bantuan masih bisa diedit
+            $canEdit = in_array($bantuan->status, ['ditetapkan', 'aktif']);
+            
+            if (!$canEdit) {
+                return redirect()->route('admin.bantuan.show', $bantuan)
+                    ->with('warning', 'Bantuan dengan status "' . $bantuan->status . '" tidak dapat diedit.');
+            }
+
+            return Inertia::render('Admin/Bantuan/Edit', [
+                'bantuan' => $bantuan,
+                'status_options' => $statusOptions,
+                'title' => "Edit Bantuan PKH - {$bantuan->keluarga->nama_kepala_keluarga}"
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('Error in BantuanController@edit: ' . $e->getMessage(), [
+                'bantuan_id' => $bantuan->id ?? 'unknown'
+            ]);
+            
+            return redirect()->route('admin.bantuan.index')
+                ->with('error', 'Terjadi kesalahan saat memuat form edit bantuan.');
         }
     }
 
@@ -173,16 +267,16 @@ class BantuanController extends Controller
                 ], 400);
             }
 
-        // Get families that already received assistance dengan error handling
+            // Get families that already received assistance
             $keluargaSudahTerima = collect();
             try {
                 $keluargaSudahTerima = Keluarga::with(['bantuan' => function($q) use ($tahun) {
                         $q->where('tahun_anggaran', $tahun)
-                        ->whereIn('status', ['ditetapkan', 'aktif']);
+                          ->whereIn('status', ['ditetapkan', 'aktif']);
                     }])
                     ->whereHas('bantuan', function($q) use ($tahun) {
                         $q->where('tahun_anggaran', $tahun)
-                        ->whereIn('status', ['ditetapkan', 'aktif']);
+                          ->whereIn('status', ['ditetapkan', 'aktif']);
                     })
                     ->whereNotNull('latitude')
                     ->whereNotNull('longitude')
@@ -207,11 +301,12 @@ class BantuanController extends Controller
                 $keluargaSudahTerima = collect();
             }
 
+            // Get families that haven't received assistance
             $keluargaBelumTerima = collect();
             try {
                 $keluargaBelumTerima = Keluarga::whereDoesntHave('bantuan', function($q) use ($tahun) {
                         $q->where('tahun_anggaran', $tahun)
-                        ->whereIn('status', ['ditetapkan', 'aktif']);
+                          ->whereIn('status', ['ditetapkan', 'aktif']);
                     })
                     ->whereIn('status_ekonomi', ['sangat_miskin', 'miskin', 'rentan_miskin', 'kurang_mampu'])
                     ->where('status_verifikasi', 'terverifikasi')
@@ -354,7 +449,7 @@ class BantuanController extends Controller
 
             $message = "Berhasil menetapkan bantuan untuk {$berhasil} keluarga.";
             if (count($gagal) > 0) {
-                $message .= " {count($gagal)} keluarga gagal (mungkin sudah menerima bantuan tahun ini).";
+                $message .= " " . count($gagal) . " keluarga gagal (mungkin sudah menerima bantuan tahun ini).";
             }
 
             return back()->with('success', $message);
@@ -370,43 +465,54 @@ class BantuanController extends Controller
     }
 
     /**
-     * Update bantuan status
+     * Update bantuan
      */
     public function update(Request $request, Bantuan $bantuan)
     {
         $validator = Validator::make($request->all(), [
             'status' => 'required|in:ditetapkan,aktif,selesai,dibatalkan',
+            'nominal_per_bulan' => 'required|numeric|min:0',
             'keterangan' => 'nullable|string|max:500'
+        ], [
+            'status.required' => 'Status bantuan wajib dipilih.',
+            'status.in' => 'Status bantuan tidak valid.',
+            'nominal_per_bulan.required' => 'Nominal bantuan per bulan wajib diisi.',
+            'nominal_per_bulan.numeric' => 'Nominal bantuan harus berupa angka.',
+            'nominal_per_bulan.min' => 'Nominal bantuan tidak boleh negatif.',
         ]);
 
         if ($validator->fails()) {
-            return back()->withErrors($validator);
+            return back()->withErrors($validator)->withInput();
         }
 
         try {
-            $oldStatus = $bantuan->status;
+            $oldData = $bantuan->toArray();
             
             $bantuan->update([
                 'status' => $request->status,
+                'nominal_per_bulan' => $request->nominal_per_bulan,
                 'keterangan' => $request->keterangan
             ]);
 
             // Log activity
             LogAktivitas::log(
-                'update_status_bantuan',
+                'update_bantuan',
                 'bantuan',
                 $bantuan->id,
-                ['status' => $oldStatus],
-                ['status' => $request->status],
-                "Update status bantuan dari {$oldStatus} ke {$request->status}"
+                $oldData,
+                $bantuan->fresh()->toArray(),
+                "Update bantuan untuk keluarga: {$bantuan->keluarga->nama_kepala_keluarga}"
             );
 
-            return back()->with('success', 'Status bantuan berhasil diperbarui.');
+            return redirect()->route('admin.bantuan.show', $bantuan)
+                ->with('success', 'Data bantuan berhasil diperbarui.');
 
         } catch (\Exception $e) {
             Log::error('Error updating bantuan: ' . $e->getMessage());
 
-            return back()->withErrors(['error' => 'Terjadi kesalahan saat memperbarui status bantuan.']);
+            return back()
+                ->withErrors(['error' => 'Terjadi kesalahan saat memperbarui data bantuan.'])
+                ->withInput();
         }
     }
 
@@ -418,6 +524,8 @@ class BantuanController extends Controller
         try {
             DB::beginTransaction();
 
+            $keluargaName = $bantuan->keluarga->nama_kepala_keluarga;
+
             // Log before deletion
             LogAktivitas::log(
                 'hapus_bantuan',
@@ -425,20 +533,26 @@ class BantuanController extends Controller
                 $bantuan->id,
                 $bantuan->toArray(),
                 null,
-                "Hapus bantuan untuk keluarga: {$bantuan->keluarga->nama_kepala_keluarga}"
+                "Hapus bantuan untuk keluarga: {$keluargaName}"
             );
 
+            // Hapus distribusi terkait terlebih dahulu
+            $bantuan->distribusi()->delete();
+            
+            // Hapus bantuan
             $bantuan->delete();
 
             DB::commit();
 
-            return back()->with('success', 'Data bantuan berhasil dihapus.');
+            return redirect()->route('admin.bantuan.index')
+                ->with('success', "Data bantuan untuk keluarga {$keluargaName} berhasil dihapus.");
 
         } catch (\Exception $e) {
             DB::rollBack();
             Log::error('Error deleting bantuan: ' . $e->getMessage());
 
-            return back()->withErrors(['error' => 'Terjadi kesalahan saat menghapus data bantuan.']);
+            return back()
+                ->withErrors(['error' => 'Terjadi kesalahan saat menghapus data bantuan.']);
         }
     }
 
@@ -466,7 +580,11 @@ class BantuanController extends Controller
                 $distribusi = DistribusiBantuan::find($distribusiId);
                 
                 if ($distribusi && $distribusi->status === 'belum_disalurkan') {
-                    $distribusi->salurkan($request->catatan);
+                    $distribusi->update([
+                        'status' => 'disalurkan',
+                        'tanggal_distribusi' => now(),
+                        'catatan' => $request->catatan
+                    ]);
                     
                     // Log activity
                     LogAktivitas::log(
@@ -475,7 +593,7 @@ class BantuanController extends Controller
                         $distribusi->id,
                         ['status' => 'belum_disalurkan'],
                         ['status' => 'disalurkan'],
-                        "Distribusi bantuan bulan {$distribusi->nama_bulan}"
+                        "Distribusi bantuan bulan {$distribusi->bulan}"
                     );
                     
                     $berhasil++;
@@ -501,12 +619,12 @@ class BantuanController extends Controller
     {
         try {
             return [
-                'total_penerima' => Bantuan::byTahun($tahun)->count(),
-                'aktif' => Bantuan::byTahun($tahun)->where('status', 'aktif')->count(),
-                'ditetapkan' => Bantuan::byTahun($tahun)->where('status', 'ditetapkan')->count(),
-                'selesai' => Bantuan::byTahun($tahun)->where('status', 'selesai')->count(),
-                'dibatalkan' => Bantuan::byTahun($tahun)->where('status', 'dibatalkan')->count(),
-                'total_nominal' => Bantuan::byTahun($tahun)->sum('nominal_per_bulan') * 12,
+                'total_penerima' => Bantuan::where('tahun_anggaran', $tahun)->count(),
+                'aktif' => Bantuan::where('tahun_anggaran', $tahun)->where('status', 'aktif')->count(),
+                'ditetapkan' => Bantuan::where('tahun_anggaran', $tahun)->where('status', 'ditetapkan')->count(),
+                'selesai' => Bantuan::where('tahun_anggaran', $tahun)->where('status', 'selesai')->count(),
+                'dibatalkan' => Bantuan::where('tahun_anggaran', $tahun)->where('status', 'dibatalkan')->count(),
+                'total_nominal' => Bantuan::where('tahun_anggaran', $tahun)->sum('nominal_per_bulan') * 12,
                 'distribusi_bulan_ini' => DistribusiBantuan::whereHas('bantuan', function ($q) use ($tahun) {
                     $q->where('tahun_anggaran', $tahun);
                 })->where('bulan', now()->month)

@@ -11,6 +11,7 @@ import { Badge } from '@/Components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/Components/ui/table';
 import { Alert, AlertDescription } from '@/Components/ui/alert';
 import { useToast } from '@/Hooks/use-toast';
+import DeleteConfirmationDialog from '@/Components/DeleteConfirmationDialog';
 import { Search, Filter, Users, HandHeart, Calendar, DollarSign, TrendingUp, AlertTriangle, CheckCircle, Eye, Edit, Trash2, Plus } from 'lucide-react';
 
 interface Bantuan {
@@ -72,7 +73,7 @@ interface Props {
 }
 
 export default function Index({ auth, bantuan, statistik, filters, tahun_tersedia = [], error }: Props) {
-    // FIX: Safe defaults untuk mencegah undefined errors
+    // Safe defaults untuk mencegah undefined errors
     const safeBantuan = bantuan || { 
         data: [], 
         links: [], 
@@ -106,16 +107,13 @@ export default function Index({ auth, bantuan, statistik, filters, tahun_tersedi
     const [tahun, setTahun] = useState((safeFilters.tahun || new Date().getFullYear()).toString());
     const [status, setStatus] = useState(safeFilters.status || 'all');
     
+    // Delete states
+    const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+    const [selectedBantuan, setSelectedBantuan] = useState<Bantuan | null>(null);
+    const [isDeleting, setIsDeleting] = useState(false);
+    
     const { toast } = useToast();
     const mainContainerRef = useRef(null);
-
-    // Debug untuk melihat struktur data
-    console.log('Bantuan Index props:', { 
-        bantuan, 
-        safeBantuan, 
-        meta: safeBantuan.meta,
-        from: safeBantuan.meta?.from 
-    });
 
     // Animasi GSAP
     useGSAP(() => {
@@ -145,6 +143,64 @@ export default function Index({ auth, bantuan, statistik, filters, tahun_tersedi
             preserveState: true,
             replace: true
         });
+    };
+
+    // Handle delete
+    const handleDeleteClick = (item: Bantuan) => {
+        setSelectedBantuan(item);
+        setDeleteDialogOpen(true);
+    };
+
+    const handleDeleteConfirm = async () => {
+        if (!selectedBantuan) return;
+
+        setIsDeleting(true);
+
+        try {
+            await router.delete(route('admin.bantuan.destroy', selectedBantuan.id), {
+                preserveScroll: true,
+                onStart: () => {
+                    toast({
+                        title: "Menghapus Data",
+                        description: "Sedang menghapus data bantuan...",
+                        variant: "default",
+                    });
+                },
+                onSuccess: () => {
+                    toast({
+                        title: "Data Berhasil Dihapus! 🗑️",
+                        description: `Data bantuan untuk keluarga ${selectedBantuan.keluarga.nama_kepala_keluarga} telah berhasil dihapus.`,
+                        variant: "default",
+                    });
+                    handleDeleteCancel();
+                },
+                onError: (errors) => {
+                    console.error('Delete error:', errors);
+                    toast({
+                        title: "Gagal Menghapus Data",
+                        description: "Terjadi kesalahan saat menghapus data. Silakan coba lagi.",
+                        variant: "destructive",
+                    });
+                },
+                onFinish: () => {
+                    setIsDeleting(false);
+                }
+            });
+        } catch (error) {
+            console.error('Delete error:', error);
+            toast({
+                title: "Gagal Menghapus Data",
+                description: "Terjadi kesalahan saat menghapus data. Silakan coba lagi.",
+                variant: "destructive",
+            });
+            setIsDeleting(false);
+        }
+    };
+
+    const handleDeleteCancel = () => {
+        setDeleteDialogOpen(false);
+        setSelectedBantuan(null);
+        setIsDeleting(false);
     };
 
     const getStatusBadgeClass = (status: string) => {
@@ -317,7 +373,7 @@ export default function Index({ auth, bantuan, statistik, filters, tahun_tersedi
                     </CardContent>
                 </Card>
 
-                {/* Tabel Data */}
+                {/* Tabel Data dengan Lebar Kolom yang Diperbaiki */}
                 <Card className="bg-white/80 backdrop-blur-sm border-slate-200/80 shadow-lg overflow-hidden">
                     <CardHeader className="bg-gradient-to-r from-slate-50 to-cyan-50 border-b border-slate-200">
                         <CardTitle>Daftar Penerima Bantuan PKH</CardTitle>
@@ -327,45 +383,53 @@ export default function Index({ auth, bantuan, statistik, filters, tahun_tersedi
                             <Table>
                                 <TableHeader>
                                     <TableRow className="bg-slate-50">
-                                        <TableHead>No. KK</TableHead>
-                                        <TableHead>Kepala Keluarga</TableHead>
-                                        <TableHead>Status Ekonomi</TableHead>
-                                        <TableHead>Nominal/Bulan</TableHead>
-                                        <TableHead>Status</TableHead>
-                                        <TableHead>Progress Distribusi</TableHead>
-                                        <TableHead className="text-center">Aksi</TableHead>
+                                        {/* FIX: Perbaiki lebar kolom untuk No. KK */}
+                                        <TableHead className="w-40 min-w-[160px]">No. KK</TableHead>
+                                        <TableHead className="min-w-[200px]">Kepala Keluarga</TableHead>
+                                        <TableHead className="w-32">Status Ekonomi</TableHead>
+                                        <TableHead className="w-36">Nominal/Bulan</TableHead>
+                                        <TableHead className="w-28">Status</TableHead>
+                                        <TableHead className="w-40">Progress Distribusi</TableHead>
+                                        <TableHead className="w-32 text-center">Aksi</TableHead>
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
                                     {safeBantuan.data.length > 0 ? safeBantuan.data.map((item) => (
                                         <TableRow key={item.id} className="table-row hover:bg-cyan-50/50 transition-colors">
-                                            <TableCell className="font-mono text-sm">
-                                                {item.keluarga?.no_kk || 'N/A'}
+                                            {/* FIX: Tampilkan No. KK dengan format yang tidak terpotong */}
+                                            <TableCell className="font-mono text-sm w-40 min-w-[160px]">
+                                                <div className="bg-slate-100 px-3 py-2 rounded-md border">
+                                                    <span className="text-slate-800 font-medium">
+                                                        {item.keluarga?.no_kk || 'N/A'}
+                                                    </span>
+                                                </div>
                                             </TableCell>
-                                            <TableCell>
+                                            <TableCell className="min-w-[200px]">
                                                 <div>
-                                                    <div className="font-medium">
+                                                    <div className="font-medium text-slate-900">
                                                         {item.keluarga?.nama_kepala_keluarga || 'N/A'}
                                                     </div>
-                                                    <div className="text-sm text-slate-500">
+                                                    <div className="text-sm text-slate-500 truncate max-w-[180px]" title={item.keluarga?.alamat}>
                                                         {item.keluarga?.alamat || 'Alamat tidak tersedia'}
                                                     </div>
                                                 </div>
                                             </TableCell>
-                                            <TableCell>
+                                            <TableCell className="w-32">
                                                 <Badge variant="outline" className="text-xs">
                                                     {item.keluarga?.status_ekonomi || 'N/A'}
                                                 </Badge>
                                             </TableCell>
-                                            <TableCell className="font-medium">
-                                                {formatCurrency(item.nominal_per_bulan)}
+                                            <TableCell className="font-medium w-36">
+                                                <span className="text-green-600 font-semibold">
+                                                    {formatCurrency(item.nominal_per_bulan)}
+                                                </span>
                                             </TableCell>
-                                            <TableCell>
+                                            <TableCell className="w-28">
                                                 <Badge variant="outline" className={getStatusBadgeClass(item.status)}>
                                                     {item.status}
                                                 </Badge>
                                             </TableCell>
-                                            <TableCell>
+                                            <TableCell className="w-40">
                                                 <div className="flex items-center space-x-2">
                                                     <div className="w-20 bg-gray-200 rounded-full h-2">
                                                         <div 
@@ -373,20 +437,43 @@ export default function Index({ auth, bantuan, statistik, filters, tahun_tersedi
                                                             style={{ width: `${Math.round(item.persentase_distribusi || 0)}%` }}
                                                         ></div>
                                                     </div>
-                                                    <span className="text-xs text-slate-600">
+                                                    <span className="text-xs text-slate-600 font-medium">
                                                         {Math.round(item.persentase_distribusi || 0)}%
                                                     </span>
                                                 </div>
                                             </TableCell>
-                                            <TableCell>
+                                            <TableCell className="w-32">
                                                 <div className="flex justify-center space-x-1">
-                                                    <Button size="sm" variant="outline" className="border-cyan-200 text-cyan-700 hover:bg-cyan-50">
-                                                        <Eye className="w-3 h-3" />
+                                                    {/* FIX: Implementasi CRUD dengan route yang benar */}
+                                                    <Button 
+                                                        asChild 
+                                                        size="sm" 
+                                                        variant="outline" 
+                                                        className="border-cyan-200 text-cyan-700 hover:bg-cyan-50"
+                                                        title="Lihat Detail"
+                                                    >
+                                                        <Link href={route('admin.bantuan.show', item.id)}>
+                                                            <Eye className="w-3 h-3" />
+                                                        </Link>
                                                     </Button>
-                                                    <Button size="sm" variant="outline" className="border-amber-200 text-amber-700 hover:bg-amber-50">
-                                                        <Edit className="w-3 h-3" />
+                                                    <Button 
+                                                        asChild 
+                                                        size="sm" 
+                                                        variant="outline" 
+                                                        className="border-amber-200 text-amber-700 hover:bg-amber-50"
+                                                        title="Edit Bantuan"
+                                                    >
+                                                        <Link href={route('admin.bantuan.edit', item.id)}>
+                                                            <Edit className="w-3 h-3" />
+                                                        </Link>
                                                     </Button>
-                                                    <Button size="sm" variant="outline" className="border-red-200 text-red-700 hover:bg-red-50">
+                                                    <Button
+                                                        size="sm"
+                                                        variant="outline"
+                                                        className="border-red-200 text-red-700 hover:bg-red-50"
+                                                        onClick={() => handleDeleteClick(item)}
+                                                        title="Hapus Bantuan"
+                                                    >
                                                         <Trash2 className="w-3 h-3" />
                                                     </Button>
                                                 </div>
@@ -409,7 +496,7 @@ export default function Index({ auth, bantuan, statistik, filters, tahun_tersedi
                     </CardContent>
                 </Card>
 
-                {/* FIX: Pagination dengan safe access */}
+                {/* Pagination dengan safe access */}
                 {safeBantuan.data.length > 0 && safeBantuan.links && (
                     <div className="flex items-center justify-between">
                         <div className="text-sm text-slate-600">
@@ -441,6 +528,17 @@ export default function Index({ auth, bantuan, statistik, filters, tahun_tersedi
                     </div>
                 )}
             </div>
+
+            {/* Delete Confirmation Dialog */}
+            <DeleteConfirmationDialog
+                isOpen={deleteDialogOpen}
+                onClose={handleDeleteCancel}
+                onConfirm={handleDeleteConfirm}
+                title="Hapus Data Bantuan PKH"
+                description="Apakah Anda yakin ingin menghapus data bantuan ini? Tindakan ini tidak dapat dibatalkan dan akan mempengaruhi data distribusi terkait."
+                itemName={selectedBantuan ? `${selectedBantuan.keluarga.nama_kepala_keluarga} (${selectedBantuan.keluarga.no_kk})` : ''}
+                isDeleting={isDeleting}
+            />
         </AuthenticatedLayout>
     );
 }
