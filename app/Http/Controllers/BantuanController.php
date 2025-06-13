@@ -41,13 +41,22 @@ class BantuanController extends Controller
             if ($search) {
                 $query->whereHas('keluarga', function ($q) use ($search) {
                     $q->where('no_kk', 'like', "%{$search}%")
-                      ->orWhere('nama_kepala_keluarga', 'like', "%{$search}%");
+                    ->orWhere('nama_kepala_keluarga', 'like', "%{$search}%");
                 });
             }
 
             $bantuan = $query->latest()
-                           ->paginate(15)
-                           ->withQueryString();
+                        ->paginate(15)
+                        ->withQueryString();
+
+            // FIX: Hitung persentase distribusi untuk setiap bantuan
+            $bantuan->getCollection()->transform(function ($item) {
+                $totalBulan = 12; // PKH diberikan 12 bulan per tahun
+                $distribusiSelesai = $item->distribusi->where('status', 'disalurkan')->count();
+                $item->persentase_distribusi = $totalBulan > 0 ?
+                    round(($distribusiSelesai / $totalBulan) * 100, 2) : 0;
+                return $item;
+            });
 
             // Enhanced statistics for PKH
             $statistik = $this->getBantuanStatistics($tahun);
@@ -118,7 +127,7 @@ class BantuanController extends Controller
             Log::error('Error in BantuanController@show: ' . $e->getMessage(), [
                 'bantuan_id' => $bantuan->id ?? 'unknown'
             ]);
-            
+
             return Inertia::render('Admin/Bantuan/Show', [
                 'error' => 'Terjadi kesalahan saat memuat detail bantuan.',
                 'bantuan' => null,
@@ -147,7 +156,7 @@ class BantuanController extends Controller
 
             // Validasi apakah bantuan masih bisa diedit
             $canEdit = in_array($bantuan->status, ['ditetapkan', 'aktif']);
-            
+
             if (!$canEdit) {
                 return redirect()->route('admin.bantuan.show', $bantuan)
                     ->with('warning', 'Bantuan dengan status "' . $bantuan->status . '" tidak dapat diedit.');
@@ -163,7 +172,7 @@ class BantuanController extends Controller
             Log::error('Error in BantuanController@edit: ' . $e->getMessage(), [
                 'bantuan_id' => $bantuan->id ?? 'unknown'
             ]);
-            
+
             return redirect()->route('admin.bantuan.index')
                 ->with('error', 'Terjadi kesalahan saat memuat form edit bantuan.');
         }
@@ -487,7 +496,7 @@ class BantuanController extends Controller
 
         try {
             $oldData = $bantuan->toArray();
-            
+
             $bantuan->update([
                 'status' => $request->status,
                 'nominal_per_bulan' => $request->nominal_per_bulan,
@@ -538,7 +547,7 @@ class BantuanController extends Controller
 
             // Hapus distribusi terkait terlebih dahulu
             $bantuan->distribusi()->delete();
-            
+
             // Hapus bantuan
             $bantuan->delete();
 
@@ -575,17 +584,17 @@ class BantuanController extends Controller
             DB::beginTransaction();
 
             $berhasil = 0;
-            
+
             foreach ($request->distribusi_ids as $distribusiId) {
                 $distribusi = DistribusiBantuan::find($distribusiId);
-                
+
                 if ($distribusi && $distribusi->status === 'belum_disalurkan') {
                     $distribusi->update([
                         'status' => 'disalurkan',
                         'tanggal_distribusi' => now(),
                         'catatan' => $request->catatan
                     ]);
-                    
+
                     // Log activity
                     LogAktivitas::log(
                         'distribusi_bantuan',
@@ -595,7 +604,7 @@ class BantuanController extends Controller
                         ['status' => 'disalurkan'],
                         "Distribusi bantuan bulan {$distribusi->bulan}"
                     );
-                    
+
                     $berhasil++;
                 }
             }

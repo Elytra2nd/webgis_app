@@ -71,9 +71,14 @@ class AnggotaKeluargaSeeder extends Seeder
 
     private function generateNIK($noKK, $urutan)
     {
-        // Ambil 12 digit pertama dari no KK dan tambah urutan
-        $baseNIK = substr($noKK, 0, 12);
-        return $baseNIK . str_pad($urutan, 4, '0', STR_PAD_LEFT);
+        // Ambil 6 digit pertama (kode wilayah) dari no KK
+        $kodeWilayah = substr($noKK, 0, 6);
+
+        // Ambil 8 digit terakhir dari no KK sebagai identifier keluarga
+        $idKeluarga = substr($noKK, -8);
+
+        // Gabungkan dengan urutan untuk membuat NIK unik
+        return $kodeWilayah . $idKeluarga . str_pad($urutan, 2, '0', STR_PAD_LEFT);
     }
 
     private function getGenderFromName($nama)
@@ -83,17 +88,17 @@ class AnggotaKeluargaSeeder extends Seeder
 
         foreach ($namaPria as $pria) {
             if (strpos($nama, $pria) !== false) {
-                return 'laki-laki';
+                return 'L'; // Ubah dari 'laki-laki' ke 'L'
             }
         }
 
         foreach ($namaWanita as $wanita) {
             if (strpos($nama, $wanita) !== false) {
-                return 'perempuan';
+                return 'P'; // Ubah dari 'perempuan' ke 'P'
             }
         }
 
-        return 'laki-laki'; // Default
+        return 'L'; // Default
     }
 
     private function getTempatlahir($kota)
@@ -159,29 +164,29 @@ class AnggotaKeluargaSeeder extends Seeder
     {
         switch ($hubungan) {
             case 'istri':
-                return 'perempuan';
+                return 'P'; // Ubah dari 'perempuan' ke 'P'
             case 'anak':
-                return rand(0, 1) ? 'laki-laki' : 'perempuan';
+                return rand(0, 1) ? 'L' : 'P'; // Ubah dari 'laki-laki'/'perempuan' ke 'L'/'P'
             default:
-                return rand(0, 1) ? 'laki-laki' : 'perempuan';
+                return rand(0, 1) ? 'L' : 'P'; // Ubah dari 'laki-laki'/'perempuan' ke 'L'/'P'
         }
     }
 
     private function generateNama($hubungan, $namaKepala)
     {
         $namaDepan = [
-            'laki-laki' => ['Ahmad', 'surya', 'ilham', 'Budi', 'Andi', 'Dedi', 'Eko', 'Fajar', 'Gilang', 'Hadi', 'Indra', 'Joko', 'Kurnia', 'Lukman', 'Maman', 'Nanda', 'Oki', 'Pandu', 'Qori', 'Rizki', 'Sandi', 'Toni', 'Udin', 'Vino', 'Wawan', 'Yanto', 'Zaki'],
-            'perempuan' => ['Ani', 'Budi', 'Citra', 'Dewi', 'Eka', 'Fitri', 'Gita', 'Hani', 'Indah', 'Jihan', 'Kartika', 'Lina', 'Maya', 'Nina', 'Ovi', 'Putri', 'Qira', 'Rina', 'Sari', 'Tina', 'Umi', 'Vera', 'Wati', 'Yuni', 'Zahra']
+            'L' => ['Ahmad', 'Surya', 'Ilham', 'Budi', 'Andi', 'Dedi', 'Eko', 'Fajar', 'Gilang', 'Hadi', 'Indra', 'Joko', 'Kurnia', 'Lukman', 'Maman', 'Nanda', 'Oki', 'Pandu', 'Qori', 'Rizki', 'Sandi', 'Toni', 'Udin', 'Vino', 'Wawan', 'Yanto', 'Zaki'],
+            'P' => ['Ani', 'Budi', 'Citra', 'Dewi', 'Eka', 'Fitri', 'Gita', 'Hani', 'Indah', 'Jihan', 'Kartika', 'Lina', 'Maya', 'Nina', 'Ovi', 'Putri', 'Qira', 'Rina', 'Sari', 'Tina', 'Umi', 'Vera', 'Wati', 'Yuni', 'Zahra']
         ];
 
-        $namaBelakang = ['Pratama', 'Sari', 'Wijaya', 'Utama', 'Permata', 'Cahaya', 'Indah', 'Jaya', 'Lestari', 'Mulia', 'Nusantara', 'Perdana', 'Rahayu', 'Santoso', 'Tama', 'Utomo', 'Wibowo', 'Yudha', 'Zahra', 'sijabat', 'siregar', 'simanjuntak', 'sinaga', 'sitorus', 'palupi', 'sihombing'];
+        $namaBelakang = ['Pratama', 'Sari', 'Wijaya', 'Utama', 'Permata', 'Cahaya', 'Indah', 'Jaya', 'Lestari', 'Mulia', 'Nusantara', 'Perdana', 'Rahayu', 'Santoso', 'Tama', 'Utomo', 'Wibowo', 'Yudha', 'Zahra', 'Sijabat', 'Siregar', 'Simanjuntak', 'Sinaga', 'Sitorus', 'Palupi', 'Sihombing'];
 
         if ($hubungan == 'istri') {
             // Ambil nama belakang dari kepala keluarga
             $namaKepalaParts = explode(' ', $namaKepala);
             $namaBelakangKepala = end($namaKepalaParts);
 
-            $namaDepanIstri = $namaDepan['perempuan'][array_rand($namaDepan['perempuan'])];
+            $namaDepanIstri = $namaDepan['P'][array_rand($namaDepan['P'])];
             return $namaDepanIstri . ' ' . $namaBelakangKepala;
         }
 
