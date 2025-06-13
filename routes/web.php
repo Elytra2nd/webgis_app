@@ -101,10 +101,10 @@ Route::middleware('auth')->group(function () {
         Route::prefix('bantuan')->name('bantuan.')->group(function () {
             // Daftar semua bantuan PKH
             Route::get('/', [BantuanController::class, 'index'])->name('index');
-            
+
             // KK yang belum menerima bantuan (requirement utama PKH)
             Route::get('/belum-menerima', [BantuanController::class, 'belumMenerima'])->name('belum-menerima');
-            
+
             // Peta sebaran bantuan PKH (requirement utama) - marker berbeda untuk sudah/belum terima
             Route::get('/peta', function () {
                 return Inertia::render('Admin/Bantuan/Peta', [
@@ -112,30 +112,30 @@ Route::middleware('auth')->group(function () {
                     'tahun_tersedia' => range(2020, now()->year + 1)
                 ]);
             })->name('peta');
-            
+
             // API untuk data peta bantuan - sesuai requirements sebaran spasial
             Route::get('/peta-data', [BantuanController::class, 'peta'])->name('peta.data');
-            
+
             // CRUD operations untuk bantuan
             Route::post('/', [BantuanController::class, 'store'])->name('store'); // Penetapan bantuan PKH
             Route::get('/{bantuan}', [BantuanController::class, 'show'])->name('show'); // Detail bantuan
             Route::get('/{bantuan}/edit', [BantuanController::class, 'edit'])->name('edit'); // Form edit
             Route::patch('/{bantuan}', [BantuanController::class, 'update'])->name('update'); // Update bantuan
             Route::delete('/{bantuan}', [BantuanController::class, 'destroy'])->name('destroy'); // Hapus bantuan
-            
+
             // Distribusi bantuan bulanan - sesuai requirements bantuan per bulan selama 1 tahun
             Route::post('/distribusi', [BantuanController::class, 'distribusi'])->name('distribusi');
             Route::get('/distribusi/{tahun}/{bulan}', [BantuanController::class, 'distribusiBulanan'])->name('distribusi.bulanan');
             Route::post('/distribusi/batch', [BantuanController::class, 'distribusiBatch'])->name('distribusi.batch');
-            
+
             // Laporan bantuan PKH
             Route::get('/laporan', [BantuanController::class, 'laporan'])->name('laporan');
             Route::post('/laporan/export', [BantuanController::class, 'exportLaporan'])->name('laporan.export');
             Route::get('/laporan/tahunan/{tahun}', [BantuanController::class, 'laporanTahunan'])->name('laporan.tahunan');
-            
+
             // Riwayat bantuan per KK
             Route::get('/riwayat/{keluarga}', [BantuanController::class, 'riwayatBantuan'])->name('riwayat');
-            
+
             // Validasi dan approval bantuan
             Route::post('/{bantuan}/approve', [BantuanController::class, 'approve'])->name('approve');
             Route::post('/{bantuan}/reject', [BantuanController::class, 'reject'])->name('reject');
@@ -196,39 +196,40 @@ Route::middleware('auth')->group(function () {
     Route::prefix('api')->group(function () {
         // API untuk data keluarga di peta - sesuai requirements data spasial point
         Route::get('/keluarga', [AdminKeluargaController::class, 'getForMap'])->name('api.keluarga.map');
+        Route::post('/keluarga', [AdminKeluargaController::class, 'storeFromMap'])->name('api.keluarga.map.store');
         Route::get('/keluarga/{tahun}', [AdminKeluargaController::class, 'getForMapByYear'])->name('api.keluarga.map.year');
-        
+
         // API untuk data bantuan di peta - sesuai requirements marker berbeda
         Route::get('/bantuan/peta', [BantuanController::class, 'peta'])->name('api.bantuan.peta');
         Route::get('/bantuan/peta/{tahun}', [BantuanController::class, 'petaByYear'])->name('api.bantuan.peta.year');
-        
+
         // API untuk statistik dashboard PKH
         Route::get('/dashboard', [DashboardController::class, 'apiData'])->name('api.dashboard');
         Route::get('/dashboard/realtime', [DashboardController::class, 'realtimeStats'])->name('api.dashboard.realtime');
         Route::get('/dashboard/chart-data', [DashboardController::class, 'chartData'])->name('api.dashboard.chart');
-        
+
         // API untuk data peta umum
         Route::get('/map-data/{keluargaId}', [MapController::class, 'getMapData'])->name('api.map.data');
         Route::post('/map-data', [MapController::class, 'saveMapData'])->name('api.map.save');
         Route::delete('/map-data/{keluargaId}', [MapController::class, 'deleteMapData'])->name('api.map.delete');
-        
+
         // API untuk statistik bantuan PKH - sesuai requirements monitoring
         Route::get('/bantuan/statistik/{tahun?}', [BantuanController::class, 'getStatistik'])->name('api.bantuan.statistik');
         Route::get('/bantuan/trend/{tahun?}', [BantuanController::class, 'getTrend'])->name('api.bantuan.trend');
         Route::get('/bantuan/sebaran/{tahun?}', [BantuanController::class, 'getSebaran'])->name('api.bantuan.sebaran');
-        
+
         // API untuk export data PKH
         Route::post('/bantuan/export', [BantuanController::class, 'exportData'])->name('api.bantuan.export');
         Route::post('/keluarga/export', [AdminKeluargaController::class, 'exportData'])->name('api.keluarga.export');
-        
+
         // API untuk validasi data PKH
         Route::post('/keluarga/validasi', [AdminKeluargaController::class, 'validasiData'])->name('api.keluarga.validasi');
         Route::post('/bantuan/validasi', [BantuanController::class, 'validasiData'])->name('api.bantuan.validasi');
-        
+
         // API untuk geocoding dan reverse geocoding
         Route::post('/geocode', [MapController::class, 'geocode'])->name('api.geocode');
         Route::post('/reverse-geocode', [MapController::class, 'reverseGeocode'])->name('api.reverse-geocode');
-        
+
         // API untuk wilayah administratif Kalimantan Barat
         Route::get('/wilayah/provinsi', [AdminKeluargaController::class, 'getProvinsi'])->name('api.wilayah.provinsi');
         Route::get('/wilayah/kota/{provinsi}', [AdminKeluargaController::class, 'getKota'])->name('api.wilayah.kota');
@@ -241,19 +242,19 @@ Route::middleware('auth')->group(function () {
         // Monitoring distribusi bantuan real-time
         Route::get('/distribusi', [BantuanController::class, 'monitoringDistribusi'])->name('distribusi');
         Route::get('/distribusi/{tahun}', [BantuanController::class, 'monitoringDistribusiTahun'])->name('distribusi.tahun');
-        
+
         // Monitoring penerima bantuan per wilayah - sesuai requirements sebaran geografis
         Route::get('/wilayah', [BantuanController::class, 'monitoringWilayah'])->name('wilayah');
         Route::get('/wilayah/{kota}', [BantuanController::class, 'monitoringWilayahDetail'])->name('wilayah.detail');
-        
+
         // Monitoring trend penerima bantuan - sesuai requirements analisis multi-tahun
         Route::get('/trend', [BantuanController::class, 'monitoringTrend'])->name('trend');
         Route::get('/trend/perbandingan', [BantuanController::class, 'monitoringPerbandingan'])->name('trend.perbandingan');
-        
+
         // Monitoring efektivitas program PKH
         Route::get('/efektivitas', [BantuanController::class, 'monitoringEfektivitas'])->name('efektivitas');
         Route::get('/coverage', [BantuanController::class, 'monitoringCoverage'])->name('coverage');
-        
+
         // Monitoring data quality dan completeness
         Route::get('/data-quality', [AdminKeluargaController::class, 'monitoringDataQuality'])->name('data-quality');
         Route::get('/koordinat-missing', [AdminKeluargaController::class, 'koordinatMissing'])->name('koordinat-missing');
@@ -264,11 +265,11 @@ Route::middleware('auth')->group(function () {
         // Import data dari sistem lain
         Route::post('/import/keluarga', [AdminKeluargaController::class, 'importKeluarga'])->name('import.keluarga');
         Route::post('/import/bantuan', [BantuanController::class, 'importBantuan'])->name('import.bantuan');
-        
+
         // Sinkronisasi dengan sistem pusat
         Route::post('/sync/keluarga', [AdminKeluargaController::class, 'syncKeluarga'])->name('sync.keluarga');
         Route::post('/sync/bantuan', [BantuanController::class, 'syncBantuan'])->name('sync.bantuan');
-        
+
         // Backup dan restore data
         Route::post('/backup', [AdminKeluargaController::class, 'backup'])->name('backup');
         Route::post('/restore', [AdminKeluargaController::class, 'restore'])->name('restore');
@@ -296,7 +297,7 @@ Route::prefix('webhook')->name('webhook.')->group(function () {
     // Webhook untuk update data dari sistem pusat
     Route::post('/keluarga-update', [AdminKeluargaController::class, 'webhookKeluargaUpdate'])->name('keluarga.update');
     Route::post('/bantuan-update', [BantuanController::class, 'webhookBantuanUpdate'])->name('bantuan.update');
-    
+
     // Webhook untuk notifikasi sistem
     Route::post('/notification', [AdminKeluargaController::class, 'webhookNotification'])->name('notification');
 });
