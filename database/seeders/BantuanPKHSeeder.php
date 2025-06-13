@@ -17,7 +17,7 @@ class BantuanPKHSeeder extends Seeder
         // Ambil keluarga yang layak bantuan (sangat miskin dan miskin)
         $keluargaLayak = Keluarga::whereIn('status_ekonomi', ['sangat_miskin', 'miskin'])
             ->where('status_verifikasi', 'terverifikasi')
-            ->limit(8) // Ambil 8 keluarga untuk contoh
+            ->limit(20)
             ->get();
 
         foreach ($keluargaLayak as $keluarga) {
@@ -43,7 +43,7 @@ class BantuanPKHSeeder extends Seeder
             }
 
             // Buat bantuan untuk tahun 2025 (aktif) - hanya untuk sebagian keluarga
-            if ($keluarga->id <= 6) { // 6 keluarga pertama dapat bantuan 2025
+            if ($keluarga->id <= 14) {
                 $bantuan2025 = Bantuan::create([
                     'keluarga_id' => $keluarga->id,
                     'tahun_anggaran' => 2025,
@@ -53,8 +53,7 @@ class BantuanPKHSeeder extends Seeder
                     'tanggal_penetapan' => '2025-01-10'
                 ]);
 
-                // Buat distribusi untuk bulan yang sudah lewat di 2025
-                for ($bulan = 1; $bulan <= 6; $bulan++) { // Sampai Juni 2025
+                for ($bulan = 1; $bulan <= 6; $bulan++) { 
                     DistribusiBantuan::create([
                         'bantuan_id' => $bantuan2025->id,
                         'bulan' => $bulan,
@@ -64,7 +63,6 @@ class BantuanPKHSeeder extends Seeder
                     ]);
                 }
 
-                // Buat distribusi untuk bulan yang belum disalurkan
                 for ($bulan = 7; $bulan <= 12; $bulan++) {
                     DistribusiBantuan::create([
                         'bantuan_id' => $bantuan2025->id,
