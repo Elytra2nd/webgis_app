@@ -1,61 +1,221 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
+# WebGIS Sistem Informasi Geografis - Program Keluarga Harapan (PKH)
+## Dinas Sosial Kalimantan Barat
 
-<p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
-</p>
+### Anggota Kelompok 4
+1. H1101231011 - Muhammad Ilham Nugraha
+2. H1101231031 - Abiyasha Syahrizal Romdhon
+3. H1101231037 - Suryanto
+4. H1101231051 - M. Imam Firdaus
+5. H1101231057 - Maida Al Ghazali
 
-## About Laravel
+## Deskripsi Aplikasi
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+WebGIS untuk mengelola data spasial bertipe point yang merepresentasikan posisi rumah/tempat tinggal Keluarga Penerima Manfaat (KPM) Program Keluarga Harapan di Kalimantan Barat. Aplikasi ini memungkinkan Dinas Sosial untuk:
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
+- Mengelola data Kartu Keluarga (KK) dan anggota keluarga
+- Memetakan sebaran KK secara spasial
+- Membedakan KK yang sudah dan belum menerima bantuan
+- Mengelola data bantuan per tahun anggaran
+- Melakukan analisis distribusi bantuan sosial
 
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
+## Teknologi yang Digunakan
 
-## Learning Laravel
+- **Backend**: Laravel 12
+- **Frontend**: React 18 dengan TypeScript
+- **Database**: MySQL/PostgreSQL
+- **Maps**: Leaflet.js
+- **Styling**: Tailwind CSS
+- **Build Tool**: Vite
+- **Package Manager**: npm/yarn
 
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework.
+## Persyaratan Sistem
 
-You may also try the [Laravel Bootcamp](https://bootcamp.laravel.com), where you will be guided through building a modern Laravel application from scratch.
+- PHP >= 8.2
+- Node.js >= 18.x
+- Composer
+- MySQL/PostgreSQL
+- Web Server (Apache/Nginx)
 
-If you don't feel like reading, [Laracasts](https://laracasts.com) can help. Laracasts contains thousands of video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
+## Instalasi dan Konfigurasi
 
-## Laravel Sponsors
+### 1. Clone Repository
+```
+git clone [repository-url]
+cd webgis-pkh-kalbar
+```
 
-We would like to extend our thanks to the following sponsors for funding Laravel development. If you are interested in becoming a sponsor, please visit the [Laravel Partners program](https://partners.laravel.com).
+### 2. Install Dependencies Backend
+```
+composer install
+```
 
-### Premium Partners
+### 3. Install Dependencies Frontend
+```
+npm install
+# atau
+yarn install
+```
 
-- **[Vehikl](https://vehikl.com)**
-- **[Tighten Co.](https://tighten.co)**
-- **[Kirschbaum Development Group](https://kirschbaumdevelopment.com)**
-- **[64 Robots](https://64robots.com)**
-- **[Curotec](https://www.curotec.com/services/technologies/laravel)**
-- **[DevSquad](https://devsquad.com/hire-laravel-developers)**
-- **[Redberry](https://redberry.international/laravel-development)**
-- **[Active Logic](https://activelogic.com)**
+### 4. Konfigurasi Environment
+```
+cp .env.example .env
+php artisan key:generate
+```
 
-## Contributing
+### 5. Konfigurasi Database
+Edit file `.env` dan sesuaikan konfigurasi database:
+```
+DB_CONNECTION=mysql
+DB_HOST=127.0.0.1
+DB_PORT=3306
+DB_DATABASE=webgis_app
+DB_USERNAME=root
+DB_PASSWORD=
+```
 
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
+### 6. Migrasi Database dan Seeder
+```
+php artisan migrate
+php artisan db:seed
+```
 
-## Code of Conduct
+### 7. Build Assets
+```
+npm run build
+# atau untuk development
+npm run dev
+```
 
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
+### 8. Jalankan Server
+```
+php artisan serve
+```
 
-## Security Vulnerabilities
+Aplikasi akan berjalan di: `http://localhost:8000`
 
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
+## Akun Login Default
 
-## License
+### Admin
+- **Username**: admin@dinsos.kalbarprov.go.id
+- **Password**: password123
 
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+### Petugas
+- **Username**: admin@pontianak.go.id
+- **Password**: pontianak123
+
+## Struktur Database
+
+### Tabel Utama:
+- `keluarga` - Data Kartu Keluarga
+- `anggota_keluarga` - Data anggota dalam KK
+- `bantuan` - Data bantuan yang diberikan
+- `distribusi_bantuan` - Detail distribusi bantuan bulanan
+- `users` - Data pengguna sistem
+
+### Relasi:
+- 1 Keluarga memiliki banyak Anggota Keluarga
+- 1 Keluarga dapat memiliki banyak Bantuan (per tahun)
+- 1 Bantuan memiliki banyak Distribusi Bantuan (per bulan)
+
+## Fitur Aplikasi
+
+### 1. Manajemen Data Keluarga
+- CRUD data Kartu Keluarga
+- CRUD data anggota keluarga
+- Validasi NIK dan Nomor KK
+
+### 2. Pemetaan Spasial
+- Tampilan peta interaktif menggunakan Leaflet
+- Marker berbeda untuk KK penerima dan non-penerima bantuan
+- Info popup dengan detail keluarga
+- Filter berdasarkan tahun dan status bantuan
+
+### 3. Manajemen Bantuan
+- Penetapan KK penerima bantuan per tahun
+- Pencairan bantuan bulanan
+- Laporan distribusi bantuan
+- Monitoring status bantuan
+
+### 4. Laporan dan Analisis
+- Laporan sebaran KK per wilayah
+- Statistik penerima bantuan
+- Export data ke Excel/PDF
+- Dashboard analitik
+
+## Asumsi Pengembangan
+
+1. **Data Koordinat**: Koordinat rumah diambil berdasarkan alamat yang diinputkan atau marking manual di peta
+2. **Tahun Anggaran**: Bantuan diberikan per tahun anggaran (Januari-Desember)
+3. **Status KK**: KK dapat berpindah status dari penerima ke non-penerima berdasarkan evaluasi tahunan
+4. **Wilayah Cakupan**: Hanya mencakup wilayah Kalimantan Barat
+5. **Verifikasi Data**: Setiap data KK harus diverifikasi oleh petugas lapangan
+
+## Contoh Data Testing
+
+Aplikasi sudah dilengkapi dengan data sample:
+- 40 Keluarga tersebar di 9 Kabupaten/Kota di Kalimantan Barat
+- 200+ Anggota Keluarga dengan variasi umur dan status
+- Data bantuan untuk tahun 2024 dan 2025
+- Distribusi bantuan bulanan yang bervariasi
+
+## File Export Database
+
+File `database_export.sql` berisi:
+- Struktur tabel lengkap
+- Data sample untuk testing
+- Stored procedures dan triggers
+- Indexes untuk optimasi query
+
+## Pengembangan
+
+### Menjalankan Development Server
+```
+# Terminal 1 - Laravel Server
+php artisan serve
+
+# Terminal 2 - Vite Dev Server
+npm run dev
+```
+
+### Build untuk Production
+```
+npm run build
+php artisan optimize
+```
+
+## Troubleshooting
+
+### Error CSRF Token
+Pastikan meta tag CSRF ada di layout:
+```
+
+```
+
+### Error Permission
+```
+sudo chmod -R 775 storage bootstrap/cache
+```
+
+### Error Node Modules
+```
+rm -rf node_modules package-lock.json
+npm install
+```
+
+## Kontribusi
+
+1. Fork repository
+2. Buat branch fitur (`git checkout -b feature/nama-fitur`)
+3. Commit perubahan (`git commit -am 'Tambah fitur baru'`)
+4. Push ke branch (`git push origin feature/nama-fitur`)
+5. Buat Pull Request
+
+## Lisensi
+
+Aplikasi ini dikembangkan untuk keperluan tugas besar mata kuliah Sistem Informasi Geografis Dasar.
+
+---
+
+**Dosen Pengampu**: Dr. Ir. Yus Sholva, S.T, M.T.  
+**Semester**: Genap 2024/2025  
+**Universitas**: Universitas Tanjungpura
