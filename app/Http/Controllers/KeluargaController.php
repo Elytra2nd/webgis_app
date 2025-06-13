@@ -452,7 +452,6 @@ class KeluargaController extends Controller
                 'no_kk' => 'required|string|max:16|unique:keluarga,no_kk',
                 'nama_kepala_keluarga' => 'required|string|max:255',
                 'alamat' => 'required|string',
-                // FIX: Update validasi untuk map juga menerima semua status
                 'status_ekonomi' => 'required|in:sangat_miskin,miskin,rentan_miskin,kurang_mampu,mampu',
                 'latitude' => 'required|numeric|between:-90,90',
                 'longitude' => 'required|numeric|between:-180,180',
@@ -486,6 +485,7 @@ class KeluargaController extends Controller
             $lat = (float) $data['latitude'];
             $lng = (float) $data['longitude'];
 
+            // FIX: Tambahkan semua field yang diperlukan dengan default value
             $keluarga = Keluarga::create([
                 'no_kk' => $data['no_kk'],
                 'nama_kepala_keluarga' => $data['nama_kepala_keluarga'],
@@ -493,12 +493,24 @@ class KeluargaController extends Controller
                 'status_ekonomi' => $data['status_ekonomi'],
                 'latitude' => $lat,
                 'longitude' => $lng,
+
+                // FIX: Tambahkan field yang hilang dengan default value
+                'rt' => '000', // Default value untuk RT
+                'rw' => '000', // Default value untuk RW
                 'kelurahan' => 'Belum diisi',
                 'kecamatan' => 'Belum diisi',
                 'kota' => 'Belum diisi',
                 'provinsi' => 'Belum diisi',
+                'kode_pos' => null,
+                'penghasilan_bulanan' => 0, // Default value
+                'jumlah_anggota' => 1, // Default minimal 1
+                'keterangan' => null,
+                'status_verifikasi' => 'belum_verifikasi',
+                'is_active' => true,
+                'koordinat_updated_at' => now(),
             ]);
 
+            // Update lokasi dengan spatial point
             DB::statement(
                 "UPDATE keluarga SET lokasi = POINT(?, ?) WHERE id = ?",
                 [$lng, $lat, $keluarga->id]
