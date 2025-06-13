@@ -38,7 +38,7 @@ export default function Authenticated({ user, children, breadcrumbs }: Authentic
     return (
         <div className="min-h-screen bg-gradient-to-br from-slate-50 via-cyan-50 to-teal-50 flex flex-col">
             {/* Top Navigation */}
-            <nav className="bg-white/80 backdrop-blur-md border-b border-gray-100/50 shadow-sm flex-shrink-0">
+            <nav className="bg-white/80 border-b border-gray-100/50 shadow-sm flex-shrink-0">
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                     <div className="flex justify-between h-16">
                         <div className="flex items-center">
@@ -134,7 +134,7 @@ export default function Authenticated({ user, children, breadcrumbs }: Authentic
             </nav>
 
             <div className="flex flex-1 min-h-0">
-                <aside className={`bg-white/90 backdrop-blur-sm border-r border-gray-100/50 shadow-sm ${sidebarCollapsed ? 'w-20' : 'w-64'} transition-all duration-300 flex flex-col h-screen sticky top-0`}>
+                <aside className={`bg-white/90 border-r border-gray-100/50 shadow-sm ${sidebarCollapsed ? 'w-20' : 'w-64'} transition-all duration-300 flex flex-col h-screen sticky top-0`}>
                     <div className="p-4 flex items-center border-b border-gray-100/50 flex-shrink-0" style={{ height: '4rem' }}>
                         {!sidebarCollapsed && (
                             <motion.div className="flex items-center space-x-2" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.2 }}>
@@ -193,7 +193,7 @@ export default function Authenticated({ user, children, breadcrumbs }: Authentic
 
                 <div className="flex-1 flex flex-col min-w-0">
                     {breadcrumbs && breadcrumbs.length > 0 && (
-                        <div className="bg-white/60 backdrop-blur-sm border-b border-gray-100/50 flex-shrink-0">
+                        <div className="bg-white/60 border-b border-gray-100/50 flex-shrink-0">
                             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
                                 <Breadcrumb items={breadcrumbs} />
                             </div>
